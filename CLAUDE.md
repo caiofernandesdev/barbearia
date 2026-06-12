@@ -61,13 +61,12 @@ Omitting any of these causes runtime errors (`cacheSchema`, `$mountedActions`, e
 
 **Filament 4 API** (not v3) — forms use `Filament\Schemas\Schema`, tables use `Filament\Tables\Table`. Do not use v3 patterns.
 
-**Booking slot availability** (`horariosDisponiveis`) — the slot generation logic in `AgendamentoController` has three configurable constants at the top of the method:
-```php
-$intervaloMinutos = 60;      // interval between slots
-$horaInicio       = '08:00'; // opening time
-$horaFim          = '19:00'; // closing time (no appointment can end after this)
-```
+**Booking slot availability** — logic lives in `app/Services/DisponibilidadeService.php`, called by `AgendamentoController::horariosDisponiveis`. Two modes:
+- **Lista** (profissional has `horarios_trabalho`): pre-defined times filtered by overlap — barbearia backward-compat.
+- **Gap-based** (no `horarios_trabalho`): finds free gaps between merged busy intervals, generates slots within each gap stepping by `intervalo_minutos`; a slot is valid only when `slot_start + duracao ≤ gap_end`.
+
 Overlap detection uses: `slotStart < existingEnd && slotEnd > existingStart`.
+Window: today → today+14 days. Buffer: 30 min for same-day slots.
 
 **Professional photos** — stored by Filament's `FileUpload` in `storage/app/public/profissionais/` (relative path saved in DB). The API returns the full public URL via `asset('storage/' . $p->foto)`. Requires `php artisan storage:link` once.
 

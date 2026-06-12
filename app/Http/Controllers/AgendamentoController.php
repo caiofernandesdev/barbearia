@@ -8,6 +8,7 @@ use App\Models\Mensalista;
 use App\Models\MensalistaHorarioFixo;
 use App\Models\Profissional;
 use App\Models\Servico;
+use App\Services\DisponibilidadeService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -169,100 +170,27 @@ class AgendamentoController extends Controller
             'servico_id'      => 'required|exists:servicos,id',
         ]);
 
-        // Regra 2: carrega configurações globais da barbearia
-        $config           = ConfiguracaoBarbearia::getInstance();
-        $intervaloMinutos = $config->intervalo_minutos;
-        $horaInicio       = $config->horario_abertura;
-        $horaFim          = $config->horario_encerramento;
+        $data = Carbon::parse($request->data)->startOfDay();
+        $hoje = Carbon::today();
 
-        $data         = Carbon::parse($request->data)->startOfDay();
-        $hoje         = Carbon::today();
-        $limiteMaximo = $hoje->copy()->addDays(14);
-
-        // Regra 1: valida janela de 14 dias
-        if ($data->lt($hoje) || $data->gt($limiteMaximo)) {
+        if ($data->lt($hoje) || $data->gt($hoje->copy()->addDays(14))) {
             return response()->json(['error' => 'Data fora do limite permitido (máximo 14 dias)'], 422);
         }
 
-        // Duração do serviço solicitado (para calcular término do slot e sobreposições)
-        $servico        = Servico::findOrFail($request->servico_id);
-        $duracaoMinutos = $servico->duracao_minutos;
+        $config       = ConfiguracaoBarbearia::getInstance();
+        $profissional = Profissional::findOrFail($request->profissional_id);
+        $servico      = Servico::findOrFail($request->servico_id);
 
-        // Regra 3: horários específicos do barbeiro
-        $profissional    = Profissional::findOrFail($request->profissional_id);
-        $horariosTrabalho = $profissional->horarios_trabalho ?? [];
+        $slots = app(DisponibilidadeService::class)->calcular(
+            $profissional,
+            $servico,
+            $data,
+            $config->horario_abertura,
+            $config->horario_encerramento,
+            $config->intervalo_minutos
+        );
 
-        // Regra 4: horários fixos de mensalistas bloqueados neste barbeiro neste dia
-        $horariosFixosBloqueados = MensalistaHorarioFixo::where('profissional_id', $request->profissional_id)
-            ->where('dia_semana', $data->dayOfWeek)
-            ->where('ativo', true)
-            ->pluck('hora')
-            ->map(fn($h) => substr($h, 0, 5)) // garante formato HH:ii
-            ->toArray();
-
-        // Regra 5: agendamentos ativos do barbeiro neste dia com serviço carregado
-        $agendamentos = Agendamento::where('profissional_id', $request->profissional_id)
-            ->whereDate('data_hora', $data->format('Y-m-d'))
-            ->whereIn('status', ['pendente', 'confirmado'])
-            ->with('servico')
-            ->get();
-
-        $horaFimCarbon = Carbon::parse($data->format('Y-m-d') . ' ' . $horaFim);
-        $agora         = Carbon::now();
-        $slotsLivres   = [];
-
-        // Regra 3: se o barbeiro tem horários próprios, usa eles como candidatos;
-        // caso contrário gera pelo intervalo global da barbearia
-        if (!empty($horariosTrabalho)) {
-            $candidatos = collect($horariosTrabalho)
-                ->map(fn($h) => Carbon::parse($data->format('Y-m-d') . ' ' . $h))
-                ->sortBy(fn($c) => $c->timestamp)
-                ->values();
-        } else {
-            $candidatos = collect();
-            $cursor = Carbon::parse($data->format('Y-m-d') . ' ' . $horaInicio);
-            while ($cursor->copy()->addMinutes($duracaoMinutos)->lte($horaFimCarbon)) {
-                $candidatos->push($cursor->copy());
-                $cursor->addMinutes($intervaloMinutos);
-            }
-        }
-
-        foreach ($candidatos as $slotAtual) {
-            $hora    = $slotAtual->format('H:i');
-            $slotFim = $slotAtual->copy()->addMinutes($duracaoMinutos);
-
-            // Slot deve terminar dentro do horário de encerramento
-            if ($slotFim->gt($horaFimCarbon)) continue;
-
-            // Regra 6: ignora slots passados no dia atual (buffer 30 min)
-            if ($data->isToday() && $slotAtual->lt($agora->copy()->addMinutes(30))) continue;
-
-            // Regra 4: bloqueia horários fixos de mensalistas
-            if (in_array($hora, $horariosFixosBloqueados)) continue;
-
-            // Regra 5: verifica sobreposição com agendamentos ativos
-            $disponivel = true;
-            foreach ($agendamentos as $ag) {
-                $agInicio  = Carbon::parse($ag->data_hora);
-                $agDuracao = $ag->servico?->duracao_minutos ?? $intervaloMinutos;
-                $agFim     = $agInicio->copy()->addMinutes($agDuracao);
-
-                // overlap: novo slot começa antes do existente terminar E termina depois do existente começar
-                if ($slotAtual->lt($agFim) && $slotFim->gt($agInicio)) {
-                    $disponivel = false;
-                    break;
-                }
-            }
-
-            if ($disponivel) {
-                $slotsLivres[] = [
-                    'hora'     => $hora,
-                    'datetime' => $slotAtual->format('Y-m-d H:i'),
-                ];
-            }
-        }
-
-        return response()->json($slotsLivres);
+        return response()->json($slots);
     }
 
     /**
