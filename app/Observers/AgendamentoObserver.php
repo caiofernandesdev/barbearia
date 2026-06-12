@@ -111,7 +111,7 @@ class AgendamentoObserver
         return implode("\n", [
             "Olá, {$agendamento->cliente_nome}! 👋",
             "",
-            "Lembrete: seu agendamento na *{$nomeBarbearia}* é *amanhã*!",
+            "Gostaríamos de confirmar seu agendamento na *{$nomeBarbearia}*:",
             "",
             "📅 *Data:* {$data}",
             "⏰ *Hora:* {$hora}",

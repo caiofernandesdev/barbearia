@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
+use App\Observers\AgendamentoObserver;
 use App\Services\WhatsAppService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -14,13 +15,41 @@ class WhatsAppWebhookController extends Controller
 
     public function handle(Request $request): \Illuminate\Http\JsonResponse
     {
-        // Ignora mensagens enviadas pelo próprio número (fromMe) ou de grupos
-        if ($request->boolean('fromMe') || $request->boolean('isGroupMsg')) {
+        $payload = $request->all();
+
+        // Log TUDO que chega — para debug completo do payload real
+        Log::info('WhatsApp webhook RAW', ['payload' => $payload]);
+
+        $event = strtolower(str_replace('_', '.', $payload['event'] ?? ''));
+
+        // Evolution API envia "messages.upsert" ou "MESSAGES_UPSERT"
+        if ($event !== 'messages.upsert') {
+            Log::info('WhatsApp webhook: evento ignorado', ['event' => $payload['event'] ?? 'N/A']);
             return response()->json(['ok' => true]);
         }
 
-        $phone = $this->normalizarTelefone($request->input('phone', ''));
-        $texto = trim(strtolower($request->input('text.message', '')));
+        $data = $payload['data'] ?? [];
+        $key  = $data['key'] ?? [];
+
+        // Ignora mensagens enviadas por nós ou de grupos (@g.us)
+        $remoteJid = $key['remoteJid'] ?? '';
+        if (($key['fromMe'] ?? false) || str_ends_with($remoteJid, '@g.us')) {
+            return response()->json(['ok' => true]);
+        }
+
+        // Extrai número do remoteJid: "5511999999999@s.whatsapp.net" → "5511999999999"
+        $phone = $this->normalizarTelefone($remoteJid);
+
+        // Texto da mensagem: pode vir em conversation, extendedTextMessage ou buttonsResponseMessage
+        $message = $data['message'] ?? [];
+        $texto   = trim(strtolower(
+            $message['conversation']
+            ?? $message['extendedTextMessage']['text']
+            ?? $message['buttonsResponseMessage']['selectedButtonId']
+            ?? ''
+        ));
+
+        Log::info("WhatsApp webhook recebido", compact('phone', 'texto'));
 
         if ($phone === '' || !in_array($texto, ['1', '2', 'sim', 'nao', 'não'])) {
             return response()->json(['ok' => true]);
@@ -30,9 +59,10 @@ class WhatsAppWebhookController extends Controller
         $agendamento = Agendamento::where('status', 'pendente')
             ->where('data_hora', '>', now())
             ->where(function ($q) use ($phone) {
-                // Tenta com código do país e sem (remove exatamente 2 dígitos '55' do início)
+                // Tenta com DDI 55 e sem (cliente pode ter salvo sem o código do país)
                 $q->where('cliente_telefone', $phone)
-                  ->orWhere('cliente_telefone', substr($phone, 2));
+                  ->orWhere('cliente_telefone', ltrim($phone, '55'))
+                  ->orWhere('cliente_telefone', preg_replace('/^55/', '', $phone, 1));
             })
             ->with(['profissional', 'servico'])
             ->orderBy('data_hora')
@@ -46,25 +76,23 @@ class WhatsAppWebhookController extends Controller
         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
 
         if (in_array($texto, ['1', 'sim'])) {
+            // Atualiza status → Observer dispara e envia mensagemConfirmado automaticamente
             $agendamento->update(['status' => 'confirmado']);
-            // O observer dispara e envia a mensagem de confirmação automaticamente
+            Log::info("WhatsApp webhook: agendamento #{$agendamento->id} confirmado pelo cliente.");
         } else {
+            // Atualiza status → Observer dispara e envia mensagemCancelado automaticamente
             $agendamento->update(['status' => 'cancelado']);
-            $this->whatsapp->enviarTexto(
-                $agendamento->cliente_telefone,
-                "Ok, {$agendamento->cliente_nome}. Seu agendamento foi *cancelado* conforme solicitado.\n\nPara reagendar acesse: " . url('/')
-            );
+            Log::info("WhatsApp webhook: agendamento #{$agendamento->id} cancelado pelo cliente.");
         }
 
         return response()->json(['ok' => true]);
     }
 
-    // Remove código do país e sufixo @c.us para comparar com o BD
-    private function normalizarTelefone(string $phone): string
+    // Extrai apenas os dígitos do remoteJid da Evolution API
+    // Ex: "5511999999999@s.whatsapp.net" → "5511999999999"
+    private function normalizarTelefone(string $remoteJid): string
     {
-        $digits = preg_replace('/\D/', '', $phone);
-
-        // Remove @c.us já foi tratado pelo preg_replace acima
-        return $digits;
+        $semSufixo = preg_replace('/@.*$/', '', $remoteJid);
+        return preg_replace('/\D/', '', $semSufixo);
     }
 }

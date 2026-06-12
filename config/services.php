@@ -35,10 +35,10 @@ return [
         ],
     ],
 
-    'zapi' => [
-        'instance'     => env('ZAPI_INSTANCE_ID'),
-        'token'        => env('ZAPI_TOKEN'),
-        'client_token' => env('ZAPI_CLIENT_TOKEN'),
+    'evolution' => [
+        'url'      => env('EVOLUTION_URL'),
+        'apikey'   => env('EVOLUTION_API_KEY'),
+        'instance' => env('EVOLUTION_INSTANCE'),
     ],
 
 ];

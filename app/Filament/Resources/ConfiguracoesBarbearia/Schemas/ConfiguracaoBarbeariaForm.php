@@ -94,6 +94,21 @@ class ConfiguracaoBarbeariaForm
                         ->helperText('Controle semanal é mais preciso que mensal, pois o mês não tem semanas fixas.'),
                 ]),
 
+            Section::make('WhatsApp')
+                ->description('Define quando o lembrete automático é enviado antes do agendamento.')
+                ->schema([
+                    Select::make('dias_antecedencia_lembrete')
+                        ->label('Enviar lembrete com antecedência de')
+                        ->options([
+                            1 => '1 dia antes',
+                            2 => '2 dias antes',
+                            3 => '3 dias antes',
+                        ])
+                        ->default(1)
+                        ->required()
+                        ->helperText('O comando agendamentos:lembretes usa esse valor para selecionar os agendamentos do dia.'),
+                ]),
+
             Section::make('Financeiro')
                 ->description('Define a divisão de receita entre a barbearia e os barbeiros.')
                 ->columns(2)

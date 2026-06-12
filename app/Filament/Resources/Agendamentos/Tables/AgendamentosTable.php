@@ -12,6 +12,7 @@ use Filament\Actions\EditAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -76,6 +77,34 @@ class AgendamentosTable
             ])
             ->defaultSort('data_hora', 'desc')
             ->filters([
+                Filter::make('data')
+                    ->label('Período')
+                    ->form([
+                        DatePicker::make('data_inicio')
+                            ->label('De')
+                            ->displayFormat('d/m/Y')
+                            ->native(false),
+                        DatePicker::make('data_fim')
+                            ->label('Até')
+                            ->displayFormat('d/m/Y')
+                            ->native(false),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        return $query
+                            ->when($data['data_inicio'], fn ($q) => $q->whereDate('data_hora', '>=', $data['data_inicio']))
+                            ->when($data['data_fim'],    fn ($q) => $q->whereDate('data_hora', '<=', $data['data_fim']));
+                    })
+                    ->indicateUsing(function (array $data): array {
+                        $indicators = [];
+                        if ($data['data_inicio'] ?? null) {
+                            $indicators[] = 'De: ' . \Carbon\Carbon::parse($data['data_inicio'])->format('d/m/Y');
+                        }
+                        if ($data['data_fim'] ?? null) {
+                            $indicators[] = 'Até: ' . \Carbon\Carbon::parse($data['data_fim'])->format('d/m/Y');
+                        }
+                        return $indicators;
+                    }),
+
                 Filter::make('hoje')
                     ->label('Hoje')
                     ->query(fn (Builder $query) => $query->whereDate('data_hora', now()->today())),
@@ -103,17 +132,17 @@ class AgendamentosTable
             ])
             ->recordActions([
                 Action::make('enviar_confirmacao')
-                    ->label('Enviar confirmação')
+                    ->label('Pedir confirmação')
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
-                    ->color('success')
+                    ->color('warning')
                     ->requiresConfirmation()
-                    ->modalHeading('Enviar confirmação por WhatsApp?')
-                    ->modalDescription(fn ($record) => "Enviar mensagem de confirmação para {$record->cliente_nome} ({$record->cliente_telefone})?")
+                    ->modalHeading('Pedir confirmação por WhatsApp?')
+                    ->modalDescription(fn ($record) => "Enviar mensagem pedindo confirmação para {$record->cliente_nome} ({$record->cliente_telefone})?")
                     ->modalSubmitActionLabel('Enviar')
                     ->hidden(fn ($record) => $record->status === 'cancelado')
                     ->action(function ($record) {
                         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
-                        $mensagem      = AgendamentoObserver::mensagemConfirmado($record, $nomeBarbearia);
+                        $mensagem      = AgendamentoObserver::mensagemLembrete($record, $nomeBarbearia);
                         $enviado       = app(WhatsAppService::class)->enviarTexto($record->cliente_telefone, $mensagem);
 
                         if ($enviado) {

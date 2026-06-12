@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Model;
     'horario_encerramento',
     'intervalo_minutos',
     'percentual_barbearia',
+    'dias_antecedencia_lembrete',
 ])]
 class ConfiguracaoBarbearia extends Model
 {
@@ -36,6 +37,7 @@ class ConfiguracaoBarbearia extends Model
             'mensalista_limite_cortes_semana'  => 'integer',
             'intervalo_minutos'                => 'integer',
             'percentual_barbearia'             => 'decimal:2',
+            'dias_antecedencia_lembrete'       => 'integer',
         ];
     }
 

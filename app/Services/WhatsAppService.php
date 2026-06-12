@@ -7,47 +7,40 @@ use Illuminate\Support\Facades\Log;
 
 class WhatsAppService
 {
-    private string  $instance;
-    private string  $token;
-    private ?string $clientToken;
+    private string $url;
+    private string $apiKey;
+    private string $instance;
 
     public function __construct()
     {
-        $this->instance    = config('services.zapi.instance', '');
-        $this->token       = config('services.zapi.token', '');
-        $this->clientToken = config('services.zapi.client_token') ?: null;
+        $this->url      = rtrim(config('services.evolution.url', ''), '/');
+        $this->apiKey   = config('services.evolution.apikey', '');
+        $this->instance = config('services.evolution.instance', '');
     }
 
     public function enabled(): bool
     {
-        return $this->instance !== '' && $this->token !== '';
+        return $this->url !== '' && $this->apiKey !== '' && $this->instance !== '';
     }
 
     public function enviarTexto(string $telefone, string $mensagem): bool
     {
         if (!$this->enabled()) {
-            Log::info('WhatsApp desativado — variáveis Z-API não configuradas.');
+            Log::info('WhatsApp desativado — variáveis EVOLUTION não configuradas.');
             return false;
         }
 
         $numero = $this->formatarNumero($telefone);
 
         try {
-            $url = "https://api.z-api.io/instances/{$this->instance}/token/{$this->token}/send-text";
+            $endpoint = "{$this->url}/message/sendText/{$this->instance}";
 
-            // withoutVerifying() contorna problema de CA no Windows em desenvolvimento
-            // Em produção (Linux) o cURL já tem os certificados e não precisa disso
-            $http = Http::withoutVerifying();
-
-            // Client-Token é exigido quando a instância tem segurança ativada no Z-API
-            if ($this->clientToken) {
-                $http = $http->withHeaders(['Client-Token' => $this->clientToken]);
-            }
-
-            $response = $http->post($url, [
-                'phone'   => $numero,
-                'message' => $mensagem,
-            ]);
+            $response = Http::withoutVerifying()
+                ->withHeaders(['apikey' => $this->apiKey])
+                ->post($endpoint, [
+                    'number' => $numero,
+                    'text'   => $mensagem,
+                ]);
 
             if (!$response->successful()) {
                 Log::warning('WhatsApp: falha ao enviar mensagem.', [
@@ -60,7 +53,7 @@ class WhatsAppService
 
             return true;
         } catch (\Throwable $e) {
-            Log::error('WhatsApp: erro ao chamar Z-API.', [
+            Log::error('WhatsApp: erro ao chamar Evolution API.', [
                 'numero' => $numero,
                 'erro'   => $e->getMessage(),
             ]);

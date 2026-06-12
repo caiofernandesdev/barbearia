@@ -20,12 +20,14 @@ class EnviarLembretesAgendamentos extends Command
 
     public function handle(): int
     {
-        $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
+        $config        = ConfiguracaoBarbearia::getInstance();
+        $nomeBarbearia = $config->nome_barbearia;
+        $diasAntes     = $config->dias_antecedencia_lembrete ?? 1;
 
-        $amanha = now()->addDay();
+        $dataAlvo = now()->addDays($diasAntes);
 
         $agendamentos = Agendamento::whereIn('status', ['pendente', 'confirmado'])
-            ->whereDate('data_hora', $amanha->toDateString())
+            ->whereDate('data_hora', $dataAlvo->toDateString())
             ->with(['profissional', 'servico'])
             ->get();
 
