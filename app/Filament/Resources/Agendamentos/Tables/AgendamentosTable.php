@@ -2,9 +2,14 @@
 
 namespace App\Filament\Resources\Agendamentos\Tables;
 
+use App\Models\ConfiguracaoBarbearia;
+use App\Observers\AgendamentoObserver;
+use App\Services\WhatsAppService;
+use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
@@ -44,10 +49,11 @@ class AgendamentosTable
                     ->label('Status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'pendente' => 'warning',
+                        'pendente'   => 'warning',
                         'confirmado' => 'success',
-                        'concluido' => 'info',
-                        'cancelado' => 'danger',
+                        'concluido'  => 'info',
+                        'cancelado'  => 'danger',
+                        default      => 'gray',
                     }),
 
                 IconColumn::make('mensalista')
@@ -77,10 +83,10 @@ class AgendamentosTable
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options([
-                        'pendente' => 'Pendente',
+                        'pendente'   => 'Pendente',
                         'confirmado' => 'Confirmado',
-                        'concluido' => 'Concluído',
-                        'cancelado' => 'Cancelado',
+                        'concluido'  => 'Concluído',
+                        'cancelado'  => 'Cancelado',
                     ]),
 
                 SelectFilter::make('profissional_id')
@@ -96,6 +102,35 @@ class AgendamentosTable
                     ->query(fn (Builder $query) => $query->where('is_avulso_mensalista_fixo', true)),
             ])
             ->recordActions([
+                Action::make('enviar_confirmacao')
+                    ->label('Enviar confirmação')
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Enviar confirmação por WhatsApp?')
+                    ->modalDescription(fn ($record) => "Enviar mensagem de confirmação para {$record->cliente_nome} ({$record->cliente_telefone})?")
+                    ->modalSubmitActionLabel('Enviar')
+                    ->hidden(fn ($record) => $record->status === 'cancelado')
+                    ->action(function ($record) {
+                        $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
+                        $mensagem      = AgendamentoObserver::mensagemConfirmado($record, $nomeBarbearia);
+                        $enviado       = app(WhatsAppService::class)->enviarTexto($record->cliente_telefone, $mensagem);
+
+                        if ($enviado) {
+                            Notification::make()
+                                ->title('Mensagem enviada!')
+                                ->body("Confirmação enviada para {$record->cliente_nome}.")
+                                ->success()
+                                ->send();
+                        } else {
+                            Notification::make()
+                                ->title('Falha ao enviar')
+                                ->body('Verifique as configurações do WhatsApp (ZAPI_CLIENT_TOKEN).')
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
                 EditAction::make(),
                 DeleteAction::make()->label('Excluir'),
             ])

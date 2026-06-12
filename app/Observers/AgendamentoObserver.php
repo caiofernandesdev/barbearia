@@ -17,28 +17,33 @@ class AgendamentoObserver
 
         $this->whatsapp->enviarTexto(
             $agendamento->cliente_telefone,
-            $this->mensagemRecebido($agendamento, $nomeBarbearia)
+            static::mensagemRecebido($agendamento, $nomeBarbearia)
         );
     }
 
-    // Dispara quando o admin muda o status para 'confirmado'
+    // Dispara quando o admin muda o status
     public function updated(Agendamento $agendamento): void
     {
-        if (!$agendamento->wasChanged('status') || $agendamento->status !== 'confirmado') {
-            return;
-        }
+        if (!$agendamento->wasChanged('status')) return;
 
         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
 
-        $this->whatsapp->enviarTexto(
-            $agendamento->cliente_telefone,
-            $this->mensagemConfirmado($agendamento, $nomeBarbearia)
-        );
+        match ($agendamento->status) {
+            'confirmado' => $this->whatsapp->enviarTexto(
+                $agendamento->cliente_telefone,
+                static::mensagemConfirmado($agendamento, $nomeBarbearia)
+            ),
+            'cancelado' => $this->whatsapp->enviarTexto(
+                $agendamento->cliente_telefone,
+                static::mensagemCancelado($agendamento, $nomeBarbearia)
+            ),
+            default => null,
+        };
     }
 
-    // ─── Templates ────────────────────────────────────────────────────────────
+    // ─── Templates (public static — usados também por actions do painel) ──────
 
-    private function mensagemRecebido(Agendamento $agendamento, string $nomeBarbearia): string
+    public static function mensagemRecebido(Agendamento $agendamento, string $nomeBarbearia): string
     {
         $data = $agendamento->data_hora->format('d/m/Y');
         $hora = $agendamento->data_hora->format('H:i');
@@ -57,7 +62,7 @@ class AgendamentoObserver
         ]);
     }
 
-    private function mensagemConfirmado(Agendamento $agendamento, string $nomeBarbearia): string
+    public static function mensagemConfirmado(Agendamento $agendamento, string $nomeBarbearia): string
     {
         $data  = $agendamento->data_hora->format('d/m/Y');
         $hora  = $agendamento->data_hora->format('H:i');
@@ -75,6 +80,25 @@ class AgendamentoObserver
             "💰 *Valor:* {$preco}",
             "",
             "Te esperamos lá! 💈",
+        ]);
+    }
+
+    public static function mensagemCancelado(Agendamento $agendamento, string $nomeBarbearia): string
+    {
+        $data = $agendamento->data_hora->format('d/m/Y');
+        $hora = $agendamento->data_hora->format('H:i');
+
+        return implode("\n", [
+            "Olá, {$agendamento->cliente_nome}! 😔",
+            "",
+            "Seu agendamento na *{$nomeBarbearia}* foi *cancelado*.",
+            "",
+            "📅 *Data:* {$data}",
+            "⏰ *Hora:* {$hora}",
+            "👨 *Profissional:* {$agendamento->profissional->nome}",
+            "💈 *Serviço:* {$agendamento->servico->nome}",
+            "",
+            "Se quiser remarcar, acesse nosso link de agendamento. 😊",
         ]);
     }
 
