@@ -27,7 +27,12 @@ class ProfissionalResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'nome';
 
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 1;
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Cadastros';
+    }
 
     public static function canAccess(): bool
     {

@@ -146,6 +146,50 @@ class DatabaseSeeder extends Seeder
             }
         }
 
+        // ─── Clientes para Repescagem (último agendamento > 30 dias atrás) ─────
+        $clientesRepescagem = [
+            ['nome' => 'Alex Borges',       'telefone' => '51988882001', 'dias' => 45],
+            ['nome' => 'Bruno Cardoso',      'telefone' => '51988882002', 'dias' => 52],
+            ['nome' => 'Cesar Magalhães',    'telefone' => '51988882003', 'dias' => 61],
+            ['nome' => 'Daniel Vieira',      'telefone' => '51988882004', 'dias' => 38],
+            ['nome' => 'Elvis Nascimento',   'telefone' => '51988882005', 'dias' => 75],
+            ['nome' => 'Fábio Teixeira',     'telefone' => '51988882006', 'dias' => 33],
+            ['nome' => 'Gustavo Meireles',   'telefone' => '51988882007', 'dias' => 90],
+            ['nome' => 'Henrique Barros',    'telefone' => '51988882008', 'dias' => 42],
+        ];
+
+        foreach ($clientesRepescagem as $cr) {
+            // Só insere se ainda não existir agendamento para esse telefone
+            if (Agendamento::where('cliente_telefone', $cr['telefone'])->exists()) continue;
+
+            $profissional = $profissionais->random();
+            $servicoId    = $servicoIds[array_rand($servicoIds)];
+
+            // 1 agendamento antigo (status concluido)
+            Agendamento::create([
+                'cliente_nome'     => $cr['nome'],
+                'cliente_telefone' => $cr['telefone'],
+                'profissional_id'  => $profissional->id,
+                'servico_id'       => $servicoId,
+                'data_hora'        => now()->subDays($cr['dias'])->setTime(10, 0)->format('Y-m-d H:i:s'),
+                'status'           => 'concluido',
+                'mensalista'       => false,
+            ]);
+
+            // Alguns clientes tiveram 2 visitas, ambas antigas
+            if ($cr['dias'] > 50) {
+                Agendamento::create([
+                    'cliente_nome'     => $cr['nome'],
+                    'cliente_telefone' => $cr['telefone'],
+                    'profissional_id'  => $profissional->id,
+                    'servico_id'       => $servicoId,
+                    'data_hora'        => now()->subDays($cr['dias'] + 30)->setTime(14, 0)->format('Y-m-d H:i:s'),
+                    'status'           => 'concluido',
+                    'mensalista'       => false,
+                ]);
+            }
+        }
+
         // Agendamentos futuros (próximos 7 dias) — pendentes e confirmados
         for ($daysAhead = 1; $daysAhead <= 7; $daysAhead++) {
             $data = now()->addDays($daysAhead);

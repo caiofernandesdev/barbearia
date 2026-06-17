@@ -154,7 +154,7 @@ class AgendamentosTable
                         } else {
                             Notification::make()
                                 ->title('Falha ao enviar')
-                                ->body('Verifique as configurações do WhatsApp (ZAPI_CLIENT_TOKEN).')
+                                ->body('Verifique as configurações da Evolution API no .env.')
                                 ->danger()
                                 ->send();
                         }

@@ -31,7 +31,12 @@ class Relatorios extends Page implements HasTable
 
     protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedChartBar;
 
-    protected static ?int $navigationSort = 9;
+    protected static ?int $navigationSort = 1;
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Financeiro';
+    }
 
     public static function canAccess(): bool
     {

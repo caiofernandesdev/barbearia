@@ -22,7 +22,7 @@ class MeuPainel extends Page
 
     protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedHome;
 
-    protected static ?int $navigationSort = 1;
+    protected static ?int $navigationSort = 0;
 
     public string $dataInicio   = '';
     public string $dataFim      = '';

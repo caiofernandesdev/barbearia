@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Agendamento;
+use App\Models\Indisponibilidade;
 use App\Models\MensalistaHorarioFixo;
 use App\Models\Profissional;
 use App\Models\Servico;
@@ -56,6 +57,22 @@ class DisponibilidadeService
             ->with('servico')
             ->get();
 
+        // Indisponibilidades do profissional ou de toda a barbearia neste dia
+        $indisponibilidades = Indisponibilidade::where(function ($q) use ($profissional) {
+                $q->where('profissional_id', $profissional->id)
+                  ->orWhereNull('profissional_id');
+            })
+            ->where('inicio', '<', $dataStr . ' 23:59:59')
+            ->where('fim', '>', $dataStr . ' 00:00:00')
+            ->get();
+
+        // Dia completamente bloqueado → sem slots
+        foreach ($indisponibilidades as $ind) {
+            if ($ind->inicio->lte($expedienteInicio) && $ind->fim->gte($expedienteFim)) {
+                return [];
+            }
+        }
+
         // Horários fixos de mensalistas que bloqueiam este profissional neste dia da semana
         $fixosBloqueados = MensalistaHorarioFixo::where('profissional_id', $profissional->id)
             ->where('dia_semana', $data->dayOfWeek)
@@ -71,6 +88,7 @@ class DisponibilidadeService
                 $horariosTrabalho,
                 $agendamentos,
                 $fixosBloqueados,
+                $indisponibilidades,
                 $data,
                 $duracao,
                 $expedienteFim,
@@ -81,6 +99,7 @@ class DisponibilidadeService
         return $this->calcularPorGaps(
             $agendamentos,
             $fixosBloqueados,
+            $indisponibilidades,
             $data,
             $duracao,
             $intervaloMinutos,
@@ -99,6 +118,7 @@ class DisponibilidadeService
         array $horariosTrabalho,
         Collection $agendamentos,
         array $fixosBloqueados,
+        $indisponibilidades,
         Carbon $data,
         int $duracao,
         Carbon $expedienteFim,
@@ -120,6 +140,7 @@ class DisponibilidadeService
             if ($data->isToday() && $inicio->lt($agora->copy()->addMinutes(30))) continue;
             if (in_array($inicio->format('H:i'), $fixosBloqueados)) continue;
             if ($this->temSobreposicao($inicio, $fim, $agendamentos, $intervaloMinutos)) continue;
+            if ($this->bloqueadoPorIndisponibilidade($inicio, $fim, $indisponibilidades)) continue;
 
             $slots[] = ['hora' => $inicio->format('H:i'), 'datetime' => $inicio->format('Y-m-d H:i')];
         }
@@ -135,6 +156,7 @@ class DisponibilidadeService
     private function calcularPorGaps(
         Collection $agendamentos,
         array $fixosBloqueados,
+        $indisponibilidades,
         Carbon $data,
         int $duracao,
         int $intervaloMinutos,
@@ -146,6 +168,7 @@ class DisponibilidadeService
         $ocupados = $this->montarIntervalosOcupados(
             $agendamentos,
             $fixosBloqueados,
+            $indisponibilidades,
             $data->format('Y-m-d'),
             $intervaloMinutos
         );
@@ -179,6 +202,7 @@ class DisponibilidadeService
     private function montarIntervalosOcupados(
         Collection $agendamentos,
         array $fixosBloqueados,
+        $indisponibilidades,
         string $dataStr,
         int $intervaloMinutos
     ): array {
@@ -195,9 +219,23 @@ class DisponibilidadeService
             $ocupados[] = [$inicio, $inicio->copy()->addMinutes($intervaloMinutos)];
         }
 
+        foreach ($indisponibilidades as $ind) {
+            $ocupados[] = [$ind->inicio->copy(), $ind->fim->copy()];
+        }
+
         usort($ocupados, fn ($a, $b) => $a[0]->lt($b[0]) ? -1 : 1);
 
         return $this->mesclarIntervalos($ocupados);
+    }
+
+    private function bloqueadoPorIndisponibilidade(Carbon $inicio, Carbon $fim, $indisponibilidades): bool
+    {
+        foreach ($indisponibilidades as $ind) {
+            if ($inicio->lt($ind->fim) && $fim->gt($ind->inicio)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     /**

@@ -45,8 +45,26 @@ class ProfissionalForm
                 ->label('Ativo')
                 ->default(true),
 
-            Section::make('Horários de Trabalho')
-                ->description('Selecione os horários em que este barbeiro atende. Se nenhum for selecionado, o sistema usará todos os slots configurados na barbearia.')
+            Section::make('Dias de Trabalho')
+                ->description('Selecione os dias da semana em que este profissional atende.')
+                ->schema([
+                    CheckboxList::make('dias_trabalho')
+                        ->label('')
+                        ->options([
+                            0 => 'Domingo',
+                            1 => 'Segunda-feira',
+                            2 => 'Terça-feira',
+                            3 => 'Quarta-feira',
+                            4 => 'Quinta-feira',
+                            5 => 'Sexta-feira',
+                            6 => 'Sábado',
+                        ])
+                        ->columns(4)
+                        ->default([1, 2, 3, 4, 5, 6]),
+                ]),
+
+            Section::make('Horários Específicos')
+                ->description('Opcional. Se selecionados, apenas esses horários serão exibidos para este profissional. Se deixar em branco, o sistema usa todos os slots do intervalo configurado.')
                 ->schema([
                     CheckboxList::make('horarios_trabalho')
                         ->label('')
@@ -56,8 +74,7 @@ class ProfissionalForm
                                 sprintf('%02d:30', $h) => sprintf('%02d:30', $h),
                             ])->toArray()
                         )
-                        ->columns(6)
-                        ->helperText('Apenas esses horários serão exibidos na tela de agendamento para este barbeiro.'),
+                        ->columns(6),
                 ]),
         ]);
     }

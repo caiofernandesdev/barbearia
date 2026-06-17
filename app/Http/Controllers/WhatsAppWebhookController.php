@@ -17,14 +17,10 @@ class WhatsAppWebhookController extends Controller
     {
         $payload = $request->all();
 
-        // Log TUDO que chega — para debug completo do payload real
-        Log::info('WhatsApp webhook RAW', ['payload' => $payload]);
-
         $event = strtolower(str_replace('_', '.', $payload['event'] ?? ''));
 
         // Evolution API envia "messages.upsert" ou "MESSAGES_UPSERT"
         if ($event !== 'messages.upsert') {
-            Log::info('WhatsApp webhook: evento ignorado', ['event' => $payload['event'] ?? 'N/A']);
             return response()->json(['ok' => true]);
         }
 
@@ -56,8 +52,9 @@ class WhatsAppWebhookController extends Controller
         }
 
         // Busca o agendamento pendente mais próximo para este telefone
+        // Aceita agendamentos de hoje em diante (não só no futuro exato)
         $agendamento = Agendamento::where('status', 'pendente')
-            ->where('data_hora', '>', now())
+            ->whereDate('data_hora', '>=', now()->toDateString())
             ->where(function ($q) use ($phone) {
                 // Tenta com DDI 55 e sem (cliente pode ter salvo sem o código do país)
                 $q->where('cliente_telefone', $phone)

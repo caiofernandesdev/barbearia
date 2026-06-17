@@ -26,7 +26,12 @@ class UsuarioResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'name';
 
-    protected static ?int $navigationSort = 98;
+    protected static ?int $navigationSort = 1;
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Sistema';
+    }
 
     public static function canAccess(): bool
     {

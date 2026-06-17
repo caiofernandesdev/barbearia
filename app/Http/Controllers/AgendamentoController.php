@@ -19,9 +19,8 @@ class AgendamentoController extends Controller
     {
         $config = ConfiguracaoBarbearia::getInstance();
         return view('pages.agendamento.index', [
-            'diasFuncionamento' => $config->dias_funcionamento,
-            'nomeBarbearia'     => $config->nome_barbearia ?? 'Barbearia',
-            'logoUrl'           => $config->logo ? url('storage/' . $config->logo) : null,
+            'nomeBarbearia' => $config->nome_barbearia ?? 'Barbearia',
+            'logoUrl'       => $config->logo ? url('storage/' . $config->logo) : null,
         ]);
     }
 
@@ -33,9 +32,10 @@ class AgendamentoController extends Controller
     public function profissionais(): JsonResponse
     {
         $profissionais = Profissional::where('ativo', true)->get()->map(fn($p) => [
-            'id'       => $p->id,
-            'nome'     => $p->nome,
-            'foto_url' => $p->foto ? url('storage/' . $p->foto) : null,
+            'id'           => $p->id,
+            'nome'         => $p->nome,
+            'foto_url'     => $p->foto ? url('storage/' . $p->foto) : null,
+            'dias_trabalho' => $p->dias_trabalho ?? [1, 2, 3, 4, 5, 6],
         ]);
 
         return response()->json($profissionais);
@@ -179,6 +179,11 @@ class AgendamentoController extends Controller
 
         $config       = ConfiguracaoBarbearia::getInstance();
         $profissional = Profissional::findOrFail($request->profissional_id);
+
+        $diasTrabalho = $profissional->dias_trabalho ?? [1, 2, 3, 4, 5, 6];
+        if (!in_array($data->dayOfWeek, array_map('intval', $diasTrabalho))) {
+            return response()->json([], 200);
+        }
         $servico      = Servico::findOrFail($request->servico_id);
 
         $slots = app(DisponibilidadeService::class)->calcular(

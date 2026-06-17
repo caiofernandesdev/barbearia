@@ -85,8 +85,6 @@
 
 @push('scripts')
 <script>
-// Dias de funcionamento vindos do servidor (array de números: 0=Dom, 1=Seg ... 6=Sáb)
-const diasFuncionamento  = {!! json_encode($diasFuncionamento ?? [0, 1, 2, 3, 4, 5, 6]) !!};
 const nomeBarbeariaInicial = "{{ mb_strtoupper(mb_substr($nomeBarbearia, 0, 1)) }}";
 const logoUrl = @json($logoUrl);
 
@@ -309,13 +307,14 @@ function renderInput() {
         const nomeDias  = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
         const nomeMeses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
-        // Gera até 14 dias úteis baseado nos dias de funcionamento da barbearia
+        // Gera até 14 dias disponíveis conforme os dias de trabalho do barbeiro selecionado
+        const diasTrabalho = dadosCliente.profissional_dias_trabalho ?? [1, 2, 3, 4, 5, 6];
         const dateCards = [];
         let offset = 1;
         while (dateCards.length < 14 && offset <= 60) {
             const d = new Date(hoje);
             d.setDate(hoje.getDate() + offset);
-            if (diasFuncionamento.includes(d.getDay())) {
+            if (diasTrabalho.includes(d.getDay())) {
                 const dataStr = d.getFullYear() + '-'
                     + String(d.getMonth() + 1).padStart(2, '0') + '-'
                     + String(d.getDate()).padStart(2, '0');
@@ -528,8 +527,10 @@ function escolherProfissional(id, nome) {
     document.querySelector(`[data-prof="${id}"]`)?.classList.replace('border-transparent', 'border-amber-500');
 
     addMensagemCliente(nome);
-    dadosCliente.profissional_id   = id;
-    dadosCliente.profissional_nome = nome;
+    dadosCliente.profissional_id          = id;
+    dadosCliente.profissional_nome        = nome;
+    const prof = profissionais.find(p => p.id === id);
+    dadosCliente.profissional_dias_trabalho = prof?.dias_trabalho ?? [1, 2, 3, 4, 5, 6];
 
     fetch('/api/servicos')
     .then(r => r.json())

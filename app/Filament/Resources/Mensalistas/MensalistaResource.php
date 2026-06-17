@@ -20,8 +20,13 @@ class MensalistaResource extends Resource
     protected static ?string $navigationLabel = 'Mensalistas';
     protected static ?string $modelLabel      = 'Mensalista';
     protected static ?string $pluralModelLabel = 'Mensalistas';
-    protected static ?int    $navigationSort  = 4;
+    protected static ?int    $navigationSort  = 1;
     protected static ?string $recordTitleAttribute = 'nome';
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Clientes';
+    }
 
     public static function canAccess(): bool
     {

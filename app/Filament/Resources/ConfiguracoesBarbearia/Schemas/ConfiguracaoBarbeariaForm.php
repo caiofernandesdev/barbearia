@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\ConfiguracoesBarbearia\Schemas;
 
-use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -32,24 +31,6 @@ class ConfiguracaoBarbeariaForm
                         ->imagePreviewHeight('80')
                         ->nullable()
                         ->helperText('Exibida no chatbot de agendamento e no cabeçalho do sistema.'),
-                ]),
-
-            Section::make('Dias de Funcionamento')
-                ->description('Selecione os dias da semana em que a barbearia atende. Apenas esses dias aparecerão no agendamento.')
-                ->schema([
-                    CheckboxList::make('dias_funcionamento')
-                        ->label('')
-                        ->options([
-                            0 => 'Domingo',
-                            1 => 'Segunda-feira',
-                            2 => 'Terça-feira',
-                            3 => 'Quarta-feira',
-                            4 => 'Quinta-feira',
-                            5 => 'Sexta-feira',
-                            6 => 'Sábado',
-                        ])
-                        ->columns(4)
-                        ->default([1, 2, 3, 4, 5, 6]),
                 ]),
 
             Section::make('Horários e Slots')

@@ -27,7 +27,12 @@ class ServicoResource extends Resource
 
     protected static ?string $recordTitleAttribute = 'nome';
 
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 2;
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Cadastros';
+    }
 
     public static function canAccess(): bool
     {

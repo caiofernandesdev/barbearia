@@ -16,7 +16,12 @@ class ConfiguracaoBarbeariaResource extends Resource
     protected static \BackedEnum|string|null $navigationIcon  = 'heroicon-o-cog-6-tooth';
     protected static ?string $navigationLabel = 'Configurações';
     protected static ?string $modelLabel      = 'Configuração';
-    protected static ?int    $navigationSort  = 99;
+    protected static ?int $navigationSort = 2;
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Sistema';
+    }
 
     public static function canAccess(): bool
     {

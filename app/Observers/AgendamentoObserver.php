@@ -21,12 +21,21 @@ class AgendamentoObserver
         );
     }
 
-    // Dispara quando o admin muda o status
+    // Dispara quando o admin edita o agendamento
     public function updated(Agendamento $agendamento): void
     {
-        if (!$agendamento->wasChanged('status')) return;
-
         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
+
+        // Data/hora foi alterada — notifica o cliente independente do status
+        if ($agendamento->wasChanged('data_hora')) {
+            $this->whatsapp->enviarTexto(
+                $agendamento->cliente_telefone,
+                static::mensagemReagendado($agendamento, $nomeBarbearia)
+            );
+            return;
+        }
+
+        if (!$agendamento->wasChanged('status')) return;
 
         match ($agendamento->status) {
             'confirmado' => $this->whatsapp->enviarTexto(
@@ -99,6 +108,25 @@ class AgendamentoObserver
             "💈 *Serviço:* {$agendamento->servico->nome}",
             "",
             "Se quiser remarcar, acesse nosso link de agendamento. 😊",
+        ]);
+    }
+
+    public static function mensagemReagendado(Agendamento $agendamento, string $nomeBarbearia): string
+    {
+        $data = $agendamento->data_hora->format('d/m/Y');
+        $hora = $agendamento->data_hora->format('H:i');
+
+        return implode("\n", [
+            "Olá, {$agendamento->cliente_nome}! 📅",
+            "",
+            "Seu agendamento na *{$nomeBarbearia}* foi *remarcado*:",
+            "",
+            "📅 *Nova data:* {$data}",
+            "⏰ *Novo horário:* {$hora}",
+            "👨 *Profissional:* {$agendamento->profissional->nome}",
+            "💈 *Serviço:* {$agendamento->servico->nome}",
+            "",
+            "Qualquer dúvida, entre em contato. 😊",
         ]);
     }
 

@@ -30,7 +30,12 @@ class SalarioEmocional extends Page implements HasTable
 
     protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedBanknotes;
 
-    protected static ?int $navigationSort = 10;
+    protected static ?int $navigationSort = 2;
+
+    public static function getNavigationGroup(): string
+    {
+        return 'Financeiro';
+    }
 
     public array $data = [];
 
