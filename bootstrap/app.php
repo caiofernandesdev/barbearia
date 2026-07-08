@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\SetTenantMiddleware;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -13,12 +14,13 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->validateCsrfTokens(except: [
             '/webhook/whatsapp',
+            '/webhook/whatsapp/*',
         ]);
 
         $middleware->trustProxies(at: '*');
 
         $middleware->alias([
-            'tenant' => \App\Http\Middleware\SetTenantMiddleware::class,
+            'tenant' => SetTenantMiddleware::class,
         ]);
 
         $middleware->redirectGuestsTo(fn () => route('filament.admin.auth.login'));

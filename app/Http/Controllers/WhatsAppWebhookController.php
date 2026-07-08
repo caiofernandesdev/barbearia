@@ -14,10 +14,16 @@ class WhatsAppWebhookController extends Controller
     // Janela de deduplicação: a Evolution API reenvia o mesmo evento em retries/reconexões
     private const DEDUP_TTL_HORAS = 6;
 
-    public function handle(Request $request): JsonResponse
+    public function handle(Request $request, ?string $token = null): JsonResponse
     {
-        // O webhook responde 200 SEMPRE — qualquer outro status faz a Evolution API
-        // reenfileirar o evento e gerar tempestade de retries contra o servidor.
+        // Autenticação por segredo compartilhado na URL — sem isso, qualquer um
+        // que descubra o endpoint pode forjar confirmações/cancelamentos
+        if (! $this->tokenValido($token)) {
+            return response()->json(['ok' => false], 401);
+        }
+
+        // Autenticado, o webhook responde 200 SEMPRE — qualquer outro status faz a
+        // Evolution API reenfileirar o evento e gerar tempestade de retries.
         try {
             $this->processar($request->all());
         } catch (Throwable $e) {
@@ -68,10 +74,11 @@ class WhatsAppWebhookController extends Controller
             return;
         }
 
-        // Idempotência por message id: retries da Evolution não geram jobs duplicados
+        // Idempotência por message id: retries da Evolution não geram jobs duplicados.
+        // sha1 neutraliza ids maliciosos (path traversal, controle) na chave de cache
         $messageId = self::str($key['id'] ?? null);
         if ($messageId !== '' && ! Cache::add(
-            "wa-webhook:{$messageId}",
+            'wa-webhook:'.sha1($messageId),
             1,
             now()->addHours(self::DEDUP_TTL_HORAS)
         )) {
@@ -79,6 +86,30 @@ class WhatsAppWebhookController extends Controller
         }
 
         ProcessWhatsAppWebhookJob::dispatch($phone, $texto);
+    }
+
+    /**
+     * Valida o segredo compartilhado da URL do webhook.
+     *
+     * Fail-closed: em produção sem WHATSAPP_WEBHOOK_TOKEN configurado, rejeita tudo.
+     * hash_equals evita timing attack na comparação do token.
+     */
+    private function tokenValido(?string $token): bool
+    {
+        $esperado = (string) config('services.evolution.webhook_token', '');
+
+        if ($esperado === '') {
+            if (app()->isProduction()) {
+                Log::critical('WhatsApp webhook: WHATSAPP_WEBHOOK_TOKEN não configurado — requisições rejeitadas');
+
+                return false;
+            }
+
+            // Ambiente local/teste sem token configurado: permite para desenvolvimento
+            return true;
+        }
+
+        return is_string($token) && hash_equals($esperado, $token);
     }
 
     /** Payloads externos podem trazer array/objeto onde se espera string — nunca confiar no tipo. */

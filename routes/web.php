@@ -9,7 +9,8 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', fn () => view('pages.landing'))->name('landing');
 
 // ─── Webhook global — sem session, sem CSRF, sem cookie (Evolution API) ──────
-Route::post('/webhook/whatsapp', [WhatsAppWebhookController::class, 'handle'])
+// O {token} é o segredo compartilhado (WHATSAPP_WEBHOOK_TOKEN) validado no controller
+Route::post('/webhook/whatsapp/{token?}', [WhatsAppWebhookController::class, 'handle'])
     ->name('webhook.whatsapp')
     ->withoutMiddleware(['web'])
     ->middleware(['throttle:600,1']);

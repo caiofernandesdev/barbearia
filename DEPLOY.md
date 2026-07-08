@@ -1,7 +1,12 @@
-# Guia de Deploy — Barbearia
+# Guia de Deploy — Atendix (atendix.cc)
 
 > Checklist completo para subir o sistema em produção num VPS.
 > Marque cada item conforme for concluindo.
+
+> ⚠️ **IMPORTANTE — branch de produção:** o código atual está na branch
+> `feat/multi-tenancy`. A `main` está desatualizada (WhatsAppService antigo da Z-API
+> quebra o `composer install` com "Cannot assign null to property ... $instance").
+> Sempre faça checkout da branch certa ANTES do `composer install` (seção 3).
 
 ---
 
@@ -46,6 +51,21 @@ apt install -y supervisor
 curl -fsSL https://get.docker.com | bash
 ```
 
+### OPcache (crítico — 5x mais rápido)
+```bash
+cat >> /etc/php/8.3/fpm/conf.d/10-opcache.ini <<'EOF'
+opcache.enable=1
+opcache.memory_consumption=256
+opcache.interned_strings_buffer=16
+opcache.max_accelerated_files=20000
+opcache.validate_timestamps=0
+EOF
+systemctl restart php8.3-fpm
+```
+
+> `validate_timestamps=0` = performance máxima, mas exige `systemctl reload php8.3-fpm`
+> após cada deploy de código (já incluso na seção 10).
+
 ---
 
 ## 2. Banco de Dados
@@ -76,24 +96,33 @@ cd /var/www
 git clone https://github.com/caiofernandesdev/barbearia.git barbearia
 cd barbearia
 
-# Instalar dependências PHP (sem dev)
-composer install --no-dev --optimize-autoloader
+# ⚠️ BRANCH DE PRODUÇÃO (a main está desatualizada e quebra o composer install)
+git checkout feat/multi-tenancy
 
-# Copiar e editar .env
+# Copiar e editar .env ANTES do composer (o post-install roda artisan)
 cp .env.example .env
 nano .env        # preencher conforme seção 4
 
-# Gerar chave da aplicação
-php artisan key:generate
+# Instalar dependências PHP (sem dev)
+composer install --no-dev --optimize-autoloader
 
-# Migrations e storage
+# Build do frontend (Vite/Filament)
+npm ci && npm run build
+
+# Gerar chave da aplicação
+php artisan key:generate --force
+
+# Migrations, seed inicial e storage
 php artisan migrate --force
+php artisan db:seed --force     # planos, tipos e usuários — TROCAR senhas depois (checklist)
 php artisan storage:link
 
 # Caches de produção
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+php artisan event:cache
+php artisan filament:cache-components
 
 # Permissões
 chown -R www-data:www-data /var/www/barbearia
@@ -106,11 +135,11 @@ chmod -R 775 /var/www/barbearia/bootstrap/cache
 ## 4. Arquivo .env de Produção
 
 ```env
-APP_NAME="Barbearia Don Alexandre"
+APP_NAME=Atendix
 APP_ENV=production
 APP_KEY=                          # gerado pelo artisan key:generate
 APP_DEBUG=false
-APP_URL=https://seudominio.com.br
+APP_URL=https://atendix.cc
 APP_TIMEZONE=America/Sao_Paulo
 
 APP_LOCALE=pt_BR
@@ -133,8 +162,12 @@ CACHE_STORE=database
 
 # Evolution API — roda localmente no mesmo VPS
 EVOLUTION_URL=http://127.0.0.1:8001
-EVOLUTION_API_KEY=CHAVE_SECRETA_PRODUCAO
+EVOLUTION_API_KEY=CHAVE_SECRETA_PRODUCAO      # gere com: openssl rand -hex 32
 EVOLUTION_INSTANCE=BARBEARIA
+
+# Segredo do webhook — OBRIGATÓRIO em produção (fail-closed: sem ele, webhook rejeita tudo)
+# A URL do webhook na Evolution passa a ser: https://atendix.cc/webhook/whatsapp/<TOKEN>
+WHATSAPP_WEBHOOK_TOKEN=                        # gere com: openssl rand -hex 32
 ```
 
 > ⚠️ Nunca commitar este arquivo. O `.gitignore` já protege o `.env`.
@@ -150,7 +183,7 @@ nano /etc/nginx/sites-available/barbearia
 ```nginx
 server {
     listen 80;
-    server_name seudominio.com.br www.seudominio.com.br;
+    server_name atendix.cc www.atendix.cc;
     root /var/www/barbearia/public;
     index index.php;
 
@@ -179,9 +212,14 @@ systemctl reload nginx
 ```
 
 ### SSL (HTTPS) — obrigatório
+
+> ⚠️ **Cloudflare:** antes de emitir, coloque os registros A em **DNS Only** (nuvem
+> cinza). Depois de emitido, pode voltar para Proxied (nuvem laranja) — e na
+> Cloudflare configure **SSL/TLS → Full (strict)**. Nunca use "Flexible" (loop de redirect).
+
 ```bash
 apt install -y certbot python3-certbot-nginx
-certbot --nginx -d seudominio.com.br -d www.seudominio.com.br
+certbot --nginx -d atendix.cc -d www.atendix.cc --redirect
 # Certbot renova automaticamente via cron
 ```
 
@@ -258,19 +296,26 @@ curl -X POST "http://127.0.0.1:8001/instance/create" \
 # ⚠️ Após escanear, fechar porta 8001 no firewall (só acesso interno)
 
 # Registrar webhook com URL de produção
+# ⚠️ A URL INCLUI o WHATSAPP_WEBHOOK_TOKEN do .env — sem ele o Laravel rejeita com 401
 curl -X POST "http://127.0.0.1:8001/webhook/set/BARBEARIA" \
   -H "apikey: CHAVE_SECRETA_PRODUCAO" \
   -H "Content-Type: application/json" \
   -d '{
     "webhook": {
       "enabled": true,
-      "url": "https://seudominio.com.br/webhook/whatsapp",
+      "url": "https://atendix.cc/webhook/whatsapp/SEU_WHATSAPP_WEBHOOK_TOKEN",
       "webhook_by_events": false,
       "webhook_base64": false,
       "events": ["MESSAGES_UPSERT"]
     }
   }'
 ```
+
+### Multi-tenant: uma instância por cliente
+
+Para cada cliente (tenant), repita o `instance/create` + QR + `webhook/set` com um
+`instanceName` próprio (ex: `CLIENTE_A`), e cadastre `base_url`, `api_key` e
+`instance` no campo **WhatsApp** do tenant no painel `/super-admin`.
 
 ---
 
@@ -294,11 +339,12 @@ cd /var/www/barbearia
 # Modo manutenção (exibe tela de manutenção pros usuários)
 php artisan down
 
-# Puxar código novo
-git pull origin main
+# Puxar código novo (branch de produção)
+git pull origin feat/multi-tenancy
 
-# Atualizar dependências (se mudou composer.json)
+# Atualizar dependências (se mudou composer.json / package.json)
 composer install --no-dev --optimize-autoloader
+npm ci && npm run build
 
 # Rodar migrations novas
 php artisan migrate --force
@@ -307,9 +353,12 @@ php artisan migrate --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
+php artisan event:cache
+php artisan filament:cache-components
 
-# Reiniciar workers
+# Reiniciar workers e limpar OPcache (validate_timestamps=0)
 supervisorctl restart barbearia-worker:*
+systemctl reload php8.3-fpm
 
 # Voltar online
 php artisan up
@@ -321,6 +370,10 @@ php artisan up
 
 - [ ] Domínio apontando pro IP do VPS (DNS propagado)
 - [ ] HTTPS funcionando (cadeado no navegador)
+- [ ] **Senha do `super@saas.com` trocada** (padrão do seeder é `password`!)
+- [ ] **Senha do `admin@barbearia.com` trocada** (ou tenant demo apagado)
+- [ ] `WHATSAPP_WEBHOOK_TOKEN` definido no `.env` E na URL do webhook da Evolution
+- [ ] Tenants dos clientes reais criados no `/super-admin`
 - [ ] Login no `/admin` funcionando
 - [ ] Agendamento público (`/`) funcionando no celular
 - [ ] Foto de profissional/serviço aparecendo

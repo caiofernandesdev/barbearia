@@ -51,7 +51,7 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
             ->first();
 
         if (! $agendamento) {
-            Log::info("WhatsApp webhook: nenhum agendamento pendente para {$this->phone}");
+            Log::info("WhatsApp webhook: nenhum agendamento pendente para {$this->telefoneMascarado()}");
 
             return;
         }
@@ -82,7 +82,13 @@ class ProcessWhatsAppWebhookJob implements ShouldQueue
 
     public function failed(Throwable $e): void
     {
-        Log::error("WhatsApp webhook job falhou para {$this->phone}", ['erro' => $e->getMessage()]);
+        Log::error("WhatsApp webhook job falhou para {$this->telefoneMascarado()}", ['erro' => $e->getMessage()]);
+    }
+
+    /** Telefone é PII (LGPD) — nos logs, só os 4 últimos dígitos. */
+    private function telefoneMascarado(): string
+    {
+        return str_repeat('*', max(strlen($this->phone) - 4, 0)).substr($this->phone, -4);
     }
 
     /**

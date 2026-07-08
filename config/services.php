@@ -36,9 +36,12 @@ return [
     ],
 
     'evolution' => [
-        'url'      => env('EVOLUTION_URL'),
-        'apikey'   => env('EVOLUTION_API_KEY'),
+        'url' => env('EVOLUTION_URL'),
+        'apikey' => env('EVOLUTION_API_KEY'),
         'instance' => env('EVOLUTION_INSTANCE'),
+        // Segredo compartilhado do webhook: a URL configurada na Evolution deve
+        // ser https://dominio/webhook/whatsapp/{token}. Obrigatório em produção.
+        'webhook_token' => env('WHATSAPP_WEBHOOK_TOKEN'),
     ],
 
 ];
