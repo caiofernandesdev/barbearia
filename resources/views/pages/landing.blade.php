@@ -35,7 +35,7 @@
             </div>
             <div class="flex items-center gap-3">
                 <a href="/admin/login" class="hidden sm:inline-block text-sm text-gray-400 hover:text-white transition">Entrar</a>
-                <a href="https://wa.me/5514991212811?text=Quero%20conhecer%20o%20Atendix" target="_blank"
+                <a href="https://wa.me/5514998382598?text=Quero%20conhecer%20o%20Atendix" target="_blank"
                    class="bg-brand-500 hover:bg-brand-600 text-black font-semibold px-4 py-2 rounded-xl text-sm transition">
                     Testar grátis
                 </a>
@@ -61,7 +61,7 @@
                         e painel do profissional. Pra barbearias, salões, clínicas e muito mais.
                     </p>
                     <div class="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start">
-                        <a href="https://wa.me/5514991212811?text=Quero%20conhecer%20o%20Atendix" target="_blank"
+                        <a href="https://wa.me/5514998382598?text=Quero%20conhecer%20o%20Atendix" target="_blank"
                            class="bg-brand-500 hover:bg-brand-600 text-black font-bold px-6 sm:px-8 py-3.5 sm:py-4 rounded-2xl text-base sm:text-lg transition transform hover:scale-105 glow text-center">
                             Quero testar grátis →
                         </a>
@@ -251,7 +251,7 @@
                         <li class="text-gray-600">✕ WhatsApp</li>
                         <li class="text-gray-600">✕ Relatórios</li>
                     </ul>
-                    <a href="https://wa.me/5514991212811?text=Quero%20o%20plano%20Starter" target="_blank"
+                    <a href="https://wa.me/5514998382598?text=Quero%20o%20plano%20Starter" target="_blank"
                        class="block text-center bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold text-sm transition">
                         Começar agora
                     </a>
@@ -273,7 +273,7 @@
                         <li>✅ Painel do profissional</li>
                         <li class="text-gray-600">✕ Repescagem</li>
                     </ul>
-                    <a href="https://wa.me/5514991212811?text=Quero%20o%20plano%20Pro" target="_blank"
+                    <a href="https://wa.me/5514998382598?text=Quero%20o%20plano%20Pro" target="_blank"
                        class="block text-center bg-brand-500 hover:bg-brand-600 text-black py-3 rounded-xl font-bold text-sm transition">
                         Quero o Pro →
                     </a>
@@ -292,7 +292,7 @@
                         <li>✅ Suporte prioritário</li>
                         <li>✅ Multi-estabelecimento</li>
                     </ul>
-                    <a href="https://wa.me/5514991212811?text=Quero%20o%20plano%20Enterprise" target="_blank"
+                    <a href="https://wa.me/5514998382598?text=Quero%20o%20plano%20Enterprise" target="_blank"
                        class="block text-center bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold text-sm transition">
                         Falar com consultor
                     </a>
@@ -306,7 +306,7 @@
         <div class="max-w-3xl mx-auto text-center bg-gradient-to-br from-brand-500/20 to-brand-600/5 rounded-3xl p-8 sm:p-12 border border-brand-500/20 glow">
             <h2 class="text-3xl sm:text-4xl font-black mb-4">Pronto pra automatizar?</h2>
             <p class="text-gray-400 text-base sm:text-lg mb-6 sm:mb-8">Teste grátis por 7 dias. Sem cartão de crédito.</p>
-            <a href="https://wa.me/5514991212811?text=Quero%20testar%20o%20Atendix%20grátis" target="_blank"
+            <a href="https://wa.me/5514998382598?text=Quero%20testar%20o%20Atendix%20grátis" target="_blank"
                class="inline-block bg-brand-500 hover:bg-brand-600 text-black font-bold px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl text-base sm:text-lg transition transform hover:scale-105">
                 Começar agora →
             </a>
