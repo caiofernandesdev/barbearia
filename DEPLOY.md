@@ -3,10 +3,7 @@
 > Checklist completo para subir o sistema em produção num VPS.
 > Marque cada item conforme for concluindo.
 
-> ⚠️ **IMPORTANTE — branch de produção:** o código atual está na branch
-> `feat/multi-tenancy`. A `main` está desatualizada (WhatsAppService antigo da Z-API
-> quebra o `composer install` com "Cannot assign null to property ... $instance").
-> Sempre faça checkout da branch certa ANTES do `composer install` (seção 3).
+> **Branch de produção: `main`** (a `feat/multi-tenancy` foi mergeada na main em jul/2026).
 
 ---
 
@@ -95,9 +92,6 @@ cd /var/www
 # Clonar repositório (GitHub)
 git clone https://github.com/caiofernandesdev/barbearia.git barbearia
 cd barbearia
-
-# ⚠️ BRANCH DE PRODUÇÃO (a main está desatualizada e quebra o composer install)
-git checkout feat/multi-tenancy
 
 # Copiar e editar .env ANTES do composer (o post-install roda artisan)
 cp .env.example .env
@@ -417,7 +411,7 @@ cd /var/www/barbearia
 php artisan down
 
 # Puxar código novo (branch de produção)
-git pull origin feat/multi-tenancy
+git pull origin main
 
 # Atualizar dependências (se mudou composer.json / package.json)
 composer install --no-dev --optimize-autoloader

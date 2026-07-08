@@ -41,7 +41,7 @@ proteção — é o que impede de derrubar os clientes com uma mudança.
 ```bash
 git add -A
 git commit -m "feat: descricao curta do que mudou"
-git push origin feat/multi-tenancy
+git push origin main
 ```
 
 Prefixos úteis pra mensagem: `feat:` (funcionalidade nova), `fix:` (correção),
@@ -54,7 +54,7 @@ ssh root@179.197.66.135
 cd /var/www/barbearia
 
 php artisan down                                  # tela de manutenção
-git pull origin feat/multi-tenancy                # puxa o código novo
+git pull origin main                              # puxa o código novo
 
 composer install --no-dev --optimize-autoloader   # SÓ se mudou composer.json
 npm ci && npm run build                           # SÓ se mudou front/package.json
