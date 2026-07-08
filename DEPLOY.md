@@ -273,17 +273,94 @@ Isso roda:
 
 ## 8. Evolution API no VPS
 
+Antes de começar, gere 2 senhas e anote (rode 2x):
+
 ```bash
-# Copiar os arquivos da Evolution (docker-compose.yml + .env)
+openssl rand -hex 32
+```
+
+- **SENHA_1** → `AUTHENTICATION_API_KEY` da Evolution (a MESMA vai em `EVOLUTION_API_KEY` no `.env` do Laravel)
+- **SENHA_2** → senha do Postgres da Evolution
+
+```bash
 mkdir -p /opt/evolution-api
 cd /opt/evolution-api
 
-# Criar docker-compose.yml igual ao local, porém com senha de produção
-nano docker-compose.yml
-nano .env
+# ── docker-compose.yml ──────────────────────────────────────────────
+cat > docker-compose.yml <<'EOF'
+services:
+  evolution:
+    image: evoapicloud/evolution-api:latest
+    container_name: evolution-api
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:8001:8080"   # só localhost — internet NÃO acessa direto
+    env_file:
+      - .env
+    depends_on:
+      - redis
+      - postgres
 
-# Subir
+  redis:
+    image: redis:7-alpine
+    container_name: evolution-redis
+    restart: unless-stopped
+    volumes:
+      - redis_data:/data
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: evolution-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: evolution
+      POSTGRES_PASSWORD: SENHA_2_AQUI
+      POSTGRES_DB: evolution
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+volumes:
+  redis_data:
+  postgres_data:
+EOF
+
+# ── .env da Evolution ───────────────────────────────────────────────
+cat > .env <<'EOF'
+SERVER_TYPE=http
+SERVER_PORT=8080
+
+AUTHENTICATION_API_KEY=SENHA_1_AQUI
+
+DATABASE_ENABLED=true
+DATABASE_PROVIDER=postgresql
+DATABASE_CONNECTION_URI=postgresql://evolution:SENHA_2_AQUI@postgres:5432/evolution
+
+CACHE_REDIS_ENABLED=true
+CACHE_REDIS_URI=redis://redis:6379
+
+DATABASE_SAVE_DATA_INSTANCE=true
+DATABASE_SAVE_DATA_NEW_MESSAGE=true
+DATABASE_SAVE_MESSAGE_UPDATE=true
+DATABASE_SAVE_DATA_CONTACTS=true
+DATABASE_SAVE_DATA_CHATS=true
+DATABASE_SAVE_DATA_LABELS=true
+DATABASE_SAVE_DATA_HISTORIC=true
+
+WEBHOOK_RETRY_MAX=3
+WEBHOOK_RETRY_INTERVAL=30
+
+LOG_LEVEL=ERROR
+EOF
+
+# Troque os placeholders pelas senhas geradas:
+nano docker-compose.yml   # SENHA_2_AQUI
+nano .env                 # SENHA_1_AQUI e SENHA_2_AQUI
+
+# Subir os 3 containers
 docker compose up -d
+
+# Conferir que subiram (evolution-api, evolution-redis, evolution-postgres)
+docker compose ps
 
 # Aguardar inicializar e criar instância
 sleep 10
