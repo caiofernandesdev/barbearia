@@ -2,170 +2,117 @@
 
 namespace App\Observers;
 
+use App\Jobs\EnviarWhatsAppJob;
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
-use App\Services\WhatsAppService;
+use App\Models\Tenant;
 
 class AgendamentoObserver
 {
-    public function __construct(private WhatsAppService $whatsapp) {}
-
-    // Dispara quando o cliente finaliza o agendamento
-    public function created(Agendamento $agendamento): void
+    private function ensureTenant(Agendamento $agendamento): void
     {
-        $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
+        if (app()->bound('current_tenant')) return;
 
-        $this->whatsapp->enviarTexto(
-            $agendamento->cliente_telefone,
-            static::mensagemRecebido($agendamento, $nomeBarbearia)
-        );
+        if ($agendamento->tenant_id) {
+            $tenant = Tenant::withoutGlobalScopes()->find($agendamento->tenant_id);
+            if ($tenant) {
+                app()->instance('current_tenant', $tenant);
+            }
+        }
     }
 
-    // Dispara quando o admin edita o agendamento
+    private function enviar(string $telefone, string $mensagem, ?int $tenantId): void
+    {
+        EnviarWhatsAppJob::dispatch($telefone, $mensagem, $tenantId);
+    }
+
+    public function created(Agendamento $agendamento): void
+    {
+        $this->ensureTenant($agendamento);
+        $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
+        $tid = $agendamento->tenant_id;
+
+        $this->enviar($agendamento->cliente_telefone, static::mensagemRecebido($agendamento, $nomeBarbearia), $tid);
+        $this->notificarBarbeiro($agendamento, $nomeBarbearia, 'novo');
+    }
+
     public function updated(Agendamento $agendamento): void
     {
+        $this->ensureTenant($agendamento);
         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
+        $tid = $agendamento->tenant_id;
 
-        // Data/hora foi alterada — notifica o cliente independente do status
         if ($agendamento->wasChanged('data_hora')) {
-            $this->whatsapp->enviarTexto(
-                $agendamento->cliente_telefone,
-                static::mensagemReagendado($agendamento, $nomeBarbearia)
-            );
+            $this->enviar($agendamento->cliente_telefone, static::mensagemReagendado($agendamento, $nomeBarbearia), $tid);
+            $this->notificarBarbeiro($agendamento, $nomeBarbearia, 'reagendado');
             return;
         }
 
         if (!$agendamento->wasChanged('status')) return;
 
         match ($agendamento->status) {
-            'confirmado' => $this->whatsapp->enviarTexto(
-                $agendamento->cliente_telefone,
-                static::mensagemConfirmado($agendamento, $nomeBarbearia)
-            ),
-            'cancelado' => $this->whatsapp->enviarTexto(
-                $agendamento->cliente_telefone,
-                static::mensagemCancelado($agendamento, $nomeBarbearia)
-            ),
+            'confirmado' => $this->enviar($agendamento->cliente_telefone, static::mensagemConfirmado($agendamento, $nomeBarbearia), $tid),
+            'cancelado' => (function () use ($agendamento, $nomeBarbearia, $tid) {
+                $this->enviar($agendamento->cliente_telefone, static::mensagemCancelado($agendamento, $nomeBarbearia), $tid);
+                $this->notificarBarbeiro($agendamento, $nomeBarbearia, 'cancelado');
+            })(),
             default => null,
         };
     }
 
-    // ─── Templates (public static — usados também por actions do painel) ──────
-
-    public static function mensagemRecebido(Agendamento $agendamento, string $nomeBarbearia): string
+    private function notificarBarbeiro(Agendamento $agendamento, string $nomeBarbearia, string $tipo): void
     {
-        $data = $agendamento->data_hora->format('d/m/Y');
-        $hora = $agendamento->data_hora->format('H:i');
+        $profissional = $agendamento->profissional;
+        if (! $profissional || empty($profissional->telefone)) return;
+        if (preg_replace('/\D/', '', $profissional->telefone) === $agendamento->cliente_telefone) return;
 
-        return implode("\n", [
-            "Olá, {$agendamento->cliente_nome}! 👋",
-            "",
-            "Recebemos seu agendamento na *{$nomeBarbearia}*!",
-            "",
-            "📅 *Data:* {$data}",
-            "⏰ *Hora:* {$hora}",
-            "👨 *Profissional:* {$agendamento->profissional->nome}",
-            "💈 *Serviço:* {$agendamento->servico->nome}",
-            "",
-            "Aguarde nossa confirmação em breve. 😊",
-        ]);
+        $data    = $agendamento->data_hora->format('d/m/Y');
+        $hora    = $agendamento->data_hora->format('H:i');
+        $cliente = $agendamento->cliente_nome;
+        $servico = $agendamento->servico?->nome ?? '';
+
+        $mensagem = match ($tipo) {
+            'novo' => "📋 *Novo agendamento!*\n\n👤 *Cliente:* {$cliente}\n📅 *Data:* {$data}\n⏰ *Hora:* {$hora}\n✂️ *Serviço:* {$servico}\n\nStatus: Pendente.",
+            'cancelado' => "❌ *Agendamento cancelado*\n\n👤 *Cliente:* {$cliente}\n📅 *Data:* {$data}\n⏰ *Hora:* {$hora}\n\nO horário foi liberado.",
+            'reagendado' => "🔄 *Agendamento remarcado*\n\n👤 *Cliente:* {$cliente}\n📅 *Nova data:* {$data}\n⏰ *Novo horário:* {$hora}\n✂️ *Serviço:* {$servico}",
+            default => null,
+        };
+
+        if ($mensagem) {
+            $this->enviar($profissional->telefone, $mensagem, $agendamento->tenant_id);
+        }
     }
 
-    public static function mensagemConfirmado(Agendamento $agendamento, string $nomeBarbearia): string
-    {
-        $data  = $agendamento->data_hora->format('d/m/Y');
-        $hora  = $agendamento->data_hora->format('H:i');
-        $preco = 'R$ ' . number_format($agendamento->servico->preco, 2, ',', '.');
+    // ─── Templates ───────────────────────────────────────────────────────────
 
-        return implode("\n", [
-            "Olá, {$agendamento->cliente_nome}! ✂️",
-            "",
-            "Seu agendamento na *{$nomeBarbearia}* foi *confirmado*!",
-            "",
-            "📅 *Data:* {$data}",
-            "⏰ *Hora:* {$hora}",
-            "👨 *Profissional:* {$agendamento->profissional->nome}",
-            "💈 *Serviço:* {$agendamento->servico->nome}",
-            "💰 *Valor:* {$preco}",
-            "",
-            "Te esperamos lá! 💈",
-        ]);
+    public static function mensagemRecebido(Agendamento $ag, string $nb): string
+    {
+        return "Olá, {$ag->cliente_nome}! 👋\n\nRecebemos seu agendamento na *{$nb}*!\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👨 *Profissional:* {$ag->profissional->nome}\n💈 *Serviço:* {$ag->servico->nome}\n\nAguarde nossa confirmação. 😊";
     }
 
-    public static function mensagemCancelado(Agendamento $agendamento, string $nomeBarbearia): string
+    public static function mensagemConfirmado(Agendamento $ag, string $nb): string
     {
-        $data = $agendamento->data_hora->format('d/m/Y');
-        $hora = $agendamento->data_hora->format('H:i');
-
-        return implode("\n", [
-            "Olá, {$agendamento->cliente_nome}! 😔",
-            "",
-            "Seu agendamento na *{$nomeBarbearia}* foi *cancelado*.",
-            "",
-            "📅 *Data:* {$data}",
-            "⏰ *Hora:* {$hora}",
-            "👨 *Profissional:* {$agendamento->profissional->nome}",
-            "💈 *Serviço:* {$agendamento->servico->nome}",
-            "",
-            "Se quiser remarcar, acesse nosso link de agendamento. 😊",
-        ]);
+        $preco = 'R$ ' . number_format($ag->servico->preco, 2, ',', '.');
+        return "Olá, {$ag->cliente_nome}! ✂️\n\nSeu agendamento na *{$nb}* foi *confirmado*!\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👨 *Profissional:* {$ag->profissional->nome}\n💈 *Serviço:* {$ag->servico->nome}\n💰 *Valor:* {$preco}\n\nTe esperamos lá! 💈";
     }
 
-    public static function mensagemReagendado(Agendamento $agendamento, string $nomeBarbearia): string
+    public static function mensagemCancelado(Agendamento $ag, string $nb): string
     {
-        $data = $agendamento->data_hora->format('d/m/Y');
-        $hora = $agendamento->data_hora->format('H:i');
-
-        return implode("\n", [
-            "Olá, {$agendamento->cliente_nome}! 📅",
-            "",
-            "Seu agendamento na *{$nomeBarbearia}* foi *remarcado*:",
-            "",
-            "📅 *Nova data:* {$data}",
-            "⏰ *Novo horário:* {$hora}",
-            "👨 *Profissional:* {$agendamento->profissional->nome}",
-            "💈 *Serviço:* {$agendamento->servico->nome}",
-            "",
-            "Qualquer dúvida, entre em contato. 😊",
-        ]);
+        return "Olá, {$ag->cliente_nome}! 😔\n\nSeu agendamento na *{$nb}* foi *cancelado*.\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n\nSe quiser remarcar, acesse nosso link. 😊";
     }
 
-    // Chamado pelo command de lembretes (D-1) — pendente: pede confirmação
-    public static function mensagemLembrete(Agendamento $agendamento, string $nomeBarbearia): string
+    public static function mensagemReagendado(Agendamento $ag, string $nb): string
     {
-        $data = $agendamento->data_hora->format('d/m/Y');
-        $hora = $agendamento->data_hora->format('H:i');
-
-        return implode("\n", [
-            "Olá, {$agendamento->cliente_nome}! 👋",
-            "",
-            "Gostaríamos de confirmar seu agendamento na *{$nomeBarbearia}*:",
-            "",
-            "📅 *Data:* {$data}",
-            "⏰ *Hora:* {$hora}",
-            "👨 *Profissional:* {$agendamento->profissional->nome}",
-            "",
-            "Responda *1* para confirmar ✅",
-            "Responda *2* para cancelar ❌",
-        ]);
+        return "Olá, {$ag->cliente_nome}! 📅\n\nSeu agendamento na *{$nb}* foi *remarcado*:\n\n📅 *Nova data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Novo horário:* {$ag->data_hora->format('H:i')}\n\nQualquer dúvida, entre em contato. 😊";
     }
 
-    // Chamado pelo command de lembretes (D-1) — já confirmado: só lembra
-    public static function mensagemLembreteConfirmado(Agendamento $agendamento, string $nomeBarbearia): string
+    public static function mensagemLembrete(Agendamento $ag, string $nb): string
     {
-        $data = $agendamento->data_hora->format('d/m/Y');
-        $hora = $agendamento->data_hora->format('H:i');
+        return "Olá, {$ag->cliente_nome}! 👋\n\nGostaríamos de confirmar seu agendamento na *{$nb}*:\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👨 *Profissional:* {$ag->profissional->nome}\n\nResponda *1* para confirmar ✅\nResponda *2* para cancelar ❌";
+    }
 
-        return implode("\n", [
-            "Olá, {$agendamento->cliente_nome}! 👋",
-            "",
-            "Lembrete: seu agendamento na *{$nomeBarbearia}* é *amanhã* e já está confirmado! ✅",
-            "",
-            "📅 *Data:* {$data}",
-            "⏰ *Hora:* {$hora}",
-            "👨 *Profissional:* {$agendamento->profissional->nome}",
-            "",
-            "Te esperamos lá! 💈",
-        ]);
+    public static function mensagemLembreteConfirmado(Agendamento $ag, string $nb): string
+    {
+        return "Olá, {$ag->cliente_nome}! 👋\n\nLembrete: seu agendamento na *{$nb}* é *amanhã* e já está confirmado! ✅\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n\nTe esperamos lá! 💈";
     }
 }

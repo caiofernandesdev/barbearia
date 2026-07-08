@@ -30,7 +30,9 @@ class MensalistaResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        if (! auth()->user()?->isAdmin()) return false;
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+        return $tenant?->hasFeature('mensalistas') ?? false;
     }
 
     public static function form(Schema $schema): Schema

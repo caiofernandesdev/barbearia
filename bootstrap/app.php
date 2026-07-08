@@ -11,13 +11,17 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Webhook Z-API não tem CSRF (chamado por servidor externo)
         $middleware->validateCsrfTokens(except: [
             '/webhook/whatsapp',
         ]);
 
-        // Confia em qualquer proxy (ngrok em dev, load balancer em produção)
         $middleware->trustProxies(at: '*');
+
+        $middleware->alias([
+            'tenant' => \App\Http\Middleware\SetTenantMiddleware::class,
+        ]);
+
+        $middleware->redirectGuestsTo(fn () => route('filament.admin.auth.login'));
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

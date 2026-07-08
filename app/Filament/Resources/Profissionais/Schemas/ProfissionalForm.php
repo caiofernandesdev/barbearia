@@ -19,6 +19,14 @@ class ProfissionalForm
                 ->required()
                 ->maxLength(100),
 
+            TextInput::make('telefone')
+                ->label('WhatsApp do profissional')
+                ->tel()
+                ->required()
+                ->maxLength(20)
+                ->placeholder('(11) 99999-9999')
+                ->helperText('Recebe notificações de novos agendamentos e cancelamentos.'),
+
             TextInput::make('limite_mensalistas')
                 ->label('Limite de Mensalistas')
                 ->numeric()

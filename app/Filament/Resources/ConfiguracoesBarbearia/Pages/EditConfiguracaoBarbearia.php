@@ -17,7 +17,7 @@ class EditConfiguracaoBarbearia extends EditRecord
     /**
      * Ignora o parâmetro de rota e sempre carrega o registro singleton.
      */
-    public function mount(int | string $record = null): void
+    public function mount(int | string | null $record = null): void
     {
         $this->record = ConfiguracaoBarbearia::getInstance();
         $this->fillForm();

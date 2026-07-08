@@ -12,16 +12,18 @@
 {{-- Desempenho por barbeiro (InteractsWithTable nativo) --}}
 {{ $this->table }}
 
-{{-- Evolução Mensal — componente Livewire com tabela nativa Filament --}}
+{{-- Evolução Mensal --}}
 <livewire:admin.evolucao-mensal-table
-    :wire:key="'evolucao-' . $this->filtroProfissional"
-    :filtro-profissional="$this->filtroProfissional" />
+    :wire:key="'evolucao-' . $this->filtroProfissional . '-' . ($this->filtroStatus ?? 'todos')"
+    :filtro-profissional="$this->filtroProfissional"
+    :filtro-status="$this->filtroStatus" />
 
-{{-- Agendamentos do Período — componente Livewire com tabela nativa Filament --}}
+{{-- Agendamentos do Período --}}
 <livewire:admin.agendamentos-relatorio-table
-    :wire:key="'agendamentos-' . $this->dataInicio . '-' . $this->dataFim . '-' . $this->filtroProfissional"
+    :wire:key="'agendamentos-' . $this->dataInicio . '-' . $this->dataFim . '-' . $this->filtroProfissional . '-' . ($this->filtroStatus ?? 'todos')"
     :data-inicio="$this->dataInicio"
     :data-fim="$this->dataFim"
-    :filtro-profissional="$this->filtroProfissional" />
+    :filtro-profissional="$this->filtroProfissional"
+    :filtro-status="$this->filtroStatus" />
 
 </x-filament-panels::page>

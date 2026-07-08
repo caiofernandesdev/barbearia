@@ -23,10 +23,19 @@ class EvolucaoMensalTable extends Component implements HasActions, HasSchemas, H
     use InteractsWithTable;
 
     public ?string $filtroProfissional = null;
+    public ?string $filtroStatus       = null;
 
     public function table(Table $table): Table
     {
         $pid = $this->filtroProfissional ? (int) $this->filtroProfissional : null;
+
+        $statuses = match ($this->filtroStatus) {
+            'confirmado' => ['confirmado'],
+            'concluido'  => ['concluido'],
+            'pendente'   => ['pendente'],
+            'cancelado'  => ['cancelado'],
+            default      => ['confirmado', 'concluido'],
+        };
 
         return $table
             ->query(
@@ -38,7 +47,7 @@ class EvolucaoMensalTable extends Component implements HasActions, HasSchemas, H
                         DB::raw('COALESCE(SUM(servicos.preco), 0) as receita_total'),
                     ])
                     ->leftJoin('servicos', 'servicos.id', '=', 'agendamentos.servico_id')
-                    ->whereIn('agendamentos.status', ['confirmado', 'concluido'])
+                    ->whereIn('agendamentos.status', $statuses)
                     ->where('agendamentos.data_hora', '>=', now()->subMonths(5)->startOfMonth())
                     ->when($pid, fn ($q) => $q->where('agendamentos.profissional_id', $pid))
                     ->groupByRaw('DATE_FORMAT(agendamentos.data_hora, "%Y-%m")')

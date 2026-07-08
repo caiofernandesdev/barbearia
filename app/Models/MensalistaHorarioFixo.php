@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['mensalista_id', 'profissional_id', 'servico_id', 'dia_semana', 'hora', 'ativo'])]
+#[Fillable(['mensalista_id', 'profissional_id', 'servico_id', 'dia_semana', 'hora', 'ativo', 'tenant_id'])]
 class MensalistaHorarioFixo extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'mensalista_horarios_fixos';
 
     protected function casts(): array

@@ -58,7 +58,7 @@
         </div>
 
         <div class="space-y-3">
-            <form method="POST" action="{{ route('agendamento.meus-agendamentos') }}">
+            <form method="POST" action="{{ route('agendamento.meus-agendamentos', ['tenant' => $tenantSlug]) }}">
                 @csrf
                 <input type="hidden" name="telefone" value="{{ $agendamento->cliente_telefone }}">
                 <button type="submit"
@@ -66,7 +66,7 @@
                     Ver meus agendamentos
                 </button>
             </form>
-            <a href="{{ route('agendamento.index') }}"
+            <a href="{{ route('agendamento.index', ['tenant' => $tenantSlug]) }}"
                 class="block w-full bg-gray-700 hover:bg-gray-600 text-white text-center font-medium py-3 rounded-xl text-sm transition">
                 Voltar ao início
             </a>

@@ -52,7 +52,7 @@
         <p class="text-gray-400 text-xs text-center mb-4">Cancele-o antes de fazer um novo agendamento.</p>
         <div class="flex gap-2">
             {{-- POST evita expor o telefone na URL --}}
-            <form id="form-ver-agendamentos" method="POST" action="{{ route('agendamento.meus-agendamentos') }}" class="flex-1">
+            <form id="form-ver-agendamentos" method="POST" action="{{ route('agendamento.meus-agendamentos', ['tenant' => $tenantSlug]) }}" class="flex-1">
                 @csrf
                 <input type="hidden" id="input-telefone-modal" name="telefone" value="">
                 <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white text-center py-2 rounded-xl text-sm font-medium transition">Ver meus agendamentos</button>
@@ -85,6 +85,7 @@
 
 @push('scripts')
 <script>
+const tenantSlug = @json($tenantSlug);
 const nomeBarbeariaInicial = "{{ mb_strtoupper(mb_substr($nomeBarbearia, 0, 1)) }}";
 const logoUrl = @json($logoUrl);
 
@@ -358,6 +359,32 @@ function renderInput() {
 
         if (dadosCliente.data) selecionarDataNoCard(dadosCliente.data, false);
 
+    // ── Campos extras ────────────────────────────────────────────────────────
+    } else if (estado === 'campos_extras') {
+        const campos = dadosCliente._camposExtras || [];
+        let html = '<div id="campos-extras-form" class="space-y-3">';
+        campos.forEach(c => {
+            html += `<div>`;
+            html += `<label class="block text-gray-300 text-sm mb-1">${sanitizeText(c.nome)}${c.obrigatorio ? ' <span class="text-red-400">*</span>' : ''}</label>`;
+            if (c.tipo === 'select' && c.opcoes) {
+                html += `<select data-campo="${c.slug}" class="w-full bg-gray-700 text-white rounded-xl px-4 py-3 text-sm border border-gray-600 focus:border-amber-500 focus:outline-none">`;
+                html += `<option value="">Selecione...</option>`;
+                c.opcoes.forEach(op => { html += `<option value="${sanitizeText(op)}">${sanitizeText(op)}</option>`; });
+                html += `</select>`;
+            } else if (c.tipo === 'toggle') {
+                html += `<select data-campo="${c.slug}" class="w-full bg-gray-700 text-white rounded-xl px-4 py-3 text-sm border border-gray-600 focus:border-amber-500 focus:outline-none">`;
+                html += `<option value="">Selecione...</option><option value="Sim">Sim</option><option value="Não">Não</option>`;
+                html += `</select>`;
+            } else {
+                html += `<input data-campo="${c.slug}" type="text" class="w-full bg-gray-700 text-white rounded-xl px-4 py-3 text-sm border border-gray-600 focus:border-amber-500 focus:outline-none" placeholder="${sanitizeText(c.nome)}">`;
+            }
+            html += `</div>`;
+        });
+        html += `<button onclick="enviarCamposExtras()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-2xl text-sm transition mt-2">Continuar ➜</button>`;
+        html += btnVoltar('data');
+        html += '</div>';
+        criarCard(html);
+
     // ── Confirmar ─────────────────────────────────────────────────────────────
     } else if (estado === 'confirmar') {
         criarCard(`
@@ -369,14 +396,16 @@ function renderInput() {
                     <div>📅 ${formatarDataHora(dadosCliente.data_hora)}</div>
                     <div>💰 R$ ${parseFloat(dadosCliente.servico_preco).toFixed(2).replace('.', ',')}</div>
                     <div>⏱ ${dadosCliente.servico_duracao} min</div>
+                    ${dadosCliente.dados_extras ? Object.entries(dadosCliente.dados_extras).filter(([,v])=>v).map(([k,v]) => `<div>📝 <strong>${sanitizeText(k)}</strong>: ${sanitizeText(v)}</div>`).join('') : ''}
                 </div>
-                <form method="POST" action="{{ route('agendamento.store') }}">
+                <form method="POST" action="{{ route('agendamento.store', ['tenant' => $tenantSlug]) }}">
                     @csrf
                     <input type="hidden" name="cliente_nome" value="">
                     <input type="hidden" name="cliente_telefone" value="">
                     <input type="hidden" name="profissional_id" value="">
                     <input type="hidden" name="servico_id" value="">
                     <input type="hidden" name="data_hora" value="">
+                    <input type="hidden" name="dados_extras" value="">
                     <button type="submit"
                         class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-2xl text-sm transition">
                         ✅ Confirmar Agendamento
@@ -391,6 +420,7 @@ function renderInput() {
         form.querySelector('[name=profissional_id]').value  = dadosCliente.profissional_id;
         form.querySelector('[name=servico_id]').value       = dadosCliente.servico_id;
         form.querySelector('[name=data_hora]').value        = dadosCliente.data_hora;
+        form.querySelector('[name=dados_extras]').value     = JSON.stringify(dadosCliente.dados_extras || {});
     }
 }
 
@@ -415,7 +445,7 @@ function enviarTelefone() {
     addMensagemCliente(tel);
     dadosCliente.telefone = tel;
 
-    fetch('/api/verificar-telefone', {
+    fetch(`/${tenantSlug}/api/verificar-telefone`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken },
         body: JSON.stringify({ telefone: tel })
@@ -442,7 +472,7 @@ function enviarTelefone() {
                     `Tente novamente na próxima semana.`
                 );
                 criarCard(`
-                    <form method="POST" action="{{ route('agendamento.meus-agendamentos') }}">
+                    <form method="POST" action="{{ route('agendamento.meus-agendamentos', ['tenant' => $tenantSlug]) }}">
                         @csrf
                         <input type="hidden" name="telefone" value="${sanitizeText(tel)}">
                         <button type="submit"
@@ -508,7 +538,7 @@ function agendarAvulsoMensalistaFixo() {
 }
 
 function carregarProfissionais() {
-    fetch('/api/profissionais')
+    fetch(`/${tenantSlug}/api/profissionais`)
     .then(r => r.json())
     .then(data => {
         profissionais = data;
@@ -532,7 +562,7 @@ function escolherProfissional(id, nome) {
     const prof = profissionais.find(p => p.id === id);
     dadosCliente.profissional_dias_trabalho = prof?.dias_trabalho ?? [1, 2, 3, 4, 5, 6];
 
-    fetch('/api/servicos')
+    fetch(`/${tenantSlug}/api/servicos`)
     .then(r => r.json())
     .then(data => {
         servicos = data;
@@ -595,7 +625,7 @@ function selecionarDataNoCard(dataStr, rolar = true) {
         data:            dataStr,
     });
 
-    fetch(`/api/horarios-disponiveis?${params}`)
+    fetch(`/${tenantSlug}/api/horarios-disponiveis?${params}`)
     .then(r => r.json())
     .then(slots => {
         if (!Array.isArray(slots) || !slots.length) {
@@ -636,6 +666,48 @@ function confirmarDataHora() {
     if (!dadosCliente.data) { addMensagemBot('⚠️ Escolha um dia antes de continuar.'); return; }
     if (!dadosCliente.hora) { addMensagemBot('⚠️ Escolha um horário antes de continuar.'); return; }
     addMensagemCliente(formatarDataHora(dadosCliente.data_hora));
+
+    // Verifica se tem campos extras configurados
+    fetch(`/${tenantSlug}/api/campos-extras`)
+    .then(r => r.json())
+    .then(campos => {
+        if (Array.isArray(campos) && campos.length > 0) {
+            dadosCliente._camposExtras = campos;
+            estado = 'campos_extras';
+            addMensagemBot('📋 Precisamos de mais algumas informações:');
+        } else {
+            estado = 'confirmar';
+            addMensagemBot('Quase lá! 🎉 Confirme os detalhes do seu agendamento:');
+        }
+        renderInput();
+    })
+    .catch(() => {
+        estado = 'confirmar';
+        addMensagemBot('Quase lá! 🎉 Confirme os detalhes do seu agendamento:');
+        renderInput();
+    });
+}
+
+function enviarCamposExtras() {
+    const container = document.getElementById('campos-extras-form');
+    if (!container) return;
+    const extras = {};
+    container.querySelectorAll('[data-campo]').forEach(el => {
+        const slug = el.dataset.campo;
+        extras[slug] = el.value;
+    });
+    // Validar obrigatórios
+    for (const campo of (dadosCliente._camposExtras || [])) {
+        if (campo.obrigatorio && !extras[campo.slug]) {
+            addMensagemBot(`⚠️ O campo "${campo.nome}" é obrigatório.`);
+            return;
+        }
+    }
+    dadosCliente.dados_extras = extras;
+
+    const resumo = Object.entries(extras).filter(([,v]) => v).map(([k,v]) => `${k}: ${v}`).join(', ');
+    if (resumo) addMensagemCliente(resumo);
+
     estado = 'confirmar';
     addMensagemBot('Quase lá! 🎉 Confirme os detalhes do seu agendamento:');
     renderInput();

@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['nome', 'foto', 'limite_mensalistas', 'comissao_percentual', 'ativo', 'horarios_trabalho', 'dias_trabalho'])]
+#[Fillable(['nome', 'telefone', 'foto', 'limite_mensalistas', 'comissao_percentual', 'ativo', 'horarios_trabalho', 'dias_trabalho', 'tenant_id'])]
 class Profissional extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'profissionais';
 
     protected function casts(): array

@@ -5,6 +5,7 @@ namespace App\Filament\Resources\ConfiguracoesBarbearia\Schemas;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -39,22 +40,22 @@ class ConfiguracaoBarbeariaForm
                 ->schema([
                     TextInput::make('horario_abertura')
                         ->label('Abertura')
-                        ->placeholder('08:00')
-                        ->helperText('Primeiro slot do dia (ex: 08:00)')
+                        ->type('time')
                         ->required(),
 
                     TextInput::make('horario_encerramento')
                         ->label('Encerramento')
-                        ->placeholder('19:00')
-                        ->helperText('Nenhum atendimento pode terminar após esse horário')
+                        ->type('time')
                         ->required(),
 
                     Select::make('intervalo_minutos')
                         ->label('Intervalo entre slots')
                         ->options([
+                            15  => '15 minutos',
+                            20  => '20 minutos',
                             30  => '30 minutos',
                             45  => '45 minutos',
-                            60  => '1 hora (padrão)',
+                            60  => '1 hora',
                             90  => '1h30min',
                             120 => '2 horas',
                         ])
@@ -76,7 +77,7 @@ class ConfiguracaoBarbeariaForm
                 ]),
 
             Section::make('WhatsApp')
-                ->description('Define quando o lembrete automático é enviado antes do agendamento.')
+                ->description('Configurações de mensagens automáticas por WhatsApp.')
                 ->schema([
                     Select::make('dias_antecedencia_lembrete')
                         ->label('Enviar lembrete com antecedência de')
@@ -87,7 +88,32 @@ class ConfiguracaoBarbeariaForm
                         ])
                         ->default(1)
                         ->required()
-                        ->helperText('O comando agendamentos:lembretes usa esse valor para selecionar os agendamentos do dia.'),
+                        ->helperText('O comando agendamentos:lembretes usa esse valor.'),
+
+                    \Filament\Forms\Components\Toggle::make('cancelar_nao_confirmados')
+                        ->label('Cancelar automaticamente não confirmados')
+                        ->helperText('Cancela agendamentos pendentes que não foram confirmados até X horas antes do horário.')
+                        ->live(),
+
+                    Select::make('horas_antecedencia_cancelamento')
+                        ->label('Cancelar com antecedência de')
+                        ->options([
+                            1 => '1 hora antes',
+                            2 => '2 horas antes',
+                            3 => '3 horas antes',
+                            6 => '6 horas antes',
+                            12 => '12 horas antes',
+                            24 => '24 horas antes (dia anterior)',
+                        ])
+                        ->default(2)
+                        ->visible(fn ($get) => $get('cancelar_nao_confirmados'))
+                        ->helperText('O sistema cancela e avisa o cliente por WhatsApp.'),
+
+                    Textarea::make('mensagem_repescagem')
+                        ->label('Mensagem padrão de repescagem')
+                        ->rows(4)
+                        ->placeholder("Olá, {nome}! 👋\n\nFaz tempo que não te vemos por aqui na {barbearia}!\nQue tal agendar um horário?\n\nAcesse: {link}")
+                        ->helperText('Variáveis: {nome}, {barbearia}, {link}. Deixe vazio para usar a mensagem padrão do sistema.'),
                 ]),
 
             Section::make('Financeiro')

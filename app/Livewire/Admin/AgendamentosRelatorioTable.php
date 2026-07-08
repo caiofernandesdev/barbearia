@@ -23,18 +23,27 @@ class AgendamentosRelatorioTable extends Component implements HasActions, HasSch
     public string  $dataInicio        = '';
     public string  $dataFim           = '';
     public ?string $filtroProfissional = null;
+    public ?string $filtroStatus       = null;
 
     public function table(Table $table): Table
     {
-        $inicio = $this->dataInicio ?: now()->startOfMonth()->format('Y-m-d');
-        $fim    = $this->dataFim    ?: now()->endOfMonth()->format('Y-m-d');
-        $pid    = $this->filtroProfissional ? (int) $this->filtroProfissional : null;
+        $inicio  = $this->dataInicio ?: now()->startOfMonth()->format('Y-m-d');
+        $fim     = $this->dataFim    ?: now()->endOfMonth()->format('Y-m-d');
+        $pid     = $this->filtroProfissional ? (int) $this->filtroProfissional : null;
+
+        $statuses = match ($this->filtroStatus) {
+            'confirmado' => ['confirmado'],
+            'concluido'  => ['concluido'],
+            'pendente'   => ['pendente'],
+            'cancelado'  => ['cancelado'],
+            default      => ['pendente', 'confirmado', 'concluido', 'cancelado'],
+        };
 
         return $table
             ->query(
                 Agendamento::query()
                     ->whereBetween('data_hora', [$inicio . ' 00:00:00', $fim . ' 23:59:59'])
-                    ->whereIn('status', ['confirmado', 'concluido', 'cancelado'])
+                    ->whereIn('status', $statuses)
                     ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
                     ->with(['servico', 'profissional'])
                     ->latest('data_hora')

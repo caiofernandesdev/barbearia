@@ -2,46 +2,53 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\EnviarWhatsAppJob;
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
+use App\Models\Tenant;
 use App\Observers\AgendamentoObserver;
-use App\Services\WhatsAppService;
 use Illuminate\Console\Command;
 
 class EnviarLembretesAgendamentos extends Command
 {
     protected $signature   = 'agendamentos:lembretes';
-    protected $description = 'Envia lembrete por WhatsApp para agendamentos pendentes de amanhã';
-
-    public function __construct(private WhatsAppService $whatsapp)
-    {
-        parent::__construct();
-    }
+    protected $description = 'Envia lembrete por WhatsApp para agendamentos pendentes';
 
     public function handle(): int
     {
-        $config        = ConfiguracaoBarbearia::getInstance();
-        $nomeBarbearia = $config->nome_barbearia;
-        $diasAntes     = $config->dias_antecedencia_lembrete ?? 1;
+        $tenants = Tenant::where('ativo', true)->get();
+        $total   = 0;
 
-        $dataAlvo = now()->addDays($diasAntes);
+        foreach ($tenants as $tenant) {
+            app()->instance('current_tenant', $tenant);
 
-        $agendamentos = Agendamento::whereIn('status', ['pendente', 'confirmado'])
-            ->whereDate('data_hora', $dataAlvo->toDateString())
-            ->with(['profissional', 'servico'])
-            ->get();
+            $config = ConfiguracaoBarbearia::withoutGlobalScopes()
+                ->where('tenant_id', $tenant->id)->first();
 
-        foreach ($agendamentos as $ag) {
-            // Pendente: pede confirmação via WhatsApp; Confirmado: só lembra o horário
-            $mensagem = $ag->status === 'confirmado'
-                ? AgendamentoObserver::mensagemLembreteConfirmado($ag, $nomeBarbearia)
-                : AgendamentoObserver::mensagemLembrete($ag, $nomeBarbearia);
+            if (! $config) continue;
 
-            $this->whatsapp->enviarTexto($ag->cliente_telefone, $mensagem);
+            $nomeBarbearia = $config->nome_barbearia;
+            $diasAntes     = $config->dias_antecedencia_lembrete ?? 1;
+            $dataAlvo      = now()->addDays($diasAntes);
+
+            $agendamentos = Agendamento::withoutGlobalScopes()
+                ->where('tenant_id', $tenant->id)
+                ->whereIn('status', ['pendente', 'confirmado'])
+                ->whereDate('data_hora', $dataAlvo->toDateString())
+                ->with(['profissional', 'servico'])
+                ->get();
+
+            foreach ($agendamentos as $ag) {
+                $mensagem = $ag->status === 'confirmado'
+                    ? AgendamentoObserver::mensagemLembreteConfirmado($ag, $nomeBarbearia)
+                    : AgendamentoObserver::mensagemLembrete($ag, $nomeBarbearia);
+
+                EnviarWhatsAppJob::dispatch($ag->cliente_telefone, $mensagem, $tenant->id);
+                $total++;
+            }
         }
 
-        $this->info("Lembretes enviados: {$agendamentos->count()}");
-
+        $this->info("Lembretes na fila: {$total}");
         return self::SUCCESS;
     }
 }

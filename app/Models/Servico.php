@@ -2,12 +2,15 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['nome', 'foto', 'preco', 'duracao_minutos', 'ativo', 'destaque', 'ordem'])]
+#[Fillable(['nome', 'foto', 'preco', 'duracao_minutos', 'ativo', 'destaque', 'ordem', 'tenant_id'])]
 class Servico extends Model
 {
+    use BelongsToTenant;
+
     protected $table = 'servicos';
 
     protected function casts(): array

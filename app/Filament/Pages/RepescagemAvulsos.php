@@ -4,10 +4,10 @@ namespace App\Filament\Pages;
 
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
-use App\Observers\AgendamentoObserver;
-use App\Services\WhatsAppService;
+use App\Jobs\EnviarWhatsAppJob;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
@@ -18,6 +18,8 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
 class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
@@ -31,22 +33,72 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
     protected static ?string $title           = 'Repescagem de Avulsos';
     protected static ?int $navigationSort = 2;
 
-    public static function getNavigationGroup(): string
-    {
-        return 'Clientes';
-    }
+    public static function getNavigationGroup(): string { return 'Clientes'; }
 
     public int $diasSemAgendar = 30;
 
-    public function getTableRecordKey(\Illuminate\Database\Eloquent\Model|array $record): string
+    public function getTableRecordKey(Model|array $record): string
     {
-        $telefone = is_array($record) ? ($record['cliente_telefone'] ?? '') : $record->cliente_telefone;
-        return (string) $telefone;
+        return (string) (is_array($record) ? ($record['cliente_telefone'] ?? '') : $record->cliente_telefone);
+    }
+
+    public function getTableRecord(?string $key): Model|array|null
+    {
+        return Agendamento::query()
+            ->select([
+                'cliente_telefone',
+                DB::raw('MAX(cliente_nome) as cliente_nome'),
+                DB::raw('MAX(data_hora) as ultimo_agendamento'),
+                DB::raw('DATEDIFF(NOW(), MAX(data_hora)) as dias_ausente'),
+                DB::raw('COUNT(*) as total_agendamentos'),
+            ])
+            ->where('mensalista', false)
+            ->whereNotIn('status', ['cancelado'])
+            ->where('cliente_telefone', $key)
+            ->groupBy('cliente_telefone')
+            ->firstOrFail();
     }
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        if (! auth()->user()?->isAdmin()) return false;
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+        return $tenant?->hasFeature('repescagem') ?? false;
+    }
+
+    private function getMensagemPadrao(): string
+    {
+        $config = ConfiguracaoBarbearia::getInstance();
+        $nomeBarbearia = $config->nome_barbearia;
+        $link = $this->getTenantLink();
+
+        if (! empty($config->mensagem_repescagem)) {
+            return str_replace(['{barbearia}', '{link}'], [$nomeBarbearia, $link], $config->mensagem_repescagem);
+        }
+
+        return implode("\n", [
+            "Olá, {nome}! 👋",
+            "",
+            "Sentimos sua falta na *{$nomeBarbearia}*! 💈",
+            "",
+            "Que tal agendar um horário?",
+            "",
+            "Acesse: {$link}",
+        ]);
+    }
+
+    private function getTenantLink(): string
+    {
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+        return $tenant ? url("/{$tenant->slug}") : url('/');
+    }
+
+    private function enviarMensagem(string $telefone, string $nome, string $mensagem): bool
+    {
+        $msg = str_replace('{nome}', $nome, $mensagem);
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+        EnviarWhatsAppJob::dispatch($telefone, $msg, $tenant?->id);
+        return true;
     }
 
     public function table(Table $table): Table
@@ -74,7 +126,7 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
                     ->color(fn ($state) => $state > 60 ? 'danger' : ($state > 30 ? 'warning' : 'success')),
 
                 TextColumn::make('total_agendamentos')
-                    ->label('Total de visitas')
+                    ->label('Visitas')
                     ->sortable(),
             ])
             ->defaultSort('dias_ausente', 'desc')
@@ -86,13 +138,7 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
                     ->form([
                         \Filament\Forms\Components\Select::make('dias')
                             ->label('Ausentes há mais de')
-                            ->options([
-                                15 => '15 dias',
-                                30 => '30 dias',
-                                45 => '45 dias',
-                                60 => '60 dias',
-                                90 => '90 dias',
-                            ])
+                            ->options([15 => '15 dias', 30 => '30 dias', 45 => '45 dias', 60 => '60 dias', 90 => '90 dias'])
                             ->default($this->diasSemAgendar),
                     ])
                     ->action(fn (array $data) => $this->diasSemAgendar = $data['dias']),
@@ -104,26 +150,63 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Enviar mensagem de repescagem?')
-                    ->modalDescription(fn ($record) => "Enviar mensagem para {$record['cliente_nome']} ({$record['cliente_telefone']})?")
+                    ->modalDescription(fn ($record) => $record ? "Enviar mensagem para {$record->cliente_nome} ({$record->cliente_telefone})?" : '')
                     ->modalSubmitActionLabel('Enviar')
                     ->action(function ($record) {
-                        $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
-                        $mensagem      = $this->mensagemRepescagem($record['cliente_nome'], $nomeBarbearia);
-                        $enviado       = app(WhatsAppService::class)->enviarTexto($record['cliente_telefone'], $mensagem);
-
-                        if ($enviado) {
-                            Notification::make()->title('Mensagem enviada!')->success()->send();
-                        } else {
-                            Notification::make()->title('Falha ao enviar')->danger()->send();
+                        if (! $record) return;
+                        $enviado = $this->enviarMensagem($record->cliente_telefone, $record->cliente_nome, $this->getMensagemPadrao());
+                        Notification::make()
+                            ->title($enviado ? 'Mensagem enviada!' : 'Falha no envio')
+                            ->color($enviado ? 'success' : 'danger')
+                            ->send();
+                    }),
+            ])
+            ->toolbarActions([
+                \Filament\Actions\BulkAction::make('enviar_massa')
+                    ->label('Chamar de volta')
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                    ->color('success')
+                    ->form(fn () => [
+                        Textarea::make('mensagem')
+                            ->label('Mensagem')
+                            ->rows(5)
+                            ->default($this->getMensagemPadrao())
+                            ->required()
+                            ->helperText('{nome} será substituído pelo nome de cada cliente'),
+                    ])
+                    ->modalHeading(fn () => 'Chamar de volta ' . count($this->selectedTableRecords) . ' cliente(s)')
+                    ->modalSubmitActionLabel('Enviar para todos')
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function (array $data) {
+                        $telefones = $this->selectedTableRecords;
+                        if (empty($telefones)) {
+                            Notification::make()->title('Nenhum cliente selecionado')->warning()->send();
+                            return;
                         }
+
+                        $records = Agendamento::query()
+                            ->select(['cliente_telefone', DB::raw('MAX(cliente_nome) as cliente_nome')])
+                            ->whereIn('cliente_telefone', $telefones)
+                            ->groupBy('cliente_telefone')
+                            ->get();
+
+                        $ok = 0;
+                        $falhas = 0;
+                        foreach ($records as $record) {
+                            if ($this->enviarMensagem($record->cliente_telefone, $record->cliente_nome ?? '', $data['mensagem'])) {
+                                $ok++;
+                            } else {
+                                $falhas++;
+                            }
+                        }
+                        if ($ok > 0) Notification::make()->title("$ok mensagem(ns) enviada(s)!")->success()->send();
+                        if ($falhas > 0) Notification::make()->title("$falhas falha(s)")->danger()->send();
                     }),
             ]);
     }
 
     private function getQuery(): Builder
     {
-        $diasSemAgendar = $this->diasSemAgendar;
-
         return Agendamento::query()
             ->select([
                 'cliente_telefone',
@@ -135,24 +218,6 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
             ->where('mensalista', false)
             ->whereNotIn('status', ['cancelado'])
             ->groupBy('cliente_telefone')
-            ->havingRaw('DATEDIFF(NOW(), MAX(data_hora)) >= ?', [$diasSemAgendar]);
-    }
-
-    private function mensagemRepescagem(string $nomeCliente, string $nomeBarbearia): string
-    {
-        return implode("\n", [
-            "Olá, {$nomeCliente}! 👋",
-            "",
-            "Sentimos sua falta na *{$nomeBarbearia}*! 💈",
-            "",
-            "Que tal agendar um horário? Estamos te esperando!",
-            "",
-            "Acesse: " . url('/'),
-        ]);
-    }
-
-    protected function getHeaderWidgets(): array
-    {
-        return [];
+            ->havingRaw('DATEDIFF(NOW(), MAX(data_hora)) >= ?', [$this->diasSemAgendar]);
     }
 }

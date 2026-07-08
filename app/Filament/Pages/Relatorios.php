@@ -40,13 +40,16 @@ class Relatorios extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        if (! auth()->user()?->isAdmin()) return false;
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+        return $tenant?->hasFeature('relatorios') ?? false;
     }
 
     // Propriedades Livewire individuais para reatividade confiável
     public string  $dataInicio        = '';
     public string  $dataFim           = '';
     public ?string $filtroProfissional = null;
+    public ?string $filtroStatus       = null;
 
     public function mount(): void
     {
@@ -67,6 +70,7 @@ class Relatorios extends Page implements HasTable
                     'inicio'       => $this->dataInicio,
                     'fim'          => $this->dataFim,
                     'profissional' => $this->filtroProfissional,
+                    'status'       => $this->filtroStatus,
                 ])))
                 ->openUrlInNewTab(),
 
@@ -78,6 +82,7 @@ class Relatorios extends Page implements HasTable
                     'inicio'       => $this->dataInicio,
                     'fim'          => $this->dataFim,
                     'profissional' => $this->filtroProfissional,
+                    'status'       => $this->filtroStatus,
                 ])))
                 ->openUrlInNewTab(),
         ];
@@ -105,7 +110,19 @@ class Relatorios extends Page implements HasTable
                 ->options(Profissional::where('ativo', true)->orderBy('nome')->pluck('nome', 'id'))
                 ->placeholder('Todos os barbeiros')
                 ->live(),
-        ])->columns(3);
+
+            Select::make('filtroStatus')
+                ->label('Status')
+                ->options([
+                    'todos'      => 'Todos',
+                    'confirmado' => 'Confirmado',
+                    'concluido'  => 'Concluído',
+                    'pendente'   => 'Pendente',
+                    'cancelado'  => 'Cancelado',
+                ])
+                ->default('todos')
+                ->live(),
+        ])->columns(4);
     }
 
     // ─── Stat cards ───────────────────────────────────────────────────────────
@@ -201,8 +218,8 @@ class Relatorios extends Page implements HasTable
                     ->alignEnd(),
 
                 TextColumn::make('comissao')
-                    ->label('Comissão (' . round(100 - (float)(ConfiguracaoBarbearia::getInstance()->percentual_barbearia ?? 60), 2) . '%)')
-                    ->getStateUsing(fn ($record) => 'R$ ' . number_format($statsMap[$record->id]['comissao'] ?? 0, 2, ',', '.'))
+                    ->label('Comissão')
+                    ->getStateUsing(fn ($record) => 'R$ ' . number_format($statsMap[$record->id]['comissao'] ?? 0, 2, ',', '.') . ' (' . ($statsMap[$record->id]['perc'] ?? 0) . '%)')
                     ->color('warning')
                     ->alignEnd(),
 
@@ -217,27 +234,37 @@ class Relatorios extends Page implements HasTable
 
     // ─── Helpers privados ─────────────────────────────────────────────────────
 
+    private function statusFiltrados(): array
+    {
+        return match ($this->filtroStatus) {
+            'confirmado' => ['confirmado'],
+            'concluido'  => ['concluido'],
+            'pendente'   => ['pendente'],
+            'cancelado'  => ['cancelado'],
+            default      => ['confirmado', 'concluido'],
+        };
+    }
+
     private function buildBarbeiroMap(string $inicio, string $fim, ?int $pid): array
     {
-        $config = ConfiguracaoBarbearia::getInstance();
-        $percBarbeiro = 100 - (float) ($config->percentual_barbearia ?? 60);
-
-        $ags = Agendamento::whereIn('status', ['confirmado', 'concluido'])
+        $ags = Agendamento::whereIn('status', $this->statusFiltrados())
             ->whereBetween('data_hora', [$inicio . ' 00:00:00', $fim . ' 23:59:59'])
             ->with(['servico'])
             ->get();
 
         $map = [];
         foreach (Profissional::where('ativo', true)->get() as $prof) {
-            $profAgs = $ags->where('profissional_id', $prof->id);
-            $receita = $profAgs->sum(fn ($a) => $a->servico?->preco ?? 0);
-            $total   = $profAgs->count();
+            $profAgs  = $ags->where('profissional_id', $prof->id);
+            $receita  = $profAgs->sum(fn ($a) => $a->servico?->preco ?? 0);
+            $total    = $profAgs->count();
+            $percProf = (float) ($prof->comissao_percentual ?? 0);
             $map[$prof->id] = [
                 'total'    => $total,
                 'receita'  => $receita,
                 'ticket'   => $total > 0 ? $receita / $total : 0,
-                'comissao' => $receita * ($percBarbeiro / 100),
+                'comissao' => round($receita * ($percProf / 100), 2),
                 'clientes' => $profAgs->pluck('cliente_telefone')->unique()->count(),
+                'perc'     => $percProf,
             ];
         }
         return $map;
@@ -249,7 +276,9 @@ class Relatorios extends Page implements HasTable
         $fim    = $this->dataFim    ?: now()->endOfMonth()->format('Y-m-d');
         $pid    = $this->filtroProfissional ? (int) $this->filtroProfissional : null;
 
-        $ags     = Agendamento::whereIn('status', ['confirmado', 'concluido'])
+        $statuses = $this->statusFiltrados();
+
+        $ags     = Agendamento::whereIn('status', $statuses)
             ->whereBetween('data_hora', [$inicio . ' 00:00:00', $fim . ' 23:59:59'])
             ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
             ->with(['servico', 'profissional'])
@@ -260,9 +289,13 @@ class Relatorios extends Page implements HasTable
         $ticketMed = $total > 0 ? $receita / $total : 0;
         $unicos   = $ags->pluck('cliente_telefone')->unique()->count();
 
-        $config = ConfiguracaoBarbearia::getInstance();
-        $percBarbeiro = 100 - (float) ($config->percentual_barbearia ?? 60);
-        $comissoes = $receita * ($percBarbeiro / 100);
+        $comissoes = 0;
+        foreach ($ags->groupBy('profissional_id') as $profId => $profAgs) {
+            $prof = $profAgs->first()->profissional;
+            $percProf = (float) ($prof?->comissao_percentual ?? 0);
+            $receitaProf = $profAgs->sum(fn ($a) => $a->servico?->preco ?? 0);
+            $comissoes += round($receitaProf * ($percProf / 100), 2);
+        }
 
         $cancelados = Agendamento::where('status', 'cancelado')
             ->whereBetween('data_hora', [$inicio . ' 00:00:00', $fim . ' 23:59:59'])

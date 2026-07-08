@@ -4,146 +4,133 @@ namespace App\Filament\Pages;
 
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
-use Filament\Actions\Action;
-use Filament\Forms\Components\DatePicker;
+use App\Observers\AgendamentoObserver;
+use App\Jobs\EnviarWhatsAppJob;
+use Filament\Actions\BulkAction;
+use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Schema;
+use Filament\Support\Enums\FontWeight;
 use Filament\Support\Icons\Heroicon;
-use Filament\Widgets\StatsOverviewWidget\Stat;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
-class MeuPainel extends Page
+class MeuPainel extends Page implements HasTable
 {
+    use InteractsWithTable;
 
     protected string $view = 'filament.pages.meu-painel';
 
     protected static ?string $navigationLabel = 'Meu Painel';
-
     protected static ?string $title = 'Meu Painel';
-
-    protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedHome;
-
-    protected static ?int $navigationSort = 0;
-
-    public string $dataInicio   = '';
-    public string $dataFim      = '';
-    public string $periodoAtivo = 'hoje';
+    protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedCalendar;
+    protected static ?int $navigationSort = 1;
 
     public static function canAccess(): bool
     {
         return auth()->user()?->isBarbeiro() ?? false;
     }
 
-    public function mount(): void
+    public function table(Table $table): Table
     {
-        $this->dataInicio = now()->format('Y-m-d');
-        $this->dataFim    = now()->format('Y-m-d');
-    }
+        $pid = auth()->user()->profissional_id;
 
-    // ─── Atalhos de período ───────────────────────────────────────────────────
+        return $table
+            ->query(
+                Agendamento::query()
+                    ->where('data_hora', '>=', now()->startOfDay())
+                    ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
+                    ->with(['servico'])
+                    ->orderBy('data_hora')
+            )
+            ->heading('Próximos Atendimentos')
+            ->emptyStateHeading('Nenhum atendimento pendente')
+            ->emptyStateIcon('heroicon-o-check-circle')
+            ->filters([
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'pendente'   => 'Pendente',
+                        'confirmado' => 'Confirmado',
+                        'concluido'  => 'Concluído',
+                        'cancelado'  => 'Cancelado',
+                    ])
+                    ->default('pendente'),
+            ])
+            ->columns([
+                TextColumn::make('data_hora')
+                    ->label('Quando')
+                    ->dateTime('d/m H:i')
+                    ->weight(FontWeight::SemiBold)
+                    ->description(fn ($record) => $record->data_hora->isToday() ? 'Hoje' : ($record->data_hora->isTomorrow() ? 'Amanhã' : $record->data_hora->locale('pt_BR')->isoFormat('dddd'))),
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            Action::make('hoje')
-                ->label('Hoje')
-                ->icon(Heroicon::OutlinedCalendarDays)
-                ->color(fn () => $this->periodoAtivo === 'hoje' ? 'warning' : 'gray')
-                ->action(function () {
-                    $this->dataInicio   = now()->format('Y-m-d');
-                    $this->dataFim      = now()->format('Y-m-d');
-                    $this->periodoAtivo = 'hoje';
-                }),
+                TextColumn::make('cliente_nome')
+                    ->label('Cliente')
+                    ->description(fn ($record) => $record->cliente_telefone)
+                    ->searchable(),
 
-            Action::make('semana')
-                ->label('Esta Semana')
-                ->icon(Heroicon::OutlinedCalendar)
-                ->color(fn () => $this->periodoAtivo === 'semana' ? 'warning' : 'gray')
-                ->action(function () {
-                    $this->dataInicio   = now()->startOfWeek()->format('Y-m-d');
-                    $this->dataFim      = now()->endOfWeek()->format('Y-m-d');
-                    $this->periodoAtivo = 'semana';
-                }),
+                TextColumn::make('servico.nome')
+                    ->label('Serviço')
+                    ->description(fn ($record) => 'R$ ' . number_format($record->servico?->preco ?? 0, 2, ',', '.')),
 
-            Action::make('mes')
-                ->label('Este Mês')
-                ->icon(Heroicon::OutlinedCalendar)
-                ->color(fn () => $this->periodoAtivo === 'mes' ? 'warning' : 'gray')
-                ->action(function () {
-                    $this->dataInicio   = now()->startOfMonth()->format('Y-m-d');
-                    $this->dataFim      = now()->endOfMonth()->format('Y-m-d');
-                    $this->periodoAtivo = 'mes';
-                }),
-        ];
-    }
-
-    // ─── Filtros ──────────────────────────────────────────────────────────────
-
-    public function updatedDataInicio(): void { $this->periodoAtivo = ''; }
-    public function updatedDataFim(): void    { $this->periodoAtivo = ''; }
-
-    public function filterForm(Schema $schema): Schema
-    {
-        return $schema->components([
-            DatePicker::make('dataInicio')
-                ->label('De')
-                ->live()
-                ->native(false)
-                ->displayFormat('d/m/Y'),
-
-            DatePicker::make('dataFim')
-                ->label('Até')
-                ->live()
-                ->native(false)
-                ->displayFormat('d/m/Y'),
-        ])->columns(2);
-    }
-
-    // ─── Stat cards ───────────────────────────────────────────────────────────
-
-    public function statsSchema(Schema $schema): Schema
-    {
-        $r = $this->calcResumo();
-
-        return $schema->components([
-            Stat::make('Atendimentos', (string) $r['total'])
-                ->description('no período selecionado')
-                ->icon(Heroicon::OutlinedCalendarDays)
-                ->color('warning'),
-
-            Stat::make('Receita Gerada', 'R$ ' . number_format($r['receita'], 2, ',', '.'))
-                ->description('ticket médio R$ ' . number_format($r['ticket'], 2, ',', '.'))
-                ->icon(Heroicon::OutlinedCurrencyDollar)
-                ->color('success'),
-
-            Stat::make('A Receber (' . $r['percBarbeiro'] . '%)', 'R$ ' . number_format($r['comissao'], 2, ',', '.'))
-                ->description('comissão sobre serviços realizados')
-                ->icon(Heroicon::OutlinedBanknotes)
-                ->color('info'),
-        ])->columns(3);
-    }
-
-    // ─── Cálculo ──────────────────────────────────────────────────────────────
-
-    private function calcResumo(): array
-    {
-        $inicio = $this->dataInicio ?: now()->startOfMonth()->format('Y-m-d');
-        $fim    = $this->dataFim    ?: now()->endOfMonth()->format('Y-m-d');
-        $pid    = auth()->user()->profissional_id;
-
-        $config       = ConfiguracaoBarbearia::getInstance();
-        $percBarbeiro = round(100 - (float) ($config->percentual_barbearia ?? 60), 2);
-
-        $ags = Agendamento::whereIn('status', ['confirmado', 'concluido'])
-            ->whereBetween('data_hora', [$inicio . ' 00:00:00', $fim . ' 23:59:59'])
-            ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
-            ->with('servico')
-            ->get();
-
-        $receita  = $ags->sum(fn ($a) => $a->servico?->preco ?? 0);
-        $total    = $ags->count();
-        $ticket   = $total > 0 ? $receita / $total : 0;
-        $comissao = $receita * ($percBarbeiro / 100);
-
-        return compact('total', 'receita', 'ticket', 'comissao', 'percBarbeiro');
+                TextColumn::make('status')
+                    ->label('Status')
+                    ->badge()
+                    ->color(fn ($state) => match ($state) {
+                        'pendente'   => 'warning',
+                        'confirmado' => 'success',
+                        default      => 'gray',
+                    })
+                    ->formatStateUsing(fn ($state) => match ($state) {
+                        'pendente'   => 'Pendente',
+                        'confirmado' => 'Confirmado',
+                        default      => ucfirst($state),
+                    }),
+            ])
+            ->recordActions([
+                \Filament\Actions\Action::make('pedir_confirmacao')
+                    ->label('Confirmar')
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Pedir confirmação por WhatsApp?')
+                    ->modalDescription(fn ($record) => "Enviar para {$record->cliente_nome} ({$record->cliente_telefone})?")
+                    ->modalSubmitActionLabel('Enviar')
+                    ->hidden(fn ($record) => $record->status !== 'pendente')
+                    ->action(function ($record) {
+                        $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
+                        $msg = AgendamentoObserver::mensagemLembrete($record, $nomeBarbearia);
+                        EnviarWhatsAppJob::dispatch($record->cliente_telefone, $msg, $record->tenant_id);
+                        Notification::make()->title('Mensagem enviada!')->success()->send();
+                    }),
+            ])
+            ->toolbarActions([
+                BulkAction::make('confirmar_massa')
+                    ->label('Pedir confirmação')
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Pedir confirmação em massa?')
+                    ->modalDescription(fn (Collection $records) => "Enviar para {$records->count()} agendamento(s)?")
+                    ->modalSubmitActionLabel('Enviar para todos')
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function (Collection $records) {
+                        $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
+                        $ok = 0;
+                        foreach ($records as $r) {
+                            if ($r->status !== 'pendente') continue;
+                            $msg = AgendamentoObserver::mensagemLembrete($r, $nomeBarbearia);
+                            EnviarWhatsAppJob::dispatch($r->cliente_telefone, $msg, $r->tenant_id);
+                            $ok++;
+                        }
+                        Notification::make()->title("$ok mensagem(ns) na fila")->success()->send();
+                    }),
+            ])
+            ->striped()
+            ->defaultPaginationPageOption(15);
     }
 }

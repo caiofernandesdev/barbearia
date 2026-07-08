@@ -2,12 +2,14 @@
 
 namespace App\Models;
 
+use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['profissional_id', 'inicio', 'fim', 'motivo'])]
+#[Fillable(['profissional_id', 'inicio', 'fim', 'motivo', 'tenant_id'])]
 class Indisponibilidade extends Model
 {
+    use BelongsToTenant;
     protected $table = 'indisponibilidades';
 
     protected function casts(): array

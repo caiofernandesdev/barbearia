@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Agendamento;
+use App\Models\CampoPersonalizado;
 use App\Models\ConfiguracaoBarbearia;
 use App\Models\Mensalista;
 use App\Models\MensalistaHorarioFixo;
@@ -15,12 +16,13 @@ use Illuminate\Http\Request;
 
 class AgendamentoController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
         $config = ConfiguracaoBarbearia::getInstance();
         return view('pages.agendamento.index', [
             'nomeBarbearia' => $config->nome_barbearia ?? 'Barbearia',
             'logoUrl'       => $config->logo ? url('storage/' . $config->logo) : null,
+            'tenantSlug'    => $request->route('tenant'),
         ]);
     }
 
@@ -51,6 +53,20 @@ class AgendamentoController extends Controller
                 ->map(fn ($s) => array_merge($s->toArray(), [
                     'foto_url' => $s->foto ? url('storage/' . $s->foto) : null,
                 ]))
+        );
+    }
+
+    public function camposExtras(): JsonResponse
+    {
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+        if (! $tenant?->hasFeature('campos_agendamento')) {
+            return response()->json([]);
+        }
+
+        return response()->json(
+            CampoPersonalizado::where('ativo', true)
+                ->orderBy('ordem')
+                ->get(['nome', 'slug', 'tipo', 'opcoes', 'obrigatorio'])
         );
     }
 
@@ -259,6 +275,11 @@ class AgendamentoController extends Controller
             }
         }
 
+        $dadosExtras = $request->input('dados_extras');
+        if (is_string($dadosExtras)) {
+            $dadosExtras = json_decode($dadosExtras, true);
+        }
+
         $agendamento = Agendamento::create([
             'cliente_nome'              => $request->cliente_nome,
             'cliente_telefone'          => $telefone,
@@ -269,19 +290,21 @@ class AgendamentoController extends Controller
             'mensalista'                => $isMensalista,
             'mensalista_id'             => $mensalistaId,
             'is_avulso_mensalista_fixo' => $isAvulsoFixo,
+            'dados_extras'              => $dadosExtras,
         ]);
 
         // Guarda o telefone na sessão para que "Meus Agendamentos" não precise expor o número na URL
         session(['agendamentos_telefone' => $telefone]);
 
-        return redirect()->route('agendamento.confirmado', $agendamento->id);
+        return redirect()->route('agendamento.confirmado', ['tenant' => $request->route('tenant'), 'agendamentoId' => $agendamento->id]);
     }
 
-    public function confirmado($id)
+    public function confirmado(Request $request)
     {
-        $agendamento   = Agendamento::with(['profissional', 'servico'])->findOrFail($id);
+        $agendamento   = Agendamento::with(['profissional', 'servico'])->findOrFail($request->route('agendamentoId'));
         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia ?? 'Barbearia';
-        return view('pages.agendamento.confirmado', compact('agendamento', 'nomeBarbearia'));
+        $tenantSlug    = $request->route('tenant');
+        return view('pages.agendamento.confirmado', compact('agendamento', 'nomeBarbearia', 'tenantSlug'));
     }
 
     public function meusAgendamentos(Request $request)
@@ -297,14 +320,15 @@ class AgendamentoController extends Controller
             ->get();
 
         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia ?? 'Barbearia';
-        return view('pages.agendamento.meus-agendamentos', compact('agendamentos', 'telefone', 'nomeBarbearia'));
+        $tenantSlug    = $request->route('tenant');
+        return view('pages.agendamento.meus-agendamentos', compact('agendamentos', 'telefone', 'nomeBarbearia', 'tenantSlug'));
     }
 
-    public function cancelar($id, Request $request)
+    public function cancelar(Request $request)
     {
         $telefone = preg_replace('/\D/', '', $request->telefone);
 
-        $agendamento = Agendamento::where('id', $id)
+        $agendamento = Agendamento::where('id', $request->route('agendamentoId'))
             ->where('cliente_telefone', $telefone)
             ->whereIn('status', ['pendente', 'confirmado'])
             ->firstOrFail();
@@ -314,7 +338,7 @@ class AgendamentoController extends Controller
         // Telefone vai para a sessão — evita expor o número na URL do redirect
         session(['agendamentos_telefone' => $telefone]);
 
-        return redirect()->route('agendamento.meus-agendamentos')
+        return redirect()->route('agendamento.meus-agendamentos', ['tenant' => $request->route('tenant')])
             ->with('sucesso', 'Agendamento cancelado com sucesso.');
     }
 

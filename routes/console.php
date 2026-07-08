@@ -13,3 +13,6 @@ Schedule::command('agendamentos:concluir')->hourly();
 
 // Envia lembrete D-1 para agendamentos pendentes de amanhã
 Schedule::command('agendamentos:lembretes')->dailyAt('09:00');
+
+// Cancela automaticamente pendentes não confirmados dentro do prazo
+Schedule::command('agendamentos:cancelar-nao-confirmados')->everyFifteenMinutes();

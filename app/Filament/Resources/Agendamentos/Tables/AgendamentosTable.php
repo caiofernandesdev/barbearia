@@ -4,11 +4,13 @@ namespace App\Filament\Resources\Agendamentos\Tables;
 
 use App\Models\ConfiguracaoBarbearia;
 use App\Observers\AgendamentoObserver;
-use App\Services\WhatsAppService;
+use App\Jobs\EnviarWhatsAppJob;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Illuminate\Database\Eloquent\Collection;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -69,6 +71,16 @@ class AgendamentosTable
                     ->trueColor('warning')
                     ->falseColor('gray')
                     ->tooltip('Mensalista Fixo que agendou fora do horário fixo'),
+
+                TextColumn::make('dados_extras')
+                    ->label('Detalhes')
+                    ->formatStateUsing(function ($record) {
+                        $extras = $record->dados_extras;
+                        if (empty($extras)) return '—';
+                        return collect($extras)->map(fn ($v, $k) => ucfirst(str_replace('_', ' ', $k)) . ': ' . $v)->implode(' · ');
+                    })
+                    ->wrap()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('created_at')
                     ->label('Criado em')
@@ -143,27 +155,49 @@ class AgendamentosTable
                     ->action(function ($record) {
                         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
                         $mensagem      = AgendamentoObserver::mensagemLembrete($record, $nomeBarbearia);
-                        $enviado       = app(WhatsAppService::class)->enviarTexto($record->cliente_telefone, $mensagem);
-
-                        if ($enviado) {
-                            Notification::make()
-                                ->title('Mensagem enviada!')
-                                ->body("Confirmação enviada para {$record->cliente_nome}.")
-                                ->success()
-                                ->send();
-                        } else {
-                            Notification::make()
-                                ->title('Falha ao enviar')
-                                ->body('Verifique as configurações da Evolution API no .env.')
-                                ->danger()
-                                ->send();
-                        }
+                        EnviarWhatsAppJob::dispatch($record->cliente_telefone, $mensagem, $record->tenant_id);
+                        Notification::make()->title('Mensagem enviada!')->body("Confirmação enviada para {$record->cliente_nome}.")->success()->send();
                     }),
 
                 EditAction::make(),
                 DeleteAction::make()->label('Excluir'),
             ])
             ->toolbarActions([
+                BulkAction::make('enviar_confirmacao_massa')
+                    ->label('Pedir confirmação')
+                    ->icon('heroicon-o-chat-bubble-left-ellipsis')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Pedir confirmação por WhatsApp?')
+                    ->modalDescription(fn (Collection $records) => "Enviar mensagem de confirmação para {$records->count()} agendamento(s) selecionado(s)?")
+                    ->modalSubmitActionLabel('Enviar para todos')
+                    ->deselectRecordsAfterCompletion()
+                    ->action(function (Collection $records) {
+                        $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
+                        $enviados = 0;
+
+                        foreach ($records as $record) {
+                            if ($record->status === 'cancelado') continue;
+                            $mensagem = AgendamentoObserver::mensagemLembrete($record, $nomeBarbearia);
+                            EnviarWhatsAppJob::dispatch($record->cliente_telefone, $mensagem, $record->tenant_id);
+                            $enviados++;
+                        }
+
+                        if ($enviados > 0) {
+                            Notification::make()
+                                ->title("$enviados mensagem(ns) na fila!")
+                                ->success()
+                                ->send();
+                        }
+                        if ($falhas > 0) {
+                            Notification::make()
+                                ->title("$falhas falha(s) no envio")
+                                ->body('Verifique as configurações da Evolution API.')
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
                 DeleteBulkAction::make(),
             ]);
     }
