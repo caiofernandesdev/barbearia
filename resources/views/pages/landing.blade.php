@@ -25,9 +25,8 @@
     <nav class="fixed top-0 w-full z-50 bg-gray-950/80 backdrop-blur-xl border-b border-white/5">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <img src="{{ asset('images/logo-atendix.png') }}" alt="Atendix"
-                     class="w-9 h-9 rounded-lg object-cover">
-                <span class="font-bold text-lg">Atendix</span>
+                <div class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-black font-black text-sm">A</div>
+                <span class="font-bold text-lg">tendix</span>
             </div>
             <div class="hidden lg:flex items-center gap-8 text-sm text-gray-400">
                 <a href="#features" class="hover:text-white transition">Recursos</a>
