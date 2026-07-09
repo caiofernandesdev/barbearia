@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Atendix — Sistema de Agendamento Inteligente</title>
     <meta name="description" content="Sistema completo de agendamento online com WhatsApp, relatórios e painel do profissional. Pra barbearias, salões, clínicas e mais.">
+    <link rel="icon" type="image/png" href="{{ asset('images/logo-atendix.png') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
     @vite(['resources/css/app.css', 'resources/js/app.js'])
@@ -24,8 +25,9 @@
     <nav class="fixed top-0 w-full z-50 bg-gray-950/80 backdrop-blur-xl border-b border-white/5">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
             <div class="flex items-center gap-2">
-                <div class="w-8 h-8 bg-brand-500 rounded-lg flex items-center justify-center text-black font-black text-sm">A</div>
-                <span class="font-bold text-lg">tendix</span>
+                <img src="{{ asset('images/logo-atendix.png') }}" alt="Atendix"
+                     class="w-9 h-9 rounded-lg object-cover">
+                <span class="font-bold text-lg">Atendix</span>
             </div>
             <div class="hidden lg:flex items-center gap-8 text-sm text-gray-400">
                 <a href="#features" class="hover:text-white transition">Recursos</a>
