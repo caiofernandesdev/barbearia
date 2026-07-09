@@ -37,7 +37,7 @@
                 <a href="#planos" class="hover:text-white transition">Planos</a>
             </div>
             <div class="flex items-center gap-3">
-                <a href="/admin/login" class="hidden sm:inline-block text-sm text-gray-400 hover:text-white transition">Entrar</a>
+                <a href="/admin/login" class="text-sm text-gray-400 hover:text-white transition">Entrar</a>
                 <a href="https://wa.me/5514998382598?text=Quero%20conhecer%20o%20Atendix" target="_blank"
                    class="bg-brand-500 hover:bg-brand-600 text-black font-semibold px-4 py-2 rounded-xl text-sm transition">
                     Testar grátis
