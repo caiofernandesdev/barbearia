@@ -14,12 +14,12 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Routing\Middleware\SubstituteBindings;
 use Illuminate\Session\Middleware\StartSession;
+use Illuminate\Support\HtmlString;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 
 class AdminPanelProvider extends PanelProvider
@@ -35,7 +35,15 @@ class AdminPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
-            ->brandName('Barbearia')
+            ->brandName('Atendix')
+            // Logo + nome no topo do painel; estilos inline p/ não depender do CSS compilado
+            ->brandLogo(fn () => new HtmlString(
+                '<div style="display:flex;align-items:center;gap:9px;">'
+                .'<img src="'.asset('images/logo-icone.png').'" alt="Atendix" style="height:2.2rem;width:2.2rem;border-radius:8px;object-fit:contain;">'
+                .'<span style="font-weight:800;font-size:1.15rem;letter-spacing:-.01em;">Atendix</span>'
+                .'</div>'
+            ))
+            ->favicon(asset('images/logo-icone.png'))
             ->navigationGroups([
                 NavigationGroup::make('Agenda'),
                 NavigationGroup::make('Clientes'),
@@ -60,8 +68,8 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
-                SetDefaultGuard::class . ':admin',
-                IsolatePanelSession::class . ':admin,super_admin',
+                SetDefaultGuard::class.':admin',
+                IsolatePanelSession::class.':admin,super_admin',
             ])
             ->navigationGroups([
                 NavigationGroup::make('Agenda'),
