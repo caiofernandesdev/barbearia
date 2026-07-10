@@ -7,11 +7,8 @@ use App\Models\ConfiguracaoBarbearia;
 use App\Models\Profissional;
 use App\Models\Servico;
 use Carbon\Carbon;
-use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
@@ -22,12 +19,17 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
     use InteractsWithActions, InteractsWithForms;
 
     public ?int $profissionalId = null;
+
     public string $dataSelecionada = '';
+
     public string $horaSelecionada = '';
+
     public bool $showModal = false;
 
     public ?string $clienteNome = '';
+
     public ?string $clienteTelefone = '';
+
     public ?string $servicoId = null;
 
     public function mount(): void
@@ -57,17 +59,17 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
     public function salvarAgendamento(): void
     {
         $this->validate([
-            'clienteNome'     => 'required|max:100',
+            'clienteNome' => 'required|max:100',
             'clienteTelefone' => 'required|max:20',
-            'servicoId'       => 'required|exists:servicos,id',
+            'servicoId' => 'required|exists:servicos,id',
         ], [
-            'clienteNome.required'     => 'Informe o nome do cliente.',
+            'clienteNome.required' => 'Informe o nome do cliente.',
             'clienteTelefone.required' => 'Informe o telefone.',
-            'servicoId.required'       => 'Selecione um serviço.',
+            'servicoId.required' => 'Selecione um serviço.',
         ]);
 
         $telefone = preg_replace('/\D/', '', $this->clienteTelefone);
-        $dataHora = $this->dataSelecionada . ' ' . $this->horaSelecionada . ':00';
+        $dataHora = $this->dataSelecionada.' '.$this->horaSelecionada.':00';
 
         // Regra: 1 agendamento ativo por cliente
         $ativo = Agendamento::where('cliente_telefone', $telefone)
@@ -81,6 +83,7 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
                 ->body("{$ativo->cliente_nome} já tem agendamento em {$quando}. Cancele antes de criar outro.")
                 ->danger()
                 ->send();
+
             return;
         }
 
@@ -96,25 +99,26 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
                 ->body("O horário {$this->horaSelecionada} já tem um agendamento.")
                 ->danger()
                 ->send();
+
             return;
         }
 
         Agendamento::create([
-            'cliente_nome'     => $this->clienteNome,
+            'cliente_nome' => $this->clienteNome,
             'cliente_telefone' => $telefone,
-            'profissional_id'  => $this->profissionalId,
-            'servico_id'       => $this->servicoId,
-            'data_hora'        => $dataHora,
-            'status'           => 'pendente',
-            'mensalista'       => false,
-            'tenant_id'        => auth('admin')->user()?->tenant_id,
+            'profissional_id' => $this->profissionalId,
+            'servico_id' => $this->servicoId,
+            'data_hora' => $dataHora,
+            'status' => 'pendente',
+            'mensalista' => false,
+            'tenant_id' => auth('admin')->user()?->tenant_id,
         ]);
 
         $this->showModal = false;
 
         Notification::make()
             ->title('Agendamento criado!')
-            ->body($this->clienteNome . ' às ' . $this->horaSelecionada)
+            ->body($this->clienteNome.' às '.$this->horaSelecionada)
             ->success()
             ->send();
     }
@@ -132,7 +136,9 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
 
         for ($i = 0; $i < 14; $i++) {
             $dia = now()->addDays($i);
-            if (! in_array($dia->dayOfWeek, $diasTrabalho)) continue;
+            if (! in_array($dia->dayOfWeek, $diasTrabalho)) {
+                continue;
+            }
 
             $totalAgs = Agendamento::whereDate('data_hora', $dia->format('Y-m-d'))
                 ->when($this->profissionalId, fn ($q) => $q->where('profissional_id', $this->profissionalId))
@@ -140,12 +146,12 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
                 ->count();
 
             $dias[] = [
-                'data'        => $dia->format('Y-m-d'),
-                'diaSemana'   => $dia->locale('pt_BR')->isoFormat('ddd'),
-                'diaNum'      => $dia->format('d'),
-                'mes'         => $dia->locale('pt_BR')->isoFormat('MMM'),
+                'data' => $dia->format('Y-m-d'),
+                'diaSemana' => $dia->locale('pt_BR')->isoFormat('ddd'),
+                'diaNum' => $dia->format('d'),
+                'mes' => $dia->locale('pt_BR')->isoFormat('MMM'),
                 'selecionado' => $dia->format('Y-m-d') === $this->dataSelecionada,
-                'totalAgs'    => $totalAgs,
+                'totalAgs' => $totalAgs,
             ];
         }
 
@@ -154,36 +160,40 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
 
     public function getSlots(): array
     {
-        $config       = ConfiguracaoBarbearia::getInstance();
-        $data         = Carbon::parse($this->dataSelecionada);
-        $abertura     = $config->horario_abertura ?? '08:00';
+        $config = ConfiguracaoBarbearia::getInstance();
+        $data = Carbon::parse($this->dataSelecionada);
+        $abertura = $config->horario_abertura ?? '08:00';
         $encerramento = $config->horario_encerramento ?? '19:00';
-        $intervalo    = $config->intervalo_minutos ?? 60;
-        $pid          = $this->profissionalId;
+        $intervalo = $config->intervalo_minutos ?? 60;
+        $pid = $this->profissionalId;
 
         $agendados = Agendamento::whereDate('data_hora', $data->format('Y-m-d'))
             ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
             ->whereIn('status', ['pendente', 'confirmado', 'concluido'])
-            ->with('servico')
+            ->with(['servico', 'servicos'])
             ->get()
             ->keyBy(fn ($a) => Carbon::parse($a->data_hora)->format('H:i'));
 
-        $slots  = [];
-        $cursor = Carbon::parse($data->format('Y-m-d') . ' ' . $abertura);
-        $fim    = Carbon::parse($data->format('Y-m-d') . ' ' . $encerramento);
-        $agora  = now();
+        $slots = [];
+        $cursor = Carbon::parse($data->format('Y-m-d').' '.$abertura);
+        $fim = Carbon::parse($data->format('Y-m-d').' '.$encerramento);
+        $agora = now();
 
         while ($cursor->lt($fim)) {
-            $hora    = $cursor->format('H:i');
-            $ag      = $agendados->get($hora);
+            $hora = $cursor->format('H:i');
+            $ag = $agendados->get($hora);
             $passado = $data->isToday() && $cursor->lt($agora);
 
             $slots[] = [
-                'hora'    => $hora,
+                'hora' => $hora,
                 'ocupado' => $ag !== null,
                 'passado' => $passado,
                 'cliente' => $ag?->cliente_nome,
-                'servico' => $ag?->servico?->nome,
+                'servico' => $ag?->nomesServicos(),
+                // Respostas dos campos personalizados (ex: alergias) direto no slot
+                'extras' => $ag && ! empty($ag->dados_extras)
+                    ? collect($ag->dados_extras)->map(fn ($v, $k) => ucfirst(str_replace('_', ' ', $k)).': '.$v)->implode(' · ')
+                    : null,
             ];
 
             $cursor->addMinutes($intervalo);
@@ -195,8 +205,8 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
     public function render()
     {
         return view('livewire.admin.agenda-dia-table', [
-            'dias'     => $this->getDias(),
-            'slots'    => $this->getSlots(),
+            'dias' => $this->getDias(),
+            'slots' => $this->getSlots(),
             'servicos' => $this->servicos,
         ]);
     }

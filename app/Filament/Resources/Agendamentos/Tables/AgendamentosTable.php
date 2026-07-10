@@ -2,8 +2,8 @@
 
 namespace App\Filament\Resources\Agendamentos\Tables;
 
+use App\Filament\Support\AgendamentoTabela;
 use App\Jobs\EnviarWhatsAppJob;
-use App\Models\CampoPersonalizado;
 use App\Models\ConfiguracaoBarbearia;
 use App\Observers\AgendamentoObserver;
 use Carbon\Carbon;
@@ -13,7 +13,6 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -77,18 +76,7 @@ class AgendamentosTable
                     ->falseColor('gray')
                     ->tooltip('Mensalista Fixo que agendou fora do horário fixo'),
 
-                TextColumn::make('dados_extras')
-                    ->label('Detalhes')
-                    ->formatStateUsing(function ($record) {
-                        $extras = $record->dados_extras;
-                        if (empty($extras)) {
-                            return '—';
-                        }
-
-                        return collect($extras)->map(fn ($v, $k) => ucfirst(str_replace('_', ' ', $k)).': '.$v)->implode(' · ');
-                    })
-                    ->wrap()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                AgendamentoTabela::colunaDetalhes(),
 
                 TextColumn::make('created_at')
                     ->label('Criado em')
@@ -152,7 +140,7 @@ class AgendamentosTable
                     ->query(fn (Builder $query) => $query->where('is_avulso_mensalista_fixo', true)),
 
                 // Filtros dinâmicos por campo personalizado (respostas em dados_extras JSON)
-                ...self::filtrosCamposExtras(),
+                ...AgendamentoTabela::filtrosCamposExtras(),
             ])
             ->recordActions([
                 Action::make('enviar_confirmacao')
@@ -207,46 +195,5 @@ class AgendamentosTable
 
                 DeleteBulkAction::make(),
             ]);
-    }
-
-    /**
-     * Um filtro por campo personalizado ativo do tenant.
-     *
-     * As respostas ficam em agendamentos.dados_extras (JSON keyed pelo slug):
-     * select/toggle viram SelectFilter; texto vira busca parcial (LIKE).
-     */
-    private static function filtrosCamposExtras(): array
-    {
-        return CampoPersonalizado::where('ativo', true)
-            ->orderBy('ordem')
-            ->get()
-            ->map(function (CampoPersonalizado $campo) {
-                $jsonPath = 'dados_extras->'.$campo->slug;
-
-                if ($campo->tipo === 'select' || $campo->tipo === 'toggle') {
-                    $opcoes = $campo->tipo === 'toggle'
-                        ? ['Sim' => 'Sim', 'Não' => 'Não']
-                        : collect($campo->opcoes ?? [])->mapWithKeys(fn ($o) => [$o => $o])->all();
-
-                    return SelectFilter::make('extra_'.$campo->slug)
-                        ->label($campo->nome)
-                        ->options($opcoes)
-                        ->attribute($jsonPath);
-                }
-
-                return Filter::make('extra_'.$campo->slug)
-                    ->label($campo->nome)
-                    ->form([
-                        TextInput::make('valor')->label($campo->nome),
-                    ])
-                    ->query(fn (Builder $query, array $data) => $query->when(
-                        $data['valor'] ?? null,
-                        fn ($q, $v) => $q->where($jsonPath, 'like', "%{$v}%")
-                    ))
-                    ->indicateUsing(fn (array $data) => ($data['valor'] ?? null)
-                        ? [$campo->nome.': '.$data['valor']]
-                        : []);
-            })
-            ->all();
     }
 }

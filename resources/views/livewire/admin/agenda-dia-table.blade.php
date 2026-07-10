@@ -38,6 +38,9 @@
                         <div style="font-size:16px; font-weight:bold; color:#ef4444;">{{ $slot['hora'] }}</div>
                         <div style="font-size:11px; color:#fca5a5; margin-top:2px;">{{ $slot['cliente'] }}</div>
                         <div style="font-size:10px; color:#fca5a5; opacity:0.7;">{{ $slot['servico'] }}</div>
+                        @if(!empty($slot['extras']))
+                        <div style="font-size:9px; color:#fcd34d; opacity:0.9; margin-top:1px;">📝 {{ $slot['extras'] }}</div>
+                        @endif
                     </div>
                 @elseif($slot['passado'])
                     <div style="padding:12px 8px; border-radius:12px; text-align:center; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); opacity:0.3;">

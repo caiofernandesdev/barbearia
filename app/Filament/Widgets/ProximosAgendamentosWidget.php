@@ -2,6 +2,7 @@
 
 namespace App\Filament\Widgets;
 
+use App\Filament\Support\AgendamentoTabela;
 use App\Models\Agendamento;
 use Filament\Support\Enums\FontWeight;
 use Filament\Tables\Columns\TextColumn;
@@ -50,6 +51,8 @@ class ProximosAgendamentosWidget extends TableWidget
                     ->label('Serviço')
                     ->getStateUsing(fn ($record) => $record->nomesServicos())
                     ->description(fn ($record) => 'R$ '.number_format((float) ($record->valor_total ?? $record->servico?->preco ?? 0), 2, ',', '.')),
+
+                AgendamentoTabela::colunaDetalhes(),
 
                 TextColumn::make('status')
                     ->label('Status')

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Support\AgendamentoTabela;
 use App\Jobs\EnviarWhatsAppJob;
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
@@ -80,6 +81,9 @@ class MeuPainel extends Page implements HasTable
                     ->label('Serviço')
                     ->getStateUsing(fn ($record) => $record->nomesServicos())
                     ->description(fn ($record) => 'R$ '.number_format((float) ($record->valor_total ?? $record->servico?->preco ?? 0), 2, ',', '.')),
+
+                // Respostas dos campos personalizados — o profissional vê alergias etc.
+                AgendamentoTabela::colunaDetalhes(ocultaPorPadrao: false),
 
                 TextColumn::make('status')
                     ->label('Status')

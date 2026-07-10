@@ -2,6 +2,7 @@
 
 namespace App\Livewire\Admin;
 
+use App\Filament\Support\AgendamentoTabela;
 use App\Models\Agendamento;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -20,32 +21,35 @@ class AgendamentosRelatorioTable extends Component implements HasActions, HasSch
     use InteractsWithSchemas;
     use InteractsWithTable;
 
-    public string  $dataInicio        = '';
-    public string  $dataFim           = '';
+    public string $dataInicio = '';
+
+    public string $dataFim = '';
+
     public ?string $filtroProfissional = null;
-    public ?string $filtroStatus       = null;
+
+    public ?string $filtroStatus = null;
 
     public function table(Table $table): Table
     {
-        $inicio  = $this->dataInicio ?: now()->startOfMonth()->format('Y-m-d');
-        $fim     = $this->dataFim    ?: now()->endOfMonth()->format('Y-m-d');
-        $pid     = $this->filtroProfissional ? (int) $this->filtroProfissional : null;
+        $inicio = $this->dataInicio ?: now()->startOfMonth()->format('Y-m-d');
+        $fim = $this->dataFim ?: now()->endOfMonth()->format('Y-m-d');
+        $pid = $this->filtroProfissional ? (int) $this->filtroProfissional : null;
 
         $statuses = match ($this->filtroStatus) {
             'confirmado' => ['confirmado'],
-            'concluido'  => ['concluido'],
-            'pendente'   => ['pendente'],
-            'cancelado'  => ['cancelado'],
-            default      => ['pendente', 'confirmado', 'concluido', 'cancelado'],
+            'concluido' => ['concluido'],
+            'pendente' => ['pendente'],
+            'cancelado' => ['cancelado'],
+            default => ['pendente', 'confirmado', 'concluido', 'cancelado'],
         };
 
         return $table
             ->query(
                 Agendamento::query()
-                    ->whereBetween('data_hora', [$inicio . ' 00:00:00', $fim . ' 23:59:59'])
+                    ->whereBetween('data_hora', [$inicio.' 00:00:00', $fim.' 23:59:59'])
                     ->whereIn('status', $statuses)
                     ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
-                    ->with(['servico', 'profissional'])
+                    ->with(['servico', 'servicos', 'profissional'])
                     ->latest('data_hora')
             )
             ->heading('Agendamentos do Período')
@@ -66,11 +70,13 @@ class AgendamentosRelatorioTable extends Component implements HasActions, HasSch
                     ->sortable(),
 
                 TextColumn::make('servico.nome')
-                    ->label('Serviço'),
+                    ->label('Serviço')
+                    ->getStateUsing(fn ($record) => $record->nomesServicos()),
 
-                TextColumn::make('servico.preco')
+                TextColumn::make('valor_total')
                     ->label('Valor')
-                    ->formatStateUsing(fn ($state) => 'R$ ' . number_format((float) ($state ?? 0), 2, ',', '.'))
+                    ->getStateUsing(fn ($record) => $record->valor_total ?? $record->servico?->preco ?? 0)
+                    ->formatStateUsing(fn ($state) => 'R$ '.number_format((float) ($state ?? 0), 2, ',', '.'))
                     ->color('success')
                     ->alignEnd(),
 
@@ -78,20 +84,26 @@ class AgendamentosRelatorioTable extends Component implements HasActions, HasSch
                     ->label('Status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'concluido'  => 'success',
+                        'concluido' => 'success',
                         'confirmado' => 'info',
-                        'cancelado'  => 'danger',
-                        'pendente'   => 'warning',
-                        default      => 'gray',
+                        'cancelado' => 'danger',
+                        'pendente' => 'warning',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'concluido'  => 'Concluído',
+                        'concluido' => 'Concluído',
                         'confirmado' => 'Confirmado',
-                        'cancelado'  => 'Cancelado',
-                        'pendente'   => 'Pendente',
-                        default      => ucfirst($state),
+                        'cancelado' => 'Cancelado',
+                        'pendente' => 'Pendente',
+                        default => ucfirst($state),
                     })
                     ->alignCenter(),
+
+                // Respostas dos campos personalizados (visível por padrão no relatório)
+                AgendamentoTabela::colunaDetalhes(ocultaPorPadrao: false),
+            ])
+            ->filters([
+                ...AgendamentoTabela::filtrosCamposExtras(),
             ])
             ->striped()
             ->defaultPaginationPageOption(15);
