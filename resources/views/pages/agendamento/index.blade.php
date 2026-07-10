@@ -319,10 +319,11 @@ function renderInput() {
         const nomeDias  = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
         const nomeMeses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
-        // Gera até 14 dias disponíveis conforme os dias de trabalho do barbeiro selecionado
+        // Gera até 14 dias disponíveis conforme os dias de trabalho do barbeiro selecionado.
+        // Começa em HOJE (offset 0) — a API filtra os horários já passados com buffer de 30min
         const diasTrabalho = dadosCliente.profissional_dias_trabalho ?? [1, 2, 3, 4, 5, 6];
         const dateCards = [];
-        let offset = 1;
+        let offset = 0;
         while (dateCards.length < 14 && offset <= 60) {
             const d = new Date(hoje);
             d.setDate(hoje.getDate() + offset);
@@ -331,11 +332,12 @@ function renderInput() {
                     + String(d.getMonth() + 1).padStart(2, '0') + '-'
                     + String(d.getDate()).padStart(2, '0');
                 const sel = dadosCliente.data === dataStr;
+                const rotuloDia = offset === 0 ? 'HOJE' : nomeDias[d.getDay()];
                 dateCards.push(`
                     <button onclick="selecionarDataNoCard('${dataStr}')" data-data="${dataStr}"
                         class="data-card flex-shrink-0 snap-start flex flex-col items-center py-3 px-3 rounded-2xl border-2 transition min-w-[4.5rem]
                             ${sel ? 'bg-amber-600 border-amber-400' : 'bg-gray-700 border-transparent hover:bg-gray-600'}">
-                        <span class="text-xs font-bold ${sel ? 'text-white' : 'text-gray-400'}">${nomeDias[d.getDay()]}</span>
+                        <span class="text-xs font-bold ${sel ? 'text-white' : (offset === 0 ? 'text-amber-400' : 'text-gray-400')}">${rotuloDia}</span>
                         <span class="text-2xl font-black text-white leading-tight">${d.getDate()}</span>
                         <span class="text-xs ${sel ? 'text-white' : 'text-gray-400'}">${nomeMeses[d.getMonth()]}</span>
                     </button>

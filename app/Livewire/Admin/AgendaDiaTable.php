@@ -167,12 +167,19 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         $intervalo = $config->intervalo_minutos ?? 60;
         $pid = $this->profissionalId;
 
-        $agendados = Agendamento::whereDate('data_hora', $data->format('Y-m-d'))
+        // Intervalos ocupados [início, fim) — um atendimento de 1h bloqueia TODOS
+        // os slots que ele cobre (4 slots de 15min, 2 de 30min etc.)
+        $ocupados = Agendamento::whereDate('data_hora', $data->format('Y-m-d'))
             ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
             ->whereIn('status', ['pendente', 'confirmado', 'concluido'])
             ->with(['servico', 'servicos'])
             ->get()
-            ->keyBy(fn ($a) => Carbon::parse($a->data_hora)->format('H:i'));
+            ->map(function ($a) use ($intervalo) {
+                $inicio = Carbon::parse($a->data_hora);
+                $duracao = $a->duracao_total_minutos ?? $a->servico?->duracao_minutos ?? $intervalo;
+
+                return ['inicio' => $inicio, 'fim' => $inicio->copy()->addMinutes($duracao), 'ag' => $a];
+            });
 
         $slots = [];
         $cursor = Carbon::parse($data->format('Y-m-d').' '.$abertura);
@@ -180,18 +187,23 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         $agora = now();
 
         while ($cursor->lt($fim)) {
-            $hora = $cursor->format('H:i');
-            $ag = $agendados->get($hora);
-            $passado = $data->isToday() && $cursor->lt($agora);
+            $slotInicio = $cursor->copy();
+            $slotFim = $cursor->copy()->addMinutes($intervalo);
+
+            // Sobreposição: slotInicio < fimAtendimento && slotFim > inicioAtendimento
+            $ocupacao = $ocupados->first(fn ($o) => $slotInicio->lt($o['fim']) && $slotFim->gt($o['inicio']));
+            $ag = $ocupacao['ag'] ?? null;
+            // Primeiro slot do atendimento (os demais são continuação)
+            $ehInicio = $ocupacao && $ocupacao['inicio']->between($slotInicio, $slotFim->copy()->subSecond());
 
             $slots[] = [
-                'hora' => $hora,
+                'hora' => $slotInicio->format('H:i'),
                 'ocupado' => $ag !== null,
-                'passado' => $passado,
+                'passado' => $data->isToday() && $slotInicio->lt($agora),
                 'cliente' => $ag?->cliente_nome,
-                'servico' => $ag?->nomesServicos(),
-                // Respostas dos campos personalizados (ex: alergias) direto no slot
-                'extras' => $ag && ! empty($ag->dados_extras)
+                'servico' => $ag ? ($ehInicio ? $ag->nomesServicos() : '⤷ continuação') : null,
+                // Respostas dos campos personalizados só no slot inicial (menos ruído)
+                'extras' => $ag && $ehInicio && ! empty($ag->dados_extras)
                     ? collect($ag->dados_extras)->map(fn ($v, $k) => ucfirst(str_replace('_', ' ', $k)).': '.$v)->implode(' · ')
                     : null,
             ];
