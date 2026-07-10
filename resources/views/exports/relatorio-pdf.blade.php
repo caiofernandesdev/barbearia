@@ -161,6 +161,8 @@
                     <span class="badge badge-green">Concluído</span>
                 @elseif($ag->status === 'confirmado')
                     <span class="badge badge-blue">Confirmado</span>
+                @elseif($ag->status === 'pendente')
+                    <span class="badge">Pendente</span>
                 @else
                     <span class="badge badge-red">Cancelado</span>
                 @endif

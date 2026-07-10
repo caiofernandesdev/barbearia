@@ -37,6 +37,16 @@ class ConfiguracaoBarbeariaForm
                         ->imagePreviewHeight('80')
                         ->nullable()
                         ->helperText('Exibida no chatbot de agendamento e no cabeçalho do sistema.'),
+
+                    Select::make('tema_agendamento')
+                        ->label('Tema da página de agendamento')
+                        ->options([
+                            'escuro' => '🌙 Escuro (preto)',
+                            'claro' => '☀️ Claro (branco)',
+                        ])
+                        ->default('escuro')
+                        ->required()
+                        ->helperText('Aparência da página pública onde os clientes agendam.'),
                 ]),
 
             Section::make('Horários e Slots')

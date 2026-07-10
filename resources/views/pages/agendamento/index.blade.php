@@ -6,11 +6,30 @@
 <style>
 .carousel-track { -ms-overflow-style: none; scrollbar-width: none; touch-action: pan-x; }
 .carousel-track::-webkit-scrollbar { display: none; }
+
+/* iOS/Android dão zoom automático em inputs com fonte < 16px — trava em 16px no mobile */
+@media (max-width: 640px) {
+    #chat-area input, #chat-area select, #chat-area textarea { font-size: 16px !important; }
+}
+
+/* ── Tema claro: sobrepõe as cores escuras da página (o escuro é o padrão) ── */
+.tema-claro, .tema-claro .bg-gray-900 { background-color: #f3f4f6 !important; }
+.tema-claro .bg-gray-800 { background-color: #ffffff !important; }
+.tema-claro .bg-gray-700 { background-color: #e9eaee !important; }
+.tema-claro .bg-gray-600 { background-color: #d7d9de !important; }
+.tema-claro .hover\:bg-gray-600:hover { background-color: #d7d9de !important; }
+.tema-claro .text-white { color: #111827 !important; }
+.tema-claro .text-gray-200, .tema-claro .text-gray-300 { color: #374151 !important; }
+.tema-claro .text-gray-400, .tema-claro .text-gray-500 { color: #6b7280 !important; }
+.tema-claro .border-gray-600, .tema-claro .border-gray-700 { border-color: #d1d5db !important; }
+.tema-claro .border-b { border-color: #e5e7eb !important; }
+/* botões âmbar continuam âmbar; texto escuro neles fica legível */
+.tema-claro .bg-amber-500 .text-white, .tema-claro .bg-amber-500.text-white { color: #111827 !important; }
 </style>
 @endpush
 
 @section('content')
-<div class="min-h-screen bg-gray-900 flex flex-col">
+<div class="min-h-screen bg-gray-900 flex flex-col {{ ($tema ?? 'escuro') === 'claro' ? 'tema-claro' : '' }}">
 
     {{-- Header --}}
     <div class="bg-gray-800 border-b border-gray-700 px-4 py-3 flex items-center gap-3">

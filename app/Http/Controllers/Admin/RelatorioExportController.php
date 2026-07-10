@@ -36,6 +36,22 @@ class RelatorioExportController extends Controller
         };
     }
 
+    /**
+     * Statuses da LISTA de agendamentos: sem filtro específico, mostra todos —
+     * igual à tabela da tela de Relatórios. Os totais financeiros continuam
+     * usando resolveStatuses() (só confirmado+concluído).
+     */
+    private function resolveStatusesLista(?string $status): array
+    {
+        return match ($status) {
+            'confirmado' => ['confirmado'],
+            'concluido' => ['concluido'],
+            'pendente' => ['pendente'],
+            'cancelado' => ['cancelado'],
+            default => ['pendente', 'confirmado', 'concluido', 'cancelado'],
+        };
+    }
+
     private function buscarAgendamentos(string $inicio, string $fim, ?int $pid, array $statuses)
     {
         return Agendamento::whereIn('status', $statuses)
@@ -118,10 +134,13 @@ class RelatorioExportController extends Controller
         $totalCom = array_sum(array_column($barbeiros, 'comissao'));
         $evolucao = $this->calcEvolucao($pid, $statuses);
 
+        // Lista completa (inclui pendentes/cancelados quando sem filtro de status)
+        $agsLista = $this->buscarAgendamentos($inicio, $fim, $pid, $this->resolveStatusesLista($request->get('status')));
+
         $campos = $this->camposExtras();
         $filename = 'relatorio-'.$inicio.'-a-'.$fim.'.csv';
 
-        return response()->streamDownload(function () use ($barbeiros, $ags, $totalRec, $totalAg, $totalCom, $evolucao, $inicio, $fim, $campos) {
+        return response()->streamDownload(function () use ($barbeiros, $agsLista, $totalRec, $totalAg, $totalCom, $evolucao, $inicio, $fim, $campos) {
             $out = fopen('php://output', 'w');
             fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
 
@@ -162,7 +181,7 @@ class RelatorioExportController extends Controller
                 ['Data', 'Hora', 'Cliente', 'Telefone', 'Barbeiro', 'Serviço', 'Valor (R$)', 'Status'],
                 $campos->pluck('nome')->all() // uma coluna por campo personalizado
             ), ';');
-            foreach ($ags as $ag) {
+            foreach ($agsLista as $ag) {
                 fputcsv($out, array_merge([
                     $ag->data_hora->format('d/m/Y'), $ag->data_hora->format('H:i'),
                     $ag->cliente_nome, $ag->cliente_telefone,
@@ -201,6 +220,9 @@ class RelatorioExportController extends Controller
         $totalCom = array_sum(array_column($barbeiros, 'comissao'));
         $evolucao = $this->calcEvolucao($pid, $statuses);
 
+        // Lista completa (inclui pendentes/cancelados quando sem filtro de status)
+        $agsLista = $this->buscarAgendamentos($inicio, $fim, $pid, $this->resolveStatusesLista($request->get('status')));
+
         $pdf = Pdf::loadView('exports.relatorio-pdf', [
             'config' => $config,
             'inicio' => Carbon::parse($inicio)->format('d/m/Y'),
@@ -210,7 +232,7 @@ class RelatorioExportController extends Controller
             'totalReceita' => $totalRec,
             'totalComissao' => $totalCom,
             'evolucao' => $evolucao,
-            'agendamentos' => $ags->take(50),
+            'agendamentos' => $agsLista->take(50),
             'campos' => $this->camposExtras(),
         ])->setPaper('a4', 'landscape');
 

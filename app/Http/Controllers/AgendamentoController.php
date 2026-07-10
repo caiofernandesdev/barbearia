@@ -23,6 +23,7 @@ class AgendamentoController extends Controller
             'nomeBarbearia' => $config->nome_barbearia ?? 'Barbearia',
             'logoUrl' => $config->logo ? url('storage/'.$config->logo) : null,
             'tenantSlug' => $request->route('tenant'),
+            'tema' => $config->tema_agendamento ?? 'escuro',
         ]);
     }
 
