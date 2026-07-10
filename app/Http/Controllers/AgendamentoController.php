@@ -354,10 +354,12 @@ class AgendamentoController extends Controller
     public function confirmado(Request $request)
     {
         $agendamento = Agendamento::with(['profissional', 'servico', 'servicos'])->findOrFail($request->route('agendamentoId'));
-        $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia ?? 'Barbearia';
+        $config = ConfiguracaoBarbearia::getInstance();
+        $nomeBarbearia = $config->nome_barbearia ?? 'Barbearia';
+        $tema = $config->tema_agendamento ?? 'escuro';
         $tenantSlug = $request->route('tenant');
 
-        return view('pages.agendamento.confirmado', compact('agendamento', 'nomeBarbearia', 'tenantSlug'));
+        return view('pages.agendamento.confirmado', compact('agendamento', 'nomeBarbearia', 'tenantSlug', 'tema'));
     }
 
     public function meusAgendamentos(Request $request)
@@ -372,10 +374,12 @@ class AgendamentoController extends Controller
             ->orderBy('data_hora')
             ->get();
 
-        $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia ?? 'Barbearia';
+        $config = ConfiguracaoBarbearia::getInstance();
+        $nomeBarbearia = $config->nome_barbearia ?? 'Barbearia';
+        $tema = $config->tema_agendamento ?? 'escuro';
         $tenantSlug = $request->route('tenant');
 
-        return view('pages.agendamento.meus-agendamentos', compact('agendamentos', 'telefone', 'nomeBarbearia', 'tenantSlug'));
+        return view('pages.agendamento.meus-agendamentos', compact('agendamentos', 'telefone', 'nomeBarbearia', 'tenantSlug', 'tema'));
     }
 
     public function cancelar(Request $request)
