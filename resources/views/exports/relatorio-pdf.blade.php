@@ -142,6 +142,9 @@
             <th>Serviço</th>
             <th class="r">Valor</th>
             <th class="c">Status</th>
+            @foreach($campos ?? [] as $campo)
+            <th>{{ $campo->nome }}</th>
+            @endforeach
         </tr>
     </thead>
     <tbody>
@@ -151,8 +154,8 @@
             <td class="c">{{ $ag->data_hora->format('H:i') }}</td>
             <td class="bold">{{ $ag->cliente_nome }}</td>
             <td>{{ $ag->profissional?->nome ?? '-' }}</td>
-            <td>{{ $ag->servico?->nome ?? '-' }}</td>
-            <td class="r green">R$ {{ number_format($ag->servico?->preco ?? 0, 2, ',', '.') }}</td>
+            <td>{{ $ag->nomesServicos() ?: '-' }}</td>
+            <td class="r green">R$ {{ number_format((float) ($ag->valor_total ?? $ag->servico?->preco ?? 0), 2, ',', '.') }}</td>
             <td class="c">
                 @if($ag->status === 'concluido')
                     <span class="badge badge-green">Concluído</span>
@@ -162,6 +165,9 @@
                     <span class="badge badge-red">Cancelado</span>
                 @endif
             </td>
+            @foreach($campos ?? [] as $campo)
+            <td>{{ $ag->dados_extras[$campo->slug] ?? '-' }}</td>
+            @endforeach
         </tr>
         @endforeach
     </tbody>

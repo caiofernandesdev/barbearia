@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\Agendamento;
+use App\Models\CampoPersonalizado;
 use App\Models\ConfiguracaoBarbearia;
 use App\Models\Profissional;
 use App\Models\Tenant;
@@ -40,9 +41,15 @@ class RelatorioExportController extends Controller
         return Agendamento::whereIn('status', $statuses)
             ->whereBetween('data_hora', [$inicio.' 00:00:00', $fim.' 23:59:59'])
             ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
-            ->with(['servico', 'profissional'])
+            ->with(['servico', 'servicos', 'profissional'])
             ->orderBy('data_hora', 'desc')
             ->get();
+    }
+
+    /** Campos personalizados ativos do tenant — viram colunas extras nos exports. */
+    private function camposExtras()
+    {
+        return CampoPersonalizado::where('ativo', true)->orderBy('ordem')->get();
     }
 
     private function calcBarbeiros($ags, $profissionais): array
@@ -111,9 +118,10 @@ class RelatorioExportController extends Controller
         $totalCom = array_sum(array_column($barbeiros, 'comissao'));
         $evolucao = $this->calcEvolucao($pid, $statuses);
 
+        $campos = $this->camposExtras();
         $filename = 'relatorio-'.$inicio.'-a-'.$fim.'.csv';
 
-        return response()->streamDownload(function () use ($barbeiros, $ags, $totalRec, $totalAg, $totalCom, $evolucao, $inicio, $fim) {
+        return response()->streamDownload(function () use ($barbeiros, $ags, $totalRec, $totalAg, $totalCom, $evolucao, $inicio, $fim, $campos) {
             $out = fopen('php://output', 'w');
             fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
 
@@ -150,9 +158,12 @@ class RelatorioExportController extends Controller
             fputcsv($out, [''], ';');
 
             fputcsv($out, ['LISTA DE AGENDAMENTOS DO PERÍODO'], ';');
-            fputcsv($out, ['Data', 'Hora', 'Cliente', 'Telefone', 'Barbeiro', 'Serviço', 'Valor (R$)', 'Status'], ';');
+            fputcsv($out, array_merge(
+                ['Data', 'Hora', 'Cliente', 'Telefone', 'Barbeiro', 'Serviço', 'Valor (R$)', 'Status'],
+                $campos->pluck('nome')->all() // uma coluna por campo personalizado
+            ), ';');
             foreach ($ags as $ag) {
-                fputcsv($out, [
+                fputcsv($out, array_merge([
                     $ag->data_hora->format('d/m/Y'), $ag->data_hora->format('H:i'),
                     $ag->cliente_nome, $ag->cliente_telefone,
                     $ag->profissional?->nome ?? '-', $ag->nomesServicos() ?: '-',
@@ -160,7 +171,7 @@ class RelatorioExportController extends Controller
                     match ($ag->status) {
                         'concluido' => 'Concluído', 'confirmado' => 'Confirmado', 'cancelado' => 'Cancelado', 'pendente' => 'Pendente', default => $ag->status
                     },
-                ], ';');
+                ], $campos->map(fn ($c) => $ag->dados_extras[$c->slug] ?? '-')->all()), ';');
             }
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
@@ -200,6 +211,7 @@ class RelatorioExportController extends Controller
             'totalComissao' => $totalCom,
             'evolucao' => $evolucao,
             'agendamentos' => $ags->take(50),
+            'campos' => $this->camposExtras(),
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download('relatorio-'.$inicio.'-a-'.$fim.'.pdf');
