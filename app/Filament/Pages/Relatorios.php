@@ -63,6 +63,14 @@ class Relatorios extends Page implements HasTable
         $this->dataFim = now()->endOfMonth()->format('Y-m-d');
     }
 
+    /** O plano do tenant inclui este relatório? (usado também pelo blade da página) */
+    public function temRelatorio(string $slug): bool
+    {
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
+        return $tenant?->hasRelatorio($slug) ?? false;
+    }
+
     // ─── Ações do cabeçalho (exportações) ────────────────────────────────────
 
     protected function getHeaderActions(): array
@@ -137,37 +145,52 @@ class Relatorios extends Page implements HasTable
     {
         $r = $this->calcResumo();
 
-        return $schema->components([
-            Stat::make('Atendimentos', (string) $r['total'])
+        // Cada card só entra se o plano do tenant incluir o relatório correspondente
+        $cards = [];
+
+        if ($this->temRelatorio('atendimentos')) {
+            $cards[] = Stat::make('Atendimentos', (string) $r['total'])
                 ->description('no período selecionado')
                 ->icon(Heroicon::OutlinedCalendarDays)
-                ->color('warning'),
+                ->color('warning');
+        }
 
-            Stat::make('Receita Total', 'R$ '.number_format($r['receita'], 2, ',', '.'))
+        if ($this->temRelatorio('receita')) {
+            $cards[] = Stat::make('Receita Total', 'R$ '.number_format($r['receita'], 2, ',', '.'))
                 ->description('ticket médio R$ '.number_format($r['ticketMed'], 2, ',', '.'))
                 ->icon(Heroicon::OutlinedCurrencyDollar)
-                ->color('success'),
+                ->color('success');
+        }
 
-            Stat::make('Comissões a Pagar', 'R$ '.number_format($r['comissoes'], 2, ',', '.'))
+        if ($this->temRelatorio('desempenho_barbeiro')) {
+            $cards[] = Stat::make('Comissões a Pagar', 'R$ '.number_format($r['comissoes'], 2, ',', '.'))
                 ->description('total devido aos barbeiros')
                 ->icon(Heroicon::OutlinedBanknotes)
-                ->color('info'),
+                ->color('info');
+        }
 
-            Stat::make('Clientes Únicos', (string) $r['unicos'])
+        if ($this->temRelatorio('clientes_unicos')) {
+            $cards[] = Stat::make('Clientes Únicos', (string) $r['unicos'])
                 ->description($r['recorrentes'].' retornaram no trimestre')
                 ->icon(Heroicon::OutlinedUsers)
-                ->color('info'),
+                ->color('info');
+        }
 
-            Stat::make('Cancelamentos', $r['taxaCancel'].'%')
+        if ($this->temRelatorio('cancelamentos')) {
+            $cards[] = Stat::make('Cancelamentos', $r['taxaCancel'].'%')
                 ->description($r['cancelados'].' agendamentos cancelados')
                 ->icon(Heroicon::OutlinedXCircle)
-                ->color($r['taxaCancel'] > 20 ? 'danger' : 'gray'),
+                ->color($r['taxaCancel'] > 20 ? 'danger' : 'gray');
+        }
 
-            Stat::make('Serviço + Realizado', $r['servicoTop']['nome'] ?? '—')
+        if ($this->temRelatorio('servico_top')) {
+            $cards[] = Stat::make('Serviço + Realizado', $r['servicoTop']['nome'] ?? '—')
                 ->description(($r['servicoTop']['qtd'] ?? 0).'x no período')
                 ->icon(Heroicon::OutlinedScissors)
-                ->color('warning'),
-        ])->columns(3);
+                ->color('warning');
+        }
+
+        return $schema->components($cards)->columns(3);
     }
 
     // ─── Tabela de desempenho por barbeiro ────────────────────────────────────

@@ -30,33 +30,40 @@ class DatabaseSeeder extends Seeder
 
         // ─── Planos ───────────────────────────────────────────────────────────
         Plano::firstOrCreate(['nome' => 'Básico'], [
-            'descricao'    => 'Agendamento online + painel admin básico',
+            'descricao' => 'Agendamento online + painel admin básico',
             'preco_mensal' => 97.00,
-            'features'     => ['mensalistas', 'indisponibilidades'],
-            'ativo'        => true,
+            'features' => ['mensalistas', 'indisponibilidades'],
+            'ativo' => true,
         ]);
 
         $planoPro = Plano::firstOrCreate(['nome' => 'Pro'], [
-            'descricao'    => 'Tudo do Básico + WhatsApp + Relatórios + Salário Emocional',
+            'descricao' => 'Tudo do Básico + WhatsApp + Relatórios + Salário Emocional',
             'preco_mensal' => 197.00,
-            'features'     => ['mensalistas', 'indisponibilidades', 'relatorios', 'salario_emocional', 'whatsapp'],
-            'ativo'        => true,
+            // Relatórios granulares (rel_*): Pro tem os principais
+            'features' => ['mensalistas', 'indisponibilidades', 'relatorios', 'salario_emocional', 'whatsapp',
+                'rel_atendimentos', 'rel_receita', 'rel_clientes_unicos', 'rel_cancelamentos',
+                'rel_servico_top', 'rel_desempenho_barbeiro', 'rel_agendamentos_periodo'],
+            'ativo' => true,
         ]);
 
         Plano::firstOrCreate(['nome' => 'Enterprise'], [
-            'descricao'    => 'Acesso completo a todos os módulos',
+            'descricao' => 'Acesso completo a todos os módulos',
             'preco_mensal' => 397.00,
-            'features'     => ['mensalistas', 'indisponibilidades', 'relatorios', 'repescagem', 'salario_emocional', 'whatsapp', 'campos_agendamento', 'import_export'],
-            'ativo'        => true,
+            // Enterprise: todos os relatórios (inclui evolução mensal)
+            'features' => array_merge(
+                ['mensalistas', 'indisponibilidades', 'relatorios', 'repescagem', 'salario_emocional', 'whatsapp', 'campos_agendamento', 'import_export'],
+                array_keys(Plano::RELATORIOS)
+            ),
+            'ativo' => true,
         ]);
 
         // ─── Tenant demo ──────────────────────────────────────────────────────
         $tenant = Tenant::firstOrCreate(['slug' => 'demo'], [
-            'nome'                    => 'Barbearia Studio Demo',
-            'tipo'                    => 'barbearia',
+            'nome' => 'Barbearia Studio Demo',
+            'tipo' => 'barbearia',
             'tipo_estabelecimento_id' => $tipoBarbearia->id,
-            'plano_id'                => $planoPro->id,
-            'ativo'                   => true,
+            'plano_id' => $planoPro->id,
+            'ativo' => true,
         ]);
         $tid = $tenant->id;
 
@@ -77,13 +84,13 @@ class DatabaseSeeder extends Seeder
         ConfiguracaoBarbearia::withoutGlobalScopes()->firstOrCreate(
             ['tenant_id' => $tid],
             [
-                'nome_barbearia'                  => 'Barbearia Studio',
-                'dias_funcionamento'              => [1, 2, 3, 4, 5, 6],
-                'horario_abertura'                => '08:00',
-                'horario_encerramento'            => '19:00',
-                'intervalo_minutos'               => 60,
+                'nome_barbearia' => 'Barbearia Studio',
+                'dias_funcionamento' => [1, 2, 3, 4, 5, 6],
+                'horario_abertura' => '08:00',
+                'horario_encerramento' => '19:00',
+                'intervalo_minutos' => 60,
                 'mensalista_limite_cortes_semana' => 1,
-                'tenant_id'                       => $tid,
+                'tenant_id' => $tid,
             ]
         );
 
@@ -165,13 +172,15 @@ class DatabaseSeeder extends Seeder
             ['nome' => 'Cristiano Moraes',   'telefone' => '51977770008', 'diasAtras' => 55],
         ];
 
-        $horarios  = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
+        $horarios = ['08:00', '09:00', '10:00', '11:00', '13:00', '14:00', '15:00', '16:00', '17:00', '18:00'];
         $usedSlots = [];
 
         // Histórico de 3 meses
         for ($daysAgo = 90; $daysAgo >= 1; $daysAgo--) {
             $data = now()->subDays($daysAgo);
-            if ($data->dayOfWeek === 0) continue;
+            if ($data->dayOfWeek === 0) {
+                continue;
+            }
 
             $qtdDia = rand(3, 5);
             shuffle($horarios);
@@ -179,40 +188,42 @@ class DatabaseSeeder extends Seeder
 
             foreach ($horariosUsados as $hora) {
                 $profissional = $profissionais->random();
-                $slotKey      = $profissional->id . '-' . $data->format('Y-m-d') . '-' . $hora;
-                if (isset($usedSlots[$slotKey])) continue;
+                $slotKey = $profissional->id.'-'.$data->format('Y-m-d').'-'.$hora;
+                if (isset($usedSlots[$slotKey])) {
+                    continue;
+                }
                 $usedSlots[$slotKey] = true;
 
-                $servicoId    = $servicoIds[array_rand($servicoIds)];
+                $servicoId = $servicoIds[array_rand($servicoIds)];
                 $isMensalista = rand(1, 4) === 1;
 
                 if ($isMensalista) {
-                    $m            = $mensalistas->random();
-                    $clienteNome  = $m->nome;
-                    $clienteTel   = $m->telefone;
+                    $m = $mensalistas->random();
+                    $clienteNome = $m->nome;
+                    $clienteTel = $m->telefone;
                     $mensalistaId = $m->id;
                     $ehMensalista = true;
                 } else {
-                    $av           = $clientesAvulsos[array_rand($clientesAvulsos)];
-                    $clienteNome  = $av['nome'];
-                    $clienteTel   = $av['telefone'];
+                    $av = $clientesAvulsos[array_rand($clientesAvulsos)];
+                    $clienteNome = $av['nome'];
+                    $clienteTel = $av['telefone'];
                     $mensalistaId = null;
                     $ehMensalista = false;
                 }
 
-                $r      = rand(1, 10);
+                $r = rand(1, 10);
                 $status = $r <= 7 ? 'concluido' : ($r <= 9 ? 'confirmado' : 'cancelado');
 
                 Agendamento::create([
-                    'tenant_id'        => $tid,
-                    'cliente_nome'     => $clienteNome,
+                    'tenant_id' => $tid,
+                    'cliente_nome' => $clienteNome,
                     'cliente_telefone' => $clienteTel,
-                    'profissional_id'  => $profissional->id,
-                    'servico_id'       => $servicoId,
-                    'data_hora'        => $data->format('Y-m-d') . ' ' . $hora . ':00',
-                    'status'           => $status,
-                    'mensalista'       => $ehMensalista,
-                    'mensalista_id'    => $mensalistaId,
+                    'profissional_id' => $profissional->id,
+                    'servico_id' => $servicoId,
+                    'data_hora' => $data->format('Y-m-d').' '.$hora.':00',
+                    'status' => $status,
+                    'mensalista' => $ehMensalista,
+                    'mensalista_id' => $mensalistaId,
                 ]);
             }
         }
@@ -230,32 +241,34 @@ class DatabaseSeeder extends Seeder
         ];
 
         foreach ($clientesRepescagem as $cr) {
-            if (Agendamento::withoutGlobalScopes()->where('tenant_id', $tid)->where('cliente_telefone', $cr['telefone'])->exists()) continue;
+            if (Agendamento::withoutGlobalScopes()->where('tenant_id', $tid)->where('cliente_telefone', $cr['telefone'])->exists()) {
+                continue;
+            }
 
             $profissional = $profissionais->random();
-            $servicoId    = $servicoIds[array_rand($servicoIds)];
+            $servicoId = $servicoIds[array_rand($servicoIds)];
 
             Agendamento::create([
-                'tenant_id'        => $tid,
-                'cliente_nome'     => $cr['nome'],
+                'tenant_id' => $tid,
+                'cliente_nome' => $cr['nome'],
                 'cliente_telefone' => $cr['telefone'],
-                'profissional_id'  => $profissional->id,
-                'servico_id'       => $servicoId,
-                'data_hora'        => now()->subDays($cr['dias'])->setTime(10, 0)->format('Y-m-d H:i:s'),
-                'status'           => 'concluido',
-                'mensalista'       => false,
+                'profissional_id' => $profissional->id,
+                'servico_id' => $servicoId,
+                'data_hora' => now()->subDays($cr['dias'])->setTime(10, 0)->format('Y-m-d H:i:s'),
+                'status' => 'concluido',
+                'mensalista' => false,
             ]);
 
             if ($cr['dias'] > 50) {
                 Agendamento::create([
-                    'tenant_id'        => $tid,
-                    'cliente_nome'     => $cr['nome'],
+                    'tenant_id' => $tid,
+                    'cliente_nome' => $cr['nome'],
                     'cliente_telefone' => $cr['telefone'],
-                    'profissional_id'  => $profissional->id,
-                    'servico_id'       => $servicoId,
-                    'data_hora'        => now()->subDays($cr['dias'] + 30)->setTime(14, 0)->format('Y-m-d H:i:s'),
-                    'status'           => 'concluido',
-                    'mensalista'       => false,
+                    'profissional_id' => $profissional->id,
+                    'servico_id' => $servicoId,
+                    'data_hora' => now()->subDays($cr['dias'] + 30)->setTime(14, 0)->format('Y-m-d H:i:s'),
+                    'status' => 'concluido',
+                    'mensalista' => false,
                 ]);
             }
         }
@@ -263,7 +276,9 @@ class DatabaseSeeder extends Seeder
         // Agendamentos futuros (próximos 7 dias)
         for ($daysAhead = 1; $daysAhead <= 7; $daysAhead++) {
             $data = now()->addDays($daysAhead);
-            if ($data->dayOfWeek === 0) continue;
+            if ($data->dayOfWeek === 0) {
+                continue;
+            }
 
             $qtdDia = rand(2, 4);
             shuffle($horarios);
@@ -271,20 +286,22 @@ class DatabaseSeeder extends Seeder
 
             foreach ($horariosUsados as $hora) {
                 $profissional = $profissionais->random();
-                $slotKey      = $profissional->id . '-' . $data->format('Y-m-d') . '-' . $hora;
-                if (isset($usedSlots[$slotKey])) continue;
+                $slotKey = $profissional->id.'-'.$data->format('Y-m-d').'-'.$hora;
+                if (isset($usedSlots[$slotKey])) {
+                    continue;
+                }
                 $usedSlots[$slotKey] = true;
 
                 $av = $clientesAvulsos[array_rand($clientesAvulsos)];
                 Agendamento::create([
-                    'tenant_id'        => $tid,
-                    'cliente_nome'     => $av['nome'],
+                    'tenant_id' => $tid,
+                    'cliente_nome' => $av['nome'],
                     'cliente_telefone' => $av['telefone'],
-                    'profissional_id'  => $profissional->id,
-                    'servico_id'       => $servicoIds[array_rand($servicoIds)],
-                    'data_hora'        => $data->format('Y-m-d') . ' ' . $hora . ':00',
-                    'status'           => rand(0, 1) ? 'pendente' : 'confirmado',
-                    'mensalista'       => false,
+                    'profissional_id' => $profissional->id,
+                    'servico_id' => $servicoIds[array_rand($servicoIds)],
+                    'data_hora' => $data->format('Y-m-d').' '.$hora.':00',
+                    'status' => rand(0, 1) ? 'pendente' : 'confirmado',
+                    'mensalista' => false,
                 ]);
             }
         }

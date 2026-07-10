@@ -49,12 +49,15 @@
     <div class="sub">Período: {{ $inicio }} a {{ $fim }} &nbsp;|&nbsp; Gerado em {{ now()->format('d/m/Y H:i') }}</div>
 </div>
 
-{{-- KPIs --}}
+{{-- KPIs (cada card depende do plano do tenant) --}}
 <div class="kpi-row">
+    @if($rel['atendimentos'] ?? true)
     <div class="kpi">
         <div class="val">{{ $totalAtendimentos }}</div>
         <div class="lbl">Atendimentos</div>
     </div>
+    @endif
+    @if($rel['receita'] ?? true)
     <div class="kpi">
         <div class="val">R$ {{ number_format($totalReceita, 2, ',', '.') }}</div>
         <div class="lbl">Receita Total</div>
@@ -63,12 +66,16 @@
         <div class="val">R$ {{ number_format($totalAtendimentos > 0 ? $totalReceita / $totalAtendimentos : 0, 2, ',', '.') }}</div>
         <div class="lbl">Ticket Médio</div>
     </div>
+    @endif
+    @if($rel['desempenho_barbeiro'] ?? true)
     <div class="kpi">
         <div class="val">R$ {{ number_format($totalComissao, 2, ',', '.') }}</div>
         <div class="lbl">Comissões</div>
     </div>
+    @endif
 </div>
 
+@if($rel['desempenho_barbeiro'] ?? true)
 {{-- Desempenho por Barbeiro --}}
 <h2>Desempenho por Barbeiro</h2>
 <table>
@@ -105,7 +112,9 @@
         </tr>
     </tfoot>
 </table>
+@endif
 
+@if($rel['evolucao_mensal'] ?? true)
 {{-- Evolução Mensal --}}
 <h2>Evolução Mensal (últimos 6 meses)</h2>
 <table>
@@ -128,9 +137,10 @@
         @endforeach
     </tbody>
 </table>
+@endif
 
 {{-- Lista de Agendamentos --}}
-@if($agendamentos->count())
+@if(($rel['agendamentos_periodo'] ?? true) && $agendamentos->count())
 <h2>Agendamentos do Período ({{ $agendamentos->count() > 50 ? 'primeiros 50 de ' . $agendamentos->count() : $agendamentos->count() }} registros)</h2>
 <table>
     <thead>

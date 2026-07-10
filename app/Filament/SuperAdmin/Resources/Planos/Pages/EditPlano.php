@@ -14,4 +14,19 @@ class EditPlano extends EditRecord
     {
         return [DeleteAction::make()];
     }
+
+    /** Separa os slugs rel_* do array features para preencher o CheckboxList próprio. */
+    protected function mutateFormDataBeforeFill(array $data): array
+    {
+        $features = $data['features'] ?? [];
+        $data['relatorios_inclusos'] = array_values(array_filter($features, fn ($f) => str_starts_with($f, 'rel_')));
+        $data['features'] = array_values(array_filter($features, fn ($f) => ! str_starts_with($f, 'rel_')));
+
+        return $data;
+    }
+
+    protected function mutateFormDataBeforeSave(array $data): array
+    {
+        return PlanosResource::mesclarRelatoriosNasFeatures($data);
+    }
 }

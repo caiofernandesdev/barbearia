@@ -6,6 +6,10 @@ use App\Filament\SuperAdmin\Resources\Planos\Pages\CreatePlano;
 use App\Filament\SuperAdmin\Resources\Planos\Pages\EditPlano;
 use App\Filament\SuperAdmin\Resources\Planos\Pages\ListPlanos;
 use App\Models\Plano;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -26,7 +30,9 @@ class PlanosResource extends Resource
     {
         return 'heroicon-o-credit-card';
     }
+
     protected static ?string $modelLabel = 'Plano';
+
     protected static ?string $pluralModelLabel = 'Planos';
 
     public static function getNavigationGroup(): ?string
@@ -55,16 +61,27 @@ class PlanosResource extends Resource
             CheckboxList::make('features')
                 ->label('Módulos inclusos')
                 ->options([
-                    'mensalistas'        => 'Mensalistas',
+                    'mensalistas' => 'Mensalistas',
                     'indisponibilidades' => 'Indisponibilidades de agenda',
-                    'relatorios'         => 'Relatórios e dashboard',
-                    'repescagem'         => 'Repescagem de clientes',
-                    'salario_emocional'  => 'Salário emocional',
-                    'whatsapp'           => 'Integração WhatsApp',
+                    'relatorios' => 'Relatórios e dashboard',
+                    'repescagem' => 'Repescagem de clientes',
+                    'salario_emocional' => 'Salário emocional',
+                    'whatsapp' => 'Integração WhatsApp',
                     'campos_agendamento' => 'Campos personalizados no agendamento',
-                    'import_export'      => 'Importação / Exportação',
+                    'import_export' => 'Importação / Exportação',
                 ])
-                ->columns(2),
+                ->columns(2)
+                ->live(),
+
+            // Sub-módulos: quais relatórios o plano inclui. Salvo junto no array
+            // features (slugs rel_*) — merge feito nas páginas Create/Edit.
+            // Nenhum marcado = todos liberados (retrocompat com planos antigos).
+            CheckboxList::make('relatorios_inclusos')
+                ->label('Relatórios inclusos no plano')
+                ->helperText('Nenhum marcado = todos os relatórios liberados. O Salário Emocional é o módulo próprio acima.')
+                ->options(Plano::RELATORIOS)
+                ->columns(2)
+                ->visible(fn ($get) => in_array('relatorios', $get('features') ?? [])),
 
             Toggle::make('ativo')
                 ->label('Ativo')
@@ -102,12 +119,12 @@ class PlanosResource extends Resource
             ])
             ->defaultSort('preco_mensal')
             ->actions([
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -115,9 +132,28 @@ class PlanosResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListPlanos::route('/'),
+            'index' => ListPlanos::route('/'),
             'create' => CreatePlano::route('/create'),
-            'edit'   => EditPlano::route('/{record}/edit'),
+            'edit' => EditPlano::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Junta os relatórios granulares (rel_*) de volta no array features.
+     * Sem o módulo 'relatorios' marcado, os rel_* são descartados.
+     */
+    public static function mesclarRelatoriosNasFeatures(array $data): array
+    {
+        $features = array_values(array_filter($data['features'] ?? [], fn ($f) => ! str_starts_with($f, 'rel_')));
+        $relatorios = $data['relatorios_inclusos'] ?? [];
+
+        if (in_array('relatorios', $features, true)) {
+            $features = array_values(array_unique(array_merge($features, $relatorios)));
+        }
+
+        $data['features'] = $features;
+        unset($data['relatorios_inclusos']);
+
+        return $data;
     }
 }

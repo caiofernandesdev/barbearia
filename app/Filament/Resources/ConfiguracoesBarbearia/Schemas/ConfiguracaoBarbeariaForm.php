@@ -10,6 +10,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\HtmlString;
 
 class ConfiguracaoBarbeariaForm
 {
@@ -47,6 +48,27 @@ class ConfiguracaoBarbeariaForm
                         ->default('escuro')
                         ->required()
                         ->helperText('Aparência da página pública onde os clientes agendam.'),
+
+                    Placeholder::make('link_agendamento')
+                        ->label('Link de agendamento — envie aos seus clientes')
+                        ->columnSpanFull()
+                        ->content(function () {
+                            $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+                            if (! $tenant) {
+                                return '—';
+                            }
+                            $url = url('/'.$tenant->slug);
+
+                            // Estilos inline de propósito: imunes ao CSS compilado do Filament
+                            return new HtmlString(
+                                '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
+                                .'<code style="padding:8px 12px;border-radius:8px;background:rgba(120,120,120,.15);font-size:13px;user-select:all;">'.e($url).'</code>'
+                                .'<button type="button" style="padding:8px 14px;border-radius:8px;background:#f59e0b;color:#111827;font-weight:600;font-size:13px;cursor:pointer;" '
+                                .'onclick="navigator.clipboard.writeText(\''.e($url).'\').then(() => { this.textContent = \'✓ Copiado!\'; setTimeout(() => this.textContent = \'Copiar link\', 2000); })">Copiar link</button>'
+                                .'<a href="'.e($url).'" target="_blank" style="font-size:13px;text-decoration:underline;opacity:.8;">abrir em nova aba</a>'
+                                .'</div>'
+                            );
+                        }),
                 ]),
 
             Section::make('Horários e Slots')

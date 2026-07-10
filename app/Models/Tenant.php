@@ -14,7 +14,7 @@ class Tenant extends Model
     {
         return [
             'whatsapp_config' => 'array',
-            'ativo'           => 'boolean',
+            'ativo' => 'boolean',
         ];
     }
 
@@ -57,15 +57,37 @@ class Tenant extends Model
         return $this->plano?->hasFeature($feature) ?? false;
     }
 
+    /**
+     * O plano inclui este relatório granular? (slug sem o prefixo rel_)
+     *
+     * Retrocompat: plano antigo com 'relatorios' e NENHUM rel_* marcado
+     * mantém todos os relatórios liberados.
+     */
+    public function hasRelatorio(string $slug): bool
+    {
+        if (! $this->hasFeature('relatorios')) {
+            return false;
+        }
+
+        $features = $this->plano?->features ?? [];
+        $granulares = array_filter($features, fn ($f) => str_starts_with($f, 'rel_'));
+
+        if ($granulares === []) {
+            return true; // legado: sem granularidade configurada = tudo liberado
+        }
+
+        return in_array('rel_'.$slug, $features, true);
+    }
+
     // Helpers de config WhatsApp
     public function whatsappBaseUrl(): string
     {
-        return $this->whatsapp_config['base_url'] ?? config('services.evolution.base_url', '');
+        return $this->whatsapp_config['base_url'] ?? config('services.evolution.url', '');
     }
 
     public function whatsappApiKey(): string
     {
-        return $this->whatsapp_config['api_key'] ?? config('services.evolution.api_key', '');
+        return $this->whatsapp_config['api_key'] ?? config('services.evolution.apikey', '');
     }
 
     public function whatsappInstance(): string

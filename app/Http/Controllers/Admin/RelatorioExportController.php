@@ -68,6 +68,17 @@ class RelatorioExportController extends Controller
         return CampoPersonalizado::where('ativo', true)->orderBy('ordem')->get();
     }
 
+    /** Gates dos relatórios granulares do plano do tenant (slug => liberado?). */
+    private function relatoriosDoPlano(): array
+    {
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
+        return collect(['atendimentos', 'receita', 'clientes_unicos', 'cancelamentos',
+            'servico_top', 'desempenho_barbeiro', 'evolucao_mensal', 'agendamentos_periodo'])
+            ->mapWithKeys(fn ($s) => [$s => $tenant?->hasRelatorio($s) ?? false])
+            ->all();
+    }
+
     private function calcBarbeiros($ags, $profissionais): array
     {
         return $profissionais->map(function ($prof) use ($ags) {
@@ -138,9 +149,10 @@ class RelatorioExportController extends Controller
         $agsLista = $this->buscarAgendamentos($inicio, $fim, $pid, $this->resolveStatusesLista($request->get('status')));
 
         $campos = $this->camposExtras();
+        $rel = $this->relatoriosDoPlano();
         $filename = 'relatorio-'.$inicio.'-a-'.$fim.'.csv';
 
-        return response()->streamDownload(function () use ($barbeiros, $agsLista, $totalRec, $totalAg, $totalCom, $evolucao, $inicio, $fim, $campos) {
+        return response()->streamDownload(function () use ($barbeiros, $agsLista, $totalRec, $totalAg, $totalCom, $evolucao, $inicio, $fim, $campos, $rel) {
             $out = fopen('php://output', 'w');
             fprintf($out, chr(0xEF).chr(0xBB).chr(0xBF));
 
@@ -148,49 +160,62 @@ class RelatorioExportController extends Controller
             fputcsv($out, ['Período: '.Carbon::parse($inicio)->format('d/m/Y').' a '.Carbon::parse($fim)->format('d/m/Y')], ';');
             fputcsv($out, [''], ';');
 
+            // Cada seção/linha só entra se o plano do tenant incluir o relatório
             fputcsv($out, ['RESUMO GERAL'], ';');
-            fputcsv($out, ['Total de Atendimentos', $totalAg], ';');
-            fputcsv($out, ['Receita Total', 'R$ '.number_format($totalRec, 2, ',', '.')], ';');
-            fputcsv($out, ['Ticket Médio', 'R$ '.number_format($totalAg > 0 ? $totalRec / $totalAg : 0, 2, ',', '.')], ';');
-            fputcsv($out, ['Total Comissões', 'R$ '.number_format($totalCom, 2, ',', '.')], ';');
-            fputcsv($out, [''], ';');
-
-            fputcsv($out, ['DESEMPENHO POR BARBEIRO'], ';');
-            fputcsv($out, ['Barbeiro', 'Atendimentos', 'Receita (R$)', 'Ticket Médio (R$)', '% Comissão', 'Comissão (R$)', 'Clientes Únicos'], ';');
-            foreach ($barbeiros as $b) {
-                fputcsv($out, [
-                    $b['nome'], $b['total'],
-                    number_format($b['receita'], 2, ',', '.'),
-                    number_format($b['ticket'], 2, ',', '.'),
-                    $b['perc'].'%',
-                    number_format($b['comissao'], 2, ',', '.'),
-                    $b['clientes'],
-                ], ';');
+            if ($rel['atendimentos']) {
+                fputcsv($out, ['Total de Atendimentos', $totalAg], ';');
+            }
+            if ($rel['receita']) {
+                fputcsv($out, ['Receita Total', 'R$ '.number_format($totalRec, 2, ',', '.')], ';');
+                fputcsv($out, ['Ticket Médio', 'R$ '.number_format($totalAg > 0 ? $totalRec / $totalAg : 0, 2, ',', '.')], ';');
+            }
+            if ($rel['desempenho_barbeiro']) {
+                fputcsv($out, ['Total Comissões', 'R$ '.number_format($totalCom, 2, ',', '.')], ';');
             }
             fputcsv($out, [''], ';');
 
-            fputcsv($out, ['EVOLUÇÃO MENSAL (últimos 6 meses)'], ';');
-            fputcsv($out, ['Mês', 'Atendimentos', 'Receita (R$)', 'Ticket Médio (R$)'], ';');
-            foreach ($evolucao as $e) {
-                fputcsv($out, [$e['mes'], $e['total'], number_format($e['receita'], 2, ',', '.'), number_format($e['ticket'], 2, ',', '.')], ';');
+            if ($rel['desempenho_barbeiro']) {
+                fputcsv($out, ['DESEMPENHO POR BARBEIRO'], ';');
+                fputcsv($out, ['Barbeiro', 'Atendimentos', 'Receita (R$)', 'Ticket Médio (R$)', '% Comissão', 'Comissão (R$)', 'Clientes Únicos'], ';');
+                foreach ($barbeiros as $b) {
+                    fputcsv($out, [
+                        $b['nome'], $b['total'],
+                        number_format($b['receita'], 2, ',', '.'),
+                        number_format($b['ticket'], 2, ',', '.'),
+                        $b['perc'].'%',
+                        number_format($b['comissao'], 2, ',', '.'),
+                        $b['clientes'],
+                    ], ';');
+                }
+                fputcsv($out, [''], ';');
             }
-            fputcsv($out, [''], ';');
 
-            fputcsv($out, ['LISTA DE AGENDAMENTOS DO PERÍODO'], ';');
-            fputcsv($out, array_merge(
-                ['Data', 'Hora', 'Cliente', 'Telefone', 'Barbeiro', 'Serviço', 'Valor (R$)', 'Status'],
-                $campos->pluck('nome')->all() // uma coluna por campo personalizado
-            ), ';');
-            foreach ($agsLista as $ag) {
-                fputcsv($out, array_merge([
-                    $ag->data_hora->format('d/m/Y'), $ag->data_hora->format('H:i'),
-                    $ag->cliente_nome, $ag->cliente_telefone,
-                    $ag->profissional?->nome ?? '-', $ag->nomesServicos() ?: '-',
-                    number_format((float) ($ag->valor_total ?? $ag->servico?->preco ?? 0), 2, ',', '.'),
-                    match ($ag->status) {
-                        'concluido' => 'Concluído', 'confirmado' => 'Confirmado', 'cancelado' => 'Cancelado', 'pendente' => 'Pendente', default => $ag->status
-                    },
-                ], $campos->map(fn ($c) => $ag->dados_extras[$c->slug] ?? '-')->all()), ';');
+            if ($rel['evolucao_mensal']) {
+                fputcsv($out, ['EVOLUÇÃO MENSAL (últimos 6 meses)'], ';');
+                fputcsv($out, ['Mês', 'Atendimentos', 'Receita (R$)', 'Ticket Médio (R$)'], ';');
+                foreach ($evolucao as $e) {
+                    fputcsv($out, [$e['mes'], $e['total'], number_format($e['receita'], 2, ',', '.'), number_format($e['ticket'], 2, ',', '.')], ';');
+                }
+                fputcsv($out, [''], ';');
+            }
+
+            if ($rel['agendamentos_periodo']) {
+                fputcsv($out, ['LISTA DE AGENDAMENTOS DO PERÍODO'], ';');
+                fputcsv($out, array_merge(
+                    ['Data', 'Hora', 'Cliente', 'Telefone', 'Barbeiro', 'Serviço', 'Valor (R$)', 'Status'],
+                    $campos->pluck('nome')->all() // uma coluna por campo personalizado
+                ), ';');
+                foreach ($agsLista as $ag) {
+                    fputcsv($out, array_merge([
+                        $ag->data_hora->format('d/m/Y'), $ag->data_hora->format('H:i'),
+                        $ag->cliente_nome, $ag->cliente_telefone,
+                        $ag->profissional?->nome ?? '-', $ag->nomesServicos() ?: '-',
+                        number_format((float) ($ag->valor_total ?? $ag->servico?->preco ?? 0), 2, ',', '.'),
+                        match ($ag->status) {
+                            'concluido' => 'Concluído', 'confirmado' => 'Confirmado', 'cancelado' => 'Cancelado', 'pendente' => 'Pendente', default => $ag->status
+                        },
+                    ], $campos->map(fn ($c) => $ag->dados_extras[$c->slug] ?? '-')->all()), ';');
+                }
             }
             fclose($out);
         }, $filename, ['Content-Type' => 'text/csv; charset=UTF-8']);
@@ -234,6 +259,7 @@ class RelatorioExportController extends Controller
             'evolucao' => $evolucao,
             'agendamentos' => $agsLista->take(50),
             'campos' => $this->camposExtras(),
+            'rel' => $this->relatoriosDoPlano(),
         ])->setPaper('a4', 'landscape');
 
         return $pdf->download('relatorio-'.$inicio.'-a-'.$fim.'.pdf');
