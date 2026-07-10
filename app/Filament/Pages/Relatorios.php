@@ -288,7 +288,7 @@ class Relatorios extends Page implements HasTable
         $ags = Agendamento::whereIn('status', $statuses)
             ->whereBetween('data_hora', [$inicio.' 00:00:00', $fim.' 23:59:59'])
             ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
-            ->with(['servico', 'profissional'])
+            ->with(['servico', 'profissional', 'servicos'])
             ->get();
 
         $receita = $ags->sum(fn ($a) => $a->valor_total ?? $a->servico?->preco ?? 0);
@@ -315,8 +315,12 @@ class Relatorios extends Page implements HasTable
 
         $taxaCancel = $totalCriados > 0 ? round(($cancelados / $totalCriados) * 100, 1) : 0;
 
-        $servicoTop = $ags->groupBy('servico_id')
-            ->map(fn ($g) => ['nome' => $g->first()->servico?->nome ?? '?', 'qtd' => $g->count()])
+        // Conta TODOS os serviços de cada agendamento (multi-serviço) — pivot com
+        // fallback para o servico_id em agendamentos antigos sem pivot
+        $servicoTop = $ags->flatMap(fn ($a) => $a->servicos->isNotEmpty() ? $a->servicos : collect([$a->servico]))
+            ->filter()
+            ->groupBy('id')
+            ->map(fn ($g) => ['nome' => $g->first()->nome ?? '?', 'qtd' => $g->count()])
             ->sortByDesc('qtd')->first();
 
         $recorrentes = Agendamento::whereIn('status', ['confirmado', 'concluido'])
