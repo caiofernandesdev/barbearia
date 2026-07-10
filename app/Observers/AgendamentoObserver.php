@@ -11,7 +11,9 @@ class AgendamentoObserver
 {
     private function ensureTenant(Agendamento $agendamento): void
     {
-        if (app()->bound('current_tenant')) return;
+        if (app()->bound('current_tenant')) {
+            return;
+        }
 
         if ($agendamento->tenant_id) {
             $tenant = Tenant::withoutGlobalScopes()->find($agendamento->tenant_id);
@@ -45,10 +47,13 @@ class AgendamentoObserver
         if ($agendamento->wasChanged('data_hora')) {
             $this->enviar($agendamento->cliente_telefone, static::mensagemReagendado($agendamento, $nomeBarbearia), $tid);
             $this->notificarBarbeiro($agendamento, $nomeBarbearia, 'reagendado');
+
             return;
         }
 
-        if (!$agendamento->wasChanged('status')) return;
+        if (! $agendamento->wasChanged('status')) {
+            return;
+        }
 
         match ($agendamento->status) {
             'confirmado' => $this->enviar($agendamento->cliente_telefone, static::mensagemConfirmado($agendamento, $nomeBarbearia), $tid),
@@ -63,13 +68,17 @@ class AgendamentoObserver
     private function notificarBarbeiro(Agendamento $agendamento, string $nomeBarbearia, string $tipo): void
     {
         $profissional = $agendamento->profissional;
-        if (! $profissional || empty($profissional->telefone)) return;
-        if (preg_replace('/\D/', '', $profissional->telefone) === $agendamento->cliente_telefone) return;
+        if (! $profissional || empty($profissional->telefone)) {
+            return;
+        }
+        if (preg_replace('/\D/', '', $profissional->telefone) === $agendamento->cliente_telefone) {
+            return;
+        }
 
-        $data    = $agendamento->data_hora->format('d/m/Y');
-        $hora    = $agendamento->data_hora->format('H:i');
+        $data = $agendamento->data_hora->format('d/m/Y');
+        $hora = $agendamento->data_hora->format('H:i');
         $cliente = $agendamento->cliente_nome;
-        $servico = $agendamento->servico?->nome ?? '';
+        $servico = $agendamento->nomesServicos();
 
         $mensagem = match ($tipo) {
             'novo' => "📋 *Novo agendamento!*\n\n👤 *Cliente:* {$cliente}\n📅 *Data:* {$data}\n⏰ *Hora:* {$hora}\n✂️ *Serviço:* {$servico}\n\nStatus: Pendente.",
@@ -87,13 +96,17 @@ class AgendamentoObserver
 
     public static function mensagemRecebido(Agendamento $ag, string $nb): string
     {
-        return "Olá, {$ag->cliente_nome}! 👋\n\nRecebemos seu agendamento na *{$nb}*!\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👨 *Profissional:* {$ag->profissional->nome}\n💈 *Serviço:* {$ag->servico->nome}\n\nAguarde nossa confirmação. 😊";
+        $servicos = $ag->nomesServicos();
+
+        return "Olá, {$ag->cliente_nome}! 👋\n\nRecebemos seu agendamento na *{$nb}*!\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👨 *Profissional:* {$ag->profissional->nome}\n💈 *Serviço:* {$servicos}\n\nAguarde nossa confirmação. 😊";
     }
 
     public static function mensagemConfirmado(Agendamento $ag, string $nb): string
     {
-        $preco = 'R$ ' . number_format($ag->servico->preco, 2, ',', '.');
-        return "Olá, {$ag->cliente_nome}! ✂️\n\nSeu agendamento na *{$nb}* foi *confirmado*!\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👨 *Profissional:* {$ag->profissional->nome}\n💈 *Serviço:* {$ag->servico->nome}\n💰 *Valor:* {$preco}\n\nTe esperamos lá! 💈";
+        $servicos = $ag->nomesServicos();
+        $preco = 'R$ '.number_format((float) ($ag->valor_total ?? $ag->servico?->preco ?? 0), 2, ',', '.');
+
+        return "Olá, {$ag->cliente_nome}! ✂️\n\nSeu agendamento na *{$nb}* foi *confirmado*!\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👨 *Profissional:* {$ag->profissional->nome}\n💈 *Serviço:* {$servicos}\n💰 *Valor:* {$preco}\n\nTe esperamos lá! 💈";
     }
 
     public static function mensagemCancelado(Agendamento $ag, string $nb): string

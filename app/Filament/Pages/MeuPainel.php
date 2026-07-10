@@ -2,10 +2,11 @@
 
 namespace App\Filament\Pages;
 
+use App\Jobs\EnviarWhatsAppJob;
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
 use App\Observers\AgendamentoObserver;
-use App\Jobs\EnviarWhatsAppJob;
+use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -16,7 +17,6 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 
 class MeuPainel extends Page implements HasTable
@@ -26,8 +26,11 @@ class MeuPainel extends Page implements HasTable
     protected string $view = 'filament.pages.meu-painel';
 
     protected static ?string $navigationLabel = 'Meu Painel';
+
     protected static ?string $title = 'Meu Painel';
+
     protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedCalendar;
+
     protected static ?int $navigationSort = 1;
 
     public static function canAccess(): bool
@@ -54,10 +57,10 @@ class MeuPainel extends Page implements HasTable
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options([
-                        'pendente'   => 'Pendente',
+                        'pendente' => 'Pendente',
                         'confirmado' => 'Confirmado',
-                        'concluido'  => 'Concluído',
-                        'cancelado'  => 'Cancelado',
+                        'concluido' => 'Concluído',
+                        'cancelado' => 'Cancelado',
                     ])
                     ->default('pendente'),
             ])
@@ -75,24 +78,25 @@ class MeuPainel extends Page implements HasTable
 
                 TextColumn::make('servico.nome')
                     ->label('Serviço')
-                    ->description(fn ($record) => 'R$ ' . number_format($record->servico?->preco ?? 0, 2, ',', '.')),
+                    ->getStateUsing(fn ($record) => $record->nomesServicos())
+                    ->description(fn ($record) => 'R$ '.number_format((float) ($record->valor_total ?? $record->servico?->preco ?? 0), 2, ',', '.')),
 
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'pendente'   => 'warning',
+                        'pendente' => 'warning',
                         'confirmado' => 'success',
-                        default      => 'gray',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'pendente'   => 'Pendente',
+                        'pendente' => 'Pendente',
                         'confirmado' => 'Confirmado',
-                        default      => ucfirst($state),
+                        default => ucfirst($state),
                     }),
             ])
             ->recordActions([
-                \Filament\Actions\Action::make('pedir_confirmacao')
+                Action::make('pedir_confirmacao')
                     ->label('Confirmar')
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('warning')
@@ -122,7 +126,9 @@ class MeuPainel extends Page implements HasTable
                         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
                         $ok = 0;
                         foreach ($records as $r) {
-                            if ($r->status !== 'pendente') continue;
+                            if ($r->status !== 'pendente') {
+                                continue;
+                            }
                             $msg = AgendamentoObserver::mensagemLembrete($r, $nomeBarbearia);
                             EnviarWhatsAppJob::dispatch($r->cliente_telefone, $msg, $r->tenant_id);
                             $ok++;

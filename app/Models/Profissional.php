@@ -16,16 +16,22 @@ class Profissional extends Model
     protected function casts(): array
     {
         return [
-            'ativo'                => 'boolean',
-            'limite_mensalistas'   => 'integer',
-            'comissao_percentual'  => 'float',
-            'horarios_trabalho'    => 'array',
-            'dias_trabalho'        => 'array', // ex: [1,2,3,4,5,6] = Seg a Sáb
+            'ativo' => 'boolean',
+            'limite_mensalistas' => 'integer',
+            'comissao_percentual' => 'float',
+            'horarios_trabalho' => 'array',
+            'dias_trabalho' => 'array', // ex: [1,2,3,4,5,6] = Seg a Sáb
         ];
     }
 
     public function agendamentos()
     {
         return $this->hasMany(Agendamento::class);
+    }
+
+    /** Serviços que este profissional realiza. Vazio = atende todos os serviços. */
+    public function servicos()
+    {
+        return $this->belongsToMany(Servico::class, 'profissional_servico');
     }
 }

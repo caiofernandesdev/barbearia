@@ -24,7 +24,7 @@
                 <span class="text-2xl">✂️</span>
                 <div>
                     <div class="text-gray-400 text-xs">Serviço</div>
-                    <div class="text-white font-medium">{{ $agendamento->servico->nome }}</div>
+                    <div class="text-white font-medium">{{ $agendamento->nomesServicos() }}</div>
                 </div>
             </div>
             <div class="flex items-center gap-3 text-sm">
@@ -45,14 +45,14 @@
                 <span class="text-2xl">💰</span>
                 <div>
                     <div class="text-gray-400 text-xs">Valor</div>
-                    <div class="text-amber-400 font-semibold">R$ {{ number_format($agendamento->servico->preco, 2, ',', '.') }}</div>
+                    <div class="text-amber-400 font-semibold">R$ {{ number_format((float) ($agendamento->valor_total ?? $agendamento->servico?->preco ?? 0), 2, ',', '.') }}</div>
                 </div>
             </div>
             <div class="flex items-center gap-3 text-sm">
                 <span class="text-2xl">⏱</span>
                 <div>
                     <div class="text-gray-400 text-xs">Duração estimada</div>
-                    <div class="text-white font-medium">{{ $agendamento->servico->duracao_minutos }} minutos</div>
+                    <div class="text-white font-medium">{{ $agendamento->duracao_total_minutos ?? $agendamento->servico?->duracao_minutos }} minutos</div>
                 </div>
             </div>
         </div>

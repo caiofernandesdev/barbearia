@@ -6,7 +6,6 @@ use App\Models\Agendamento;
 use App\Models\CampoPersonalizado;
 use App\Models\ConfiguracaoBarbearia;
 use App\Models\Mensalista;
-use App\Models\MensalistaHorarioFixo;
 use App\Models\Profissional;
 use App\Models\Servico;
 use App\Services\DisponibilidadeService;
@@ -19,10 +18,11 @@ class AgendamentoController extends Controller
     public function index(Request $request)
     {
         $config = ConfiguracaoBarbearia::getInstance();
+
         return view('pages.agendamento.index', [
             'nomeBarbearia' => $config->nome_barbearia ?? 'Barbearia',
-            'logoUrl'       => $config->logo ? url('storage/' . $config->logo) : null,
-            'tenantSlug'    => $request->route('tenant'),
+            'logoUrl' => $config->logo ? url('storage/'.$config->logo) : null,
+            'tenantSlug' => $request->route('tenant'),
         ]);
     }
 
@@ -33,10 +33,10 @@ class AgendamentoController extends Controller
      */
     public function profissionais(): JsonResponse
     {
-        $profissionais = Profissional::where('ativo', true)->get()->map(fn($p) => [
-            'id'           => $p->id,
-            'nome'         => $p->nome,
-            'foto_url'     => $p->foto ? url('storage/' . $p->foto) : null,
+        $profissionais = Profissional::where('ativo', true)->get()->map(fn ($p) => [
+            'id' => $p->id,
+            'nome' => $p->nome,
+            'foto_url' => $p->foto ? url('storage/'.$p->foto) : null,
             'dias_trabalho' => $p->dias_trabalho ?? [1, 2, 3, 4, 5, 6],
         ]);
 
@@ -45,14 +45,25 @@ class AgendamentoController extends Controller
 
     /**
      * Retorna serviços ativos ordenados pelo campo 'ordem'.
+     *
+     * Com ?profissional_id: se o profissional tem serviços específicos marcados
+     * (pivot profissional_servico), retorna apenas esses; vazio = atende todos.
      */
-    public function servicos(): JsonResponse
+    public function servicos(Request $request): JsonResponse
     {
+        $query = Servico::where('ativo', true)->orderBy('ordem');
+
+        if ($request->filled('profissional_id')) {
+            $profissional = Profissional::find($request->profissional_id);
+            if ($profissional && $profissional->servicos()->exists()) {
+                $query->whereIn('id', $profissional->servicos()->pluck('servicos.id'));
+            }
+        }
+
         return response()->json(
-            Servico::where('ativo', true)->orderBy('ordem')->get()
-                ->map(fn ($s) => array_merge($s->toArray(), [
-                    'foto_url' => $s->foto ? url('storage/' . $s->foto) : null,
-                ]))
+            $query->get()->map(fn ($s) => array_merge($s->toArray(), [
+                'foto_url' => $s->foto ? url('storage/'.$s->foto) : null,
+            ]))
         );
     }
 
@@ -109,33 +120,33 @@ class AgendamentoController extends Controller
                     ->exists();
 
                 return response()->json([
-                    'tipo_cliente'           => 'mensalista_fixo',
-                    'mensalista_nome'        => $mensalista->nome,
+                    'tipo_cliente' => 'mensalista_fixo',
+                    'mensalista_nome' => $mensalista->nome,
                     'proximos_horarios_fixos' => $proximos,
-                    'tem_agendamento_ativo'  => $temAtivo,
+                    'tem_agendamento_ativo' => $temAtivo,
                 ]);
             }
 
             // ── Mensalista (com limite semanal) ───────────────────────────────
             if ($mensalista->tipo === 'mensalista') {
-                $config        = ConfiguracaoBarbearia::getInstance();
-                $limiteGlobal  = $config->mensalista_limite_cortes_semana;
+                $config = ConfiguracaoBarbearia::getInstance();
+                $limiteGlobal = $config->mensalista_limite_cortes_semana;
                 // Limite individual do mensalista sobrescreve o global quando configurado
-                $limite        = $mensalista->limite_cortes_semana ?: $limiteGlobal;
-                $cortesSemana  = $this->cortesEssaSemana($telefone);
-                $agAtivo       = Agendamento::where('cliente_telefone', $telefone)
+                $limite = $mensalista->limite_cortes_semana ?: $limiteGlobal;
+                $cortesSemana = $this->cortesEssaSemana($telefone);
+                $agAtivo = Agendamento::where('cliente_telefone', $telefone)
                     ->whereIn('status', ['pendente', 'confirmado'])
                     ->with(['profissional', 'servico'])
                     ->first();
 
                 return response()->json([
-                    'tipo_cliente'        => 'mensalista',
-                    'mensalista_nome'     => $mensalista->nome,
-                    'cortes_esta_semana'  => $cortesSemana,
-                    'limite_semana'       => $limite,
-                    'limite_atingido'     => $cortesSemana >= $limite,
-                    'tem_agendamento'     => $agAtivo !== null,
-                    'agendamento'         => $agAtivo,
+                    'tipo_cliente' => 'mensalista',
+                    'mensalista_nome' => $mensalista->nome,
+                    'cortes_esta_semana' => $cortesSemana,
+                    'limite_semana' => $limite,
+                    'limite_atingido' => $cortesSemana >= $limite,
+                    'tem_agendamento' => $agAtivo !== null,
+                    'agendamento' => $agAtivo,
                 ]);
             }
         }
@@ -147,9 +158,9 @@ class AgendamentoController extends Controller
             ->first();
 
         return response()->json([
-            'tipo_cliente'   => 'avulso',
+            'tipo_cliente' => 'avulso',
             'tem_agendamento' => $agAtivo !== null,
-            'agendamento'    => $agAtivo,
+            'agendamento' => $agAtivo,
         ]);
     }
 
@@ -182,8 +193,10 @@ class AgendamentoController extends Controller
     {
         $request->validate([
             'profissional_id' => 'required|exists:profissionais,id',
-            'data'            => 'required|date_format:Y-m-d',
-            'servico_id'      => 'required|exists:servicos,id',
+            'data' => 'required|date_format:Y-m-d',
+            // Multi-serviço: servico_ids (CSV) tem precedência; servico_id mantido p/ retrocompat
+            'servico_id' => 'required_without:servico_ids|nullable|integer|exists:servicos,id',
+            'servico_ids' => 'required_without:servico_id|nullable|string|regex:/^\d+(,\d+)*$/',
         ]);
 
         $data = Carbon::parse($request->data)->startOfDay();
@@ -193,18 +206,27 @@ class AgendamentoController extends Controller
             return response()->json(['error' => 'Data fora do limite permitido (máximo 14 dias)'], 422);
         }
 
-        $config       = ConfiguracaoBarbearia::getInstance();
+        $config = ConfiguracaoBarbearia::getInstance();
         $profissional = Profissional::findOrFail($request->profissional_id);
 
         $diasTrabalho = $profissional->dias_trabalho ?? [1, 2, 3, 4, 5, 6];
-        if (!in_array($data->dayOfWeek, array_map('intval', $diasTrabalho))) {
+        if (! in_array($data->dayOfWeek, array_map('intval', $diasTrabalho))) {
             return response()->json([], 200);
         }
-        $servico      = Servico::findOrFail($request->servico_id);
+        // Duração total = soma das durações dos serviços selecionados
+        $servicoIds = $request->filled('servico_ids')
+            ? array_map('intval', explode(',', $request->servico_ids))
+            : [(int) $request->servico_id];
+
+        $servicosSelecionados = Servico::whereIn('id', $servicoIds)->where('ativo', true)->get();
+        if ($servicosSelecionados->isEmpty()) {
+            return response()->json(['error' => 'Serviço inválido.'], 422);
+        }
+        $duracaoTotal = (int) $servicosSelecionados->sum('duracao_minutos');
 
         $slots = app(DisponibilidadeService::class)->calcular(
             $profissional,
-            $servico,
+            $duracaoTotal,
             $data,
             $config->horario_abertura,
             $config->horario_encerramento,
@@ -221,34 +243,55 @@ class AgendamentoController extends Controller
     {
         $request->validate(
             [
-                'cliente_nome'     => 'required|string|max:100',
+                'cliente_nome' => 'required|string|max:100',
                 'cliente_telefone' => 'required|string',
-                'profissional_id'  => 'required|exists:profissionais,id',
-                'servico_id'       => 'required|exists:servicos,id',
-                'data_hora'        => 'required|date|after:now',
+                'profissional_id' => 'required|exists:profissionais,id',
+                'servico_id' => 'required|exists:servicos,id',
+                // Multi-serviço: CSV com todos os serviços escolhidos (servico_id = primeiro)
+                'servico_ids' => 'nullable|string|regex:/^\d+(,\d+)*$/',
+                'data_hora' => 'required|date|after:now',
             ],
             [
-                'cliente_nome.required'     => 'Informe seu nome.',
+                'cliente_nome.required' => 'Informe seu nome.',
                 'cliente_telefone.required' => 'Informe seu telefone.',
-                'profissional_id.required'  => 'Escolha um profissional.',
-                'servico_id.required'       => 'Escolha um serviço.',
-                'data_hora.required'        => 'Escolha data e hora.',
-                'data_hora.after'           => 'O agendamento deve ser em um horário futuro.',
+                'profissional_id.required' => 'Escolha um profissional.',
+                'servico_id.required' => 'Escolha um serviço.',
+                'data_hora.required' => 'Escolha data e hora.',
+                'data_hora.after' => 'O agendamento deve ser em um horário futuro.',
             ]
         );
 
-        $telefone           = preg_replace('/\D/', '', $request->cliente_telefone);
-        $mensalista         = Mensalista::where('telefone', $telefone)->first();
-        $mensalistaId       = $mensalista?->id;
-        $isMensalista       = $mensalista !== null;
-        $isAvulsoFixo       = false;
+        // ── Serviços selecionados (1 ou mais) ────────────────────────────────
+        $servicoIds = $request->filled('servico_ids')
+            ? array_values(array_unique(array_map('intval', explode(',', $request->servico_ids))))
+            : [(int) $request->servico_id];
+
+        $servicosSelecionados = Servico::whereIn('id', $servicoIds)->where('ativo', true)->get();
+        if ($servicosSelecionados->count() !== count($servicoIds)) {
+            return back()->withErrors(['servico_id' => 'Um dos serviços selecionados não está mais disponível.'])->withInput();
+        }
+
+        // Se o profissional tem serviços específicos, todos os escolhidos devem pertencer a ele
+        $profissional = Profissional::findOrFail($request->profissional_id);
+        if ($profissional->servicos()->exists()) {
+            $permitidos = $profissional->servicos()->pluck('servicos.id')->all();
+            if (array_diff($servicoIds, $permitidos) !== []) {
+                return back()->withErrors(['servico_id' => 'O profissional escolhido não realiza um dos serviços selecionados.'])->withInput();
+            }
+        }
+
+        $telefone = preg_replace('/\D/', '', $request->cliente_telefone);
+        $mensalista = Mensalista::where('telefone', $telefone)->first();
+        $mensalistaId = $mensalista?->id;
+        $isMensalista = $mensalista !== null;
+        $isAvulsoFixo = false;
 
         // ── Regras por tipo de cliente ────────────────────────────────────────
 
         if ($mensalista && $mensalista->tipo === 'mensalista') {
             // Valida limite semanal
-            $config       = ConfiguracaoBarbearia::getInstance();
-            $limite       = $mensalista->limite_cortes_semana ?: $config->mensalista_limite_cortes_semana;
+            $config = ConfiguracaoBarbearia::getInstance();
+            $limite = $mensalista->limite_cortes_semana ?: $config->mensalista_limite_cortes_semana;
             $cortesSemana = $this->cortesEssaSemana($telefone);
 
             if ($cortesSemana >= $limite) {
@@ -280,18 +323,26 @@ class AgendamentoController extends Controller
             $dadosExtras = json_decode($dadosExtras, true);
         }
 
-        $agendamento = Agendamento::create([
-            'cliente_nome'              => $request->cliente_nome,
-            'cliente_telefone'          => $telefone,
-            'profissional_id'           => $request->profissional_id,
-            'servico_id'                => $request->servico_id,
-            'data_hora'                 => Carbon::parse($request->data_hora),
-            'status'                    => 'pendente',
-            'mensalista'                => $isMensalista,
-            'mensalista_id'             => $mensalistaId,
+        $agendamento = new Agendamento([
+            'cliente_nome' => $request->cliente_nome,
+            'cliente_telefone' => $telefone,
+            'profissional_id' => $request->profissional_id,
+            // servico_id = primeiro serviço (retrocompat); todos vão no pivot abaixo
+            'servico_id' => $servicoIds[0],
+            'valor_total' => $servicosSelecionados->sum('preco'),
+            'duracao_total_minutos' => (int) $servicosSelecionados->sum('duracao_minutos'),
+            'data_hora' => Carbon::parse($request->data_hora),
+            'status' => 'pendente',
+            'mensalista' => $isMensalista,
+            'mensalista_id' => $mensalistaId,
             'is_avulso_mensalista_fixo' => $isAvulsoFixo,
-            'dados_extras'              => $dadosExtras,
+            'dados_extras' => $dadosExtras,
         ]);
+
+        // Pré-carrega a relação para o observer montar a mensagem com todos os serviços
+        $agendamento->setRelation('servicos', $servicosSelecionados);
+        $agendamento->save();
+        $agendamento->servicos()->attach($servicoIds);
 
         // Guarda o telefone na sessão para que "Meus Agendamentos" não precise expor o número na URL
         session(['agendamentos_telefone' => $telefone]);
@@ -301,26 +352,28 @@ class AgendamentoController extends Controller
 
     public function confirmado(Request $request)
     {
-        $agendamento   = Agendamento::with(['profissional', 'servico'])->findOrFail($request->route('agendamentoId'));
+        $agendamento = Agendamento::with(['profissional', 'servico', 'servicos'])->findOrFail($request->route('agendamentoId'));
         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia ?? 'Barbearia';
-        $tenantSlug    = $request->route('tenant');
+        $tenantSlug = $request->route('tenant');
+
         return view('pages.agendamento.confirmado', compact('agendamento', 'nomeBarbearia', 'tenantSlug'));
     }
 
     public function meusAgendamentos(Request $request)
     {
         // Aceita POST (form) > GET param > sessão (redirect pós-cancelamento)
-        $raw      = $request->input('telefone') ?? session('agendamentos_telefone', '');
+        $raw = $request->input('telefone') ?? session('agendamentos_telefone', '');
         $telefone = preg_replace('/\D/', '', $raw);
 
         $agendamentos = Agendamento::where('cliente_telefone', $telefone)
             ->whereIn('status', ['pendente', 'confirmado'])
-            ->with(['profissional', 'servico'])
+            ->with(['profissional', 'servico', 'servicos'])
             ->orderBy('data_hora')
             ->get();
 
         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia ?? 'Barbearia';
-        $tenantSlug    = $request->route('tenant');
+        $tenantSlug = $request->route('tenant');
+
         return view('pages.agendamento.meus-agendamentos', compact('agendamentos', 'telefone', 'nomeBarbearia', 'tenantSlug'));
     }
 
@@ -365,8 +418,8 @@ class AgendamentoController extends Controller
     private function gerarProximosHorariosFixos(Mensalista $mensalista, int $dias = 30): array
     {
         $proximos = [];
-        $hoje     = Carbon::today();
-        $limite   = $hoje->copy()->addDays($dias);
+        $hoje = Carbon::today();
+        $limite = $hoje->copy()->addDays($dias);
         $nomeDias = [
             0 => 'Domingo', 1 => 'Segunda', 2 => 'Terça',
             3 => 'Quarta',  4 => 'Quinta',  5 => 'Sexta', 6 => 'Sábado',
@@ -381,15 +434,15 @@ class AgendamentoController extends Controller
 
             // Adiciona todas as ocorrências dentro da janela
             while ($data->lte($limite)) {
-                $dataHora = Carbon::parse($data->format('Y-m-d') . ' ' . $fixo->hora);
+                $dataHora = Carbon::parse($data->format('Y-m-d').' '.$fixo->hora);
                 if ($dataHora->gt(Carbon::now())) {
                     $proximos[] = [
-                        'data'         => $dataHora->format('d/m/Y'),
-                        'hora'         => substr($fixo->hora, 0, 5),
-                        'datetime'     => $dataHora->format('Y-m-d H:i'),
+                        'data' => $dataHora->format('d/m/Y'),
+                        'hora' => substr($fixo->hora, 0, 5),
+                        'datetime' => $dataHora->format('Y-m-d H:i'),
                         'profissional' => $fixo->profissional->nome,
-                        'servico'      => $fixo->servico->nome,
-                        'dia_nome'     => $nomeDias[$fixo->dia_semana],
+                        'servico' => $fixo->servico->nome,
+                        'dia_nome' => $nomeDias[$fixo->dia_semana],
                     ];
                 }
                 $data->addWeek();
@@ -397,7 +450,8 @@ class AgendamentoController extends Controller
         }
 
         // Ordena por data e retorna máximo de 10 próximos
-        usort($proximos, fn($a, $b) => strcmp($a['datetime'], $b['datetime']));
+        usort($proximos, fn ($a, $b) => strcmp($a['datetime'], $b['datetime']));
+
         return array_slice($proximos, 0, 10);
     }
 }

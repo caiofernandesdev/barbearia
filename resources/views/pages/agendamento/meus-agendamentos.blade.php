@@ -24,7 +24,7 @@
     <div class="bg-gray-800 rounded-2xl p-4 mb-3">
         <div class="flex items-start justify-between mb-3">
             <div>
-                <div class="text-white font-semibold text-sm">{{ $ag->servico->nome }}</div>
+                <div class="text-white font-semibold text-sm">{{ $ag->nomesServicos() }}</div>
                 <div class="text-gray-400 text-xs mt-0.5">com {{ $ag->profissional->nome }}</div>
             </div>
             <span class="text-xs font-medium px-3 py-1 rounded-full
@@ -38,7 +38,7 @@
                 <span>📅</span>
                 {{ $ag->data_hora->format('d/m/Y') }} às {{ $ag->data_hora->format('H:i') }}
             </div>
-            <div class="text-amber-400 font-semibold">R$ {{ number_format($ag->servico->preco, 2, ',', '.') }}</div>
+            <div class="text-amber-400 font-semibold">R$ {{ number_format((float) ($ag->valor_total ?? $ag->servico?->preco ?? 0), 2, ',', '.') }}</div>
         </div>
 
         @if(in_array($ag->status, ['pendente', 'confirmado']))

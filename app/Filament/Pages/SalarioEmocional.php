@@ -41,8 +41,11 @@ class SalarioEmocional extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        if (! auth()->check()) return false;
+        if (! auth()->check()) {
+            return false;
+        }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
         return $tenant?->hasFeature('salario_emocional') ?? false;
     }
 
@@ -53,8 +56,8 @@ class SalarioEmocional extends Page implements HasTable
             : null;
 
         $this->data = [
-            'data_inicio'     => now()->startOfMonth()->format('Y-m-d'),
-            'data_fim'        => now()->format('Y-m-d'),
+            'data_inicio' => now()->startOfMonth()->format('Y-m-d'),
+            'data_fim' => now()->format('Y-m-d'),
             'profissional_id' => $profId,
         ];
     }
@@ -95,16 +98,16 @@ class SalarioEmocional extends Page implements HasTable
                 ->icon(Heroicon::OutlinedUsers)
                 ->color('info'),
 
-            Stat::make('Receita total', 'R$ ' . number_format($r['receitaTotal'], 2, ',', '.'))
+            Stat::make('Receita total', 'R$ '.number_format($r['receitaTotal'], 2, ',', '.'))
                 ->description('soma das mensalidades individuais')
                 ->icon(Heroicon::OutlinedCurrencyDollar)
                 ->color('success'),
 
-            Stat::make('Para a barbearia (50%)', 'R$ ' . number_format($r['valorBarbearia'], 2, ',', '.'))
+            Stat::make('Para a barbearia (50%)', 'R$ '.number_format($r['valorBarbearia'], 2, ',', '.'))
                 ->icon(Heroicon::OutlinedReceiptPercent)
                 ->color('warning'),
 
-            Stat::make('Fundo Salário Emocional', 'R$ ' . number_format($r['fundoSE'], 2, ',', '.'))
+            Stat::make('Fundo Salário Emocional', 'R$ '.number_format($r['fundoSE'], 2, ',', '.'))
                 ->description('50% — distribuído proporcionalmente')
                 ->icon(Heroicon::OutlinedStar)
                 ->color('success'),
@@ -120,16 +123,16 @@ class SalarioEmocional extends Page implements HasTable
 
     public function table(Table $table): Table
     {
-        [$inicio, $fim]  = $this->datas();
-        $profissionalId  = $this->data['profissional_id'] ?? null;
-        $resumo          = $this->calcResumo();
-        $statsMap        = $this->buildStatsMap($resumo['totalAtendimentos'], $resumo['fundoSE'], $inicio, $fim);
+        [$inicio, $fim] = $this->datas();
+        $profissionalId = $this->data['profissional_id'] ?? null;
+        $resumo = $this->calcResumo();
+        $statsMap = $this->buildStatsMap($resumo['totalAtendimentos'], $resumo['fundoSE'], $inicio, $fim);
 
         return $table
             ->query(
                 Profissional::query()
                     ->where('ativo', true)
-                    ->when($profissionalId, fn($q) => $q->where('id', $profissionalId))
+                    ->when($profissionalId, fn ($q) => $q->where('id', $profissionalId))
                     ->orderBy('nome')
             )
             ->heading('Detalhamento por Barbeiro')
@@ -141,47 +144,47 @@ class SalarioEmocional extends Page implements HasTable
 
                 TextColumn::make('qtd_mensalistas')
                     ->label('Atend. Mensalistas')
-                    ->getStateUsing(fn($record) => $statsMap[$record->id]['qtd_mensalistas'] ?? 0)
+                    ->getStateUsing(fn ($record) => $statsMap[$record->id]['qtd_mensalistas'] ?? 0)
                     ->alignCenter(),
 
                 TextColumn::make('pct')
                     ->label('Participação')
-                    ->getStateUsing(fn($record) => ($statsMap[$record->id]['pct'] ?? 0) . '%')
+                    ->getStateUsing(fn ($record) => ($statsMap[$record->id]['pct'] ?? 0).'%')
                     ->alignCenter()
                     ->badge()
                     ->color('info'),
 
                 TextColumn::make('valor_se')
                     ->label('Sal. Emocional')
-                    ->getStateUsing(fn($record) => 'R$ ' . number_format($statsMap[$record->id]['valor_se'] ?? 0, 2, ',', '.'))
+                    ->getStateUsing(fn ($record) => 'R$ '.number_format($statsMap[$record->id]['valor_se'] ?? 0, 2, ',', '.'))
                     ->color('success')
                     ->weight(FontWeight::SemiBold)
                     ->alignEnd(),
 
                 TextColumn::make('total_servicos')
                     ->label('Serviços')
-                    ->getStateUsing(fn($record) => $statsMap[$record->id]['total_servicos'] ?? 0)
+                    ->getStateUsing(fn ($record) => $statsMap[$record->id]['total_servicos'] ?? 0)
                     ->alignCenter(),
 
                 TextColumn::make('receita_servicos')
                     ->label('Receita')
-                    ->getStateUsing(fn($record) => 'R$ ' . number_format($statsMap[$record->id]['receita_servicos'] ?? 0, 2, ',', '.'))
+                    ->getStateUsing(fn ($record) => 'R$ '.number_format($statsMap[$record->id]['receita_servicos'] ?? 0, 2, ',', '.'))
                     ->alignEnd(),
 
                 TextColumn::make('comissao_pct')
                     ->label('% Com.')
-                    ->getStateUsing(fn($record) => ($record->comissao_percentual ?? 0) . '%')
+                    ->getStateUsing(fn ($record) => ($record->comissao_percentual ?? 0).'%')
                     ->alignCenter(),
 
                 TextColumn::make('comissao_valor')
                     ->label('Comissão')
-                    ->getStateUsing(fn($record) => 'R$ ' . number_format($statsMap[$record->id]['comissao_valor'] ?? 0, 2, ',', '.'))
+                    ->getStateUsing(fn ($record) => 'R$ '.number_format($statsMap[$record->id]['comissao_valor'] ?? 0, 2, ',', '.'))
                     ->color('warning')
                     ->alignEnd(),
 
                 TextColumn::make('total_receber')
                     ->label('Total a Receber')
-                    ->getStateUsing(fn($record) => 'R$ ' . number_format($statsMap[$record->id]['total_receber'] ?? 0, 2, ',', '.'))
+                    ->getStateUsing(fn ($record) => 'R$ '.number_format($statsMap[$record->id]['total_receber'] ?? 0, 2, ',', '.'))
                     ->weight(FontWeight::Bold)
                     ->color('success')
                     ->alignEnd(),
@@ -195,7 +198,8 @@ class SalarioEmocional extends Page implements HasTable
     private function datas(): array
     {
         $inicio = Carbon::parse($this->data['data_inicio'] ?? now()->startOfMonth())->startOfDay();
-        $fim    = Carbon::parse($this->data['data_fim'] ?? now())->endOfDay();
+        $fim = Carbon::parse($this->data['data_fim'] ?? now())->endOfDay();
+
         return [$inicio, $fim];
     }
 
@@ -204,8 +208,8 @@ class SalarioEmocional extends Page implements HasTable
         [$inicio, $fim] = $this->datas();
 
         $qtdMensalistas = Mensalista::whereIn('tipo', ['mensalista', 'mensalista_fixo'])->count();
-        $receitaTotal   = round((float) Mensalista::whereIn('tipo', ['mensalista', 'mensalista_fixo'])->sum('valor_mensalidade'), 2);
-        $fundoSE        = round($receitaTotal * 0.5, 2);
+        $receitaTotal = round((float) Mensalista::whereIn('tipo', ['mensalista', 'mensalista_fixo'])->sum('valor_mensalidade'), 2);
+        $fundoSE = round($receitaTotal * 0.5, 2);
         $valorBarbearia = round($receitaTotal * 0.5, 2);
 
         $totalAtendimentos = Agendamento::where('status', 'concluido')
@@ -227,7 +231,7 @@ class SalarioEmocional extends Page implements HasTable
                 ->whereBetween('data_hora', [$inicio, $fim])
                 ->count();
 
-            $pct     = $totalAtendimentos > 0 ? round($qtdMensalistas / $totalAtendimentos * 100, 1) : 0;
+            $pct = $totalAtendimentos > 0 ? round($qtdMensalistas / $totalAtendimentos * 100, 1) : 0;
             $valorSE = $totalAtendimentos > 0 ? round($qtdMensalistas / $totalAtendimentos * $fundoSE, 2) : 0;
 
             $todosAgs = Agendamento::where('status', 'concluido')
@@ -236,21 +240,21 @@ class SalarioEmocional extends Page implements HasTable
                 ->with('servico')
                 ->get();
 
-            $totalServicos   = $todosAgs->count();
-            $receitaServicos = round($todosAgs->sum(fn($a) => $a->servico?->preco ?? 0), 2);
-            $comissaoPct     = (float) ($p->comissao_percentual ?? 0);
-            $comissaoValor   = round($receitaServicos * ($comissaoPct / 100), 2);
-            $totalReceber    = round($comissaoValor + $valorSE, 2);
+            $totalServicos = $todosAgs->count();
+            $receitaServicos = round($todosAgs->sum(fn ($a) => $a->valor_total ?? $a->servico?->preco ?? 0), 2);
+            $comissaoPct = (float) ($p->comissao_percentual ?? 0);
+            $comissaoValor = round($receitaServicos * ($comissaoPct / 100), 2);
+            $totalReceber = round($comissaoValor + $valorSE, 2);
 
             $map[$p->id] = [
-                'qtd_mensalistas'  => $qtdMensalistas,
-                'pct'              => $pct,
-                'valor_se'         => $valorSE,
-                'total_servicos'   => $totalServicos,
+                'qtd_mensalistas' => $qtdMensalistas,
+                'pct' => $pct,
+                'valor_se' => $valorSE,
+                'total_servicos' => $totalServicos,
                 'receita_servicos' => $receitaServicos,
-                'comissao_pct'     => $comissaoPct,
-                'comissao_valor'   => $comissaoValor,
-                'total_receber'    => $totalReceber,
+                'comissao_pct' => $comissaoPct,
+                'comissao_valor' => $comissaoValor,
+                'total_receber' => $totalReceber,
             ];
         }
 

@@ -15,20 +15,27 @@ class DashboardHeaderWidget extends StatsOverviewWidget
 {
     protected static ?int $sort = 1;
 
-    public static function canView(): bool { return auth()->user()?->isAdmin() ?? false; }
+    public static function canView(): bool
+    {
+        return auth()->user()?->isAdmin() ?? false;
+    }
 
     protected function getHeading(): ?string
     {
         $nome = explode(' ', auth()->user()->name)[0];
         $hora = (int) now()->format('H');
-        $saudacao = match (true) { $hora < 12 => 'Bom dia', $hora < 18 => 'Boa tarde', default => 'Boa noite' };
+        $saudacao = match (true) {
+            $hora < 12 => 'Bom dia', $hora < 18 => 'Boa tarde', default => 'Boa noite'
+        };
+
         return "$saudacao, $nome!";
     }
 
     protected function getDescription(): ?string
     {
         $config = ConfiguracaoBarbearia::getInstance();
-        return $config->nome_barbearia . ' — ' . now()->locale('pt_BR')->isoFormat('dddd, D [de] MMMM [de] YYYY');
+
+        return $config->nome_barbearia.' — '.now()->locale('pt_BR')->isoFormat('dddd, D [de] MMMM [de] YYYY');
     }
 
     protected function getStats(): array
@@ -39,11 +46,11 @@ class DashboardHeaderWidget extends StatsOverviewWidget
             $hoje = today();
             $agsHoje = Agendamento::whereDate('data_hora', $hoje)->with('servico')->get();
 
-            $receitaHoje = $agsHoje->whereIn('status', ['confirmado', 'concluido'])->sum(fn ($a) => $a->servico?->preco ?? 0);
-            $pendentes   = $agsHoje->where('status', 'pendente')->count();
+            $receitaHoje = $agsHoje->whereIn('status', ['confirmado', 'concluido'])->sum(fn ($a) => $a->valor_total ?? $a->servico?->preco ?? 0);
+            $pendentes = $agsHoje->where('status', 'pendente')->count();
             $confirmados = $agsHoje->where('status', 'confirmado')->count();
-            $concluidos  = $agsHoje->where('status', 'concluido')->count();
-            $totalHoje   = $pendentes + $confirmados + $concluidos;
+            $concluidos = $agsHoje->where('status', 'concluido')->count();
+            $totalHoje = $pendentes + $confirmados + $concluidos;
             $clientesHoje = $agsHoje->whereIn('status', ['confirmado', 'concluido'])->pluck('cliente_telefone')->unique()->count();
 
             $semana = Agendamento::whereIn('status', ['confirmado', 'concluido'])
@@ -70,7 +77,7 @@ class DashboardHeaderWidget extends StatsOverviewWidget
         });
 
         return [
-            Stat::make('Faturamento Hoje', 'R$ ' . number_format($data['receitaHoje'], 2, ',', '.'))
+            Stat::make('Faturamento Hoje', 'R$ '.number_format($data['receitaHoje'], 2, ',', '.'))
                 ->description('últimos 7 dias')
                 ->descriptionIcon(Heroicon::OutlinedArrowTrendingUp)
                 ->chart($data['sparkAgs'])
@@ -86,7 +93,7 @@ class DashboardHeaderWidget extends StatsOverviewWidget
                 ->icon(Heroicon::OutlinedUsers)
                 ->color('info'),
 
-            Stat::make('Ocupação', $data['ocupacao'] . '%')
+            Stat::make('Ocupação', $data['ocupacao'].'%')
                 ->description("{$data['totalHoje']} de {$data['totalSlots']} slots")
                 ->icon(Heroicon::OutlinedChartBar)
                 ->color($data['ocupacao'] > 70 ? 'success' : ($data['ocupacao'] > 40 ? 'warning' : 'danger')),

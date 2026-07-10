@@ -2,23 +2,24 @@
 
 namespace App\Filament\Resources\Agendamentos\Tables;
 
+use App\Jobs\EnviarWhatsAppJob;
 use App\Models\ConfiguracaoBarbearia;
 use App\Observers\AgendamentoObserver;
-use App\Jobs\EnviarWhatsAppJob;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
-use Illuminate\Database\Eloquent\Collection;
+use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 
 class AgendamentosTable
 {
@@ -41,6 +42,8 @@ class AgendamentosTable
 
                 TextColumn::make('servico.nome')
                     ->label('Serviço')
+                    ->getStateUsing(fn ($record) => $record->nomesServicos())
+                    ->description(fn ($record) => 'R$ '.number_format((float) ($record->valor_total ?? $record->servico?->preco ?? 0), 2, ',', '.'))
                     ->sortable(),
 
                 TextColumn::make('data_hora')
@@ -52,11 +55,11 @@ class AgendamentosTable
                     ->label('Status')
                     ->badge()
                     ->color(fn (string $state): string => match ($state) {
-                        'pendente'   => 'warning',
+                        'pendente' => 'warning',
                         'confirmado' => 'success',
-                        'concluido'  => 'info',
-                        'cancelado'  => 'danger',
-                        default      => 'gray',
+                        'concluido' => 'info',
+                        'cancelado' => 'danger',
+                        default => 'gray',
                     }),
 
                 IconColumn::make('mensalista')
@@ -76,8 +79,11 @@ class AgendamentosTable
                     ->label('Detalhes')
                     ->formatStateUsing(function ($record) {
                         $extras = $record->dados_extras;
-                        if (empty($extras)) return '—';
-                        return collect($extras)->map(fn ($v, $k) => ucfirst(str_replace('_', ' ', $k)) . ': ' . $v)->implode(' · ');
+                        if (empty($extras)) {
+                            return '—';
+                        }
+
+                        return collect($extras)->map(fn ($v, $k) => ucfirst(str_replace('_', ' ', $k)).': '.$v)->implode(' · ');
                     })
                     ->wrap()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -104,16 +110,17 @@ class AgendamentosTable
                     ->query(function (Builder $query, array $data) {
                         return $query
                             ->when($data['data_inicio'], fn ($q) => $q->whereDate('data_hora', '>=', $data['data_inicio']))
-                            ->when($data['data_fim'],    fn ($q) => $q->whereDate('data_hora', '<=', $data['data_fim']));
+                            ->when($data['data_fim'], fn ($q) => $q->whereDate('data_hora', '<=', $data['data_fim']));
                     })
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['data_inicio'] ?? null) {
-                            $indicators[] = 'De: ' . \Carbon\Carbon::parse($data['data_inicio'])->format('d/m/Y');
+                            $indicators[] = 'De: '.Carbon::parse($data['data_inicio'])->format('d/m/Y');
                         }
                         if ($data['data_fim'] ?? null) {
-                            $indicators[] = 'Até: ' . \Carbon\Carbon::parse($data['data_fim'])->format('d/m/Y');
+                            $indicators[] = 'Até: '.Carbon::parse($data['data_fim'])->format('d/m/Y');
                         }
+
                         return $indicators;
                     }),
 
@@ -124,10 +131,10 @@ class AgendamentosTable
                 SelectFilter::make('status')
                     ->label('Status')
                     ->options([
-                        'pendente'   => 'Pendente',
+                        'pendente' => 'Pendente',
                         'confirmado' => 'Confirmado',
-                        'concluido'  => 'Concluído',
-                        'cancelado'  => 'Cancelado',
+                        'concluido' => 'Concluído',
+                        'cancelado' => 'Cancelado',
                     ]),
 
                 SelectFilter::make('profissional_id')
@@ -154,7 +161,7 @@ class AgendamentosTable
                     ->hidden(fn ($record) => $record->status === 'cancelado')
                     ->action(function ($record) {
                         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
-                        $mensagem      = AgendamentoObserver::mensagemLembrete($record, $nomeBarbearia);
+                        $mensagem = AgendamentoObserver::mensagemLembrete($record, $nomeBarbearia);
                         EnviarWhatsAppJob::dispatch($record->cliente_telefone, $mensagem, $record->tenant_id);
                         Notification::make()->title('Mensagem enviada!')->body("Confirmação enviada para {$record->cliente_nome}.")->success()->send();
                     }),
@@ -177,7 +184,9 @@ class AgendamentosTable
                         $enviados = 0;
 
                         foreach ($records as $record) {
-                            if ($record->status === 'cancelado') continue;
+                            if ($record->status === 'cancelado') {
+                                continue;
+                            }
                             $mensagem = AgendamentoObserver::mensagemLembrete($record, $nomeBarbearia);
                             EnviarWhatsAppJob::dispatch($record->cliente_telefone, $mensagem, $record->tenant_id);
                             $enviados++;

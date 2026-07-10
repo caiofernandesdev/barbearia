@@ -59,6 +59,15 @@ class ProfissionalForm
                 ->label('Ativo')
                 ->default(true),
 
+            Section::make('Serviços que realiza')
+                ->description('Marque os serviços que este profissional atende. Se nenhum for marcado, ele atende todos os serviços.')
+                ->schema([
+                    CheckboxList::make('servicos')
+                        ->label('')
+                        ->relationship('servicos', 'nome')
+                        ->columns(3),
+                ]),
+
             Section::make('Dias de Trabalho')
                 ->description('Selecione os dias da semana em que este profissional atende.')
                 ->schema([

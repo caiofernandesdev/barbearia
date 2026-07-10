@@ -3,8 +3,8 @@
 namespace App\Filament\Pages;
 
 use App\Models\Agendamento;
-use App\Models\ConfiguracaoBarbearia;
 use App\Models\Profissional;
+use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -40,21 +40,27 @@ class Relatorios extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        if (! auth()->user()?->isAdmin()) return false;
+        if (! auth()->user()?->isAdmin()) {
+            return false;
+        }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
         return $tenant?->hasFeature('relatorios') ?? false;
     }
 
     // Propriedades Livewire individuais para reatividade confiável
-    public string  $dataInicio        = '';
-    public string  $dataFim           = '';
+    public string $dataInicio = '';
+
+    public string $dataFim = '';
+
     public ?string $filtroProfissional = null;
-    public ?string $filtroStatus       = null;
+
+    public ?string $filtroStatus = null;
 
     public function mount(): void
     {
         $this->dataInicio = now()->startOfMonth()->format('Y-m-d');
-        $this->dataFim    = now()->endOfMonth()->format('Y-m-d');
+        $this->dataFim = now()->endOfMonth()->format('Y-m-d');
     }
 
     // ─── Ações do cabeçalho (exportações) ────────────────────────────────────
@@ -67,10 +73,10 @@ class Relatorios extends Page implements HasTable
                 ->icon('heroicon-o-table-cells')
                 ->color('success')
                 ->url(fn () => route('admin.relatorio.excel', array_filter([
-                    'inicio'       => $this->dataInicio,
-                    'fim'          => $this->dataFim,
+                    'inicio' => $this->dataInicio,
+                    'fim' => $this->dataFim,
                     'profissional' => $this->filtroProfissional,
-                    'status'       => $this->filtroStatus,
+                    'status' => $this->filtroStatus,
                 ])))
                 ->openUrlInNewTab(),
 
@@ -79,10 +85,10 @@ class Relatorios extends Page implements HasTable
                 ->icon('heroicon-o-document-arrow-down')
                 ->color('danger')
                 ->url(fn () => route('admin.relatorio.pdf', array_filter([
-                    'inicio'       => $this->dataInicio,
-                    'fim'          => $this->dataFim,
+                    'inicio' => $this->dataInicio,
+                    'fim' => $this->dataFim,
                     'profissional' => $this->filtroProfissional,
-                    'status'       => $this->filtroStatus,
+                    'status' => $this->filtroStatus,
                 ])))
                 ->openUrlInNewTab(),
         ];
@@ -114,11 +120,11 @@ class Relatorios extends Page implements HasTable
             Select::make('filtroStatus')
                 ->label('Status')
                 ->options([
-                    'todos'      => 'Todos',
+                    'todos' => 'Todos',
                     'confirmado' => 'Confirmado',
-                    'concluido'  => 'Concluído',
-                    'pendente'   => 'Pendente',
-                    'cancelado'  => 'Cancelado',
+                    'concluido' => 'Concluído',
+                    'pendente' => 'Pendente',
+                    'cancelado' => 'Cancelado',
                 ])
                 ->default('todos')
                 ->live(),
@@ -137,28 +143,28 @@ class Relatorios extends Page implements HasTable
                 ->icon(Heroicon::OutlinedCalendarDays)
                 ->color('warning'),
 
-            Stat::make('Receita Total', 'R$ ' . number_format($r['receita'], 2, ',', '.'))
-                ->description('ticket médio R$ ' . number_format($r['ticketMed'], 2, ',', '.'))
+            Stat::make('Receita Total', 'R$ '.number_format($r['receita'], 2, ',', '.'))
+                ->description('ticket médio R$ '.number_format($r['ticketMed'], 2, ',', '.'))
                 ->icon(Heroicon::OutlinedCurrencyDollar)
                 ->color('success'),
 
-            Stat::make('Comissões a Pagar', 'R$ ' . number_format($r['comissoes'], 2, ',', '.'))
+            Stat::make('Comissões a Pagar', 'R$ '.number_format($r['comissoes'], 2, ',', '.'))
                 ->description('total devido aos barbeiros')
                 ->icon(Heroicon::OutlinedBanknotes)
                 ->color('info'),
 
             Stat::make('Clientes Únicos', (string) $r['unicos'])
-                ->description($r['recorrentes'] . ' retornaram no trimestre')
+                ->description($r['recorrentes'].' retornaram no trimestre')
                 ->icon(Heroicon::OutlinedUsers)
                 ->color('info'),
 
-            Stat::make('Cancelamentos', $r['taxaCancel'] . '%')
-                ->description($r['cancelados'] . ' agendamentos cancelados')
+            Stat::make('Cancelamentos', $r['taxaCancel'].'%')
+                ->description($r['cancelados'].' agendamentos cancelados')
                 ->icon(Heroicon::OutlinedXCircle)
                 ->color($r['taxaCancel'] > 20 ? 'danger' : 'gray'),
 
             Stat::make('Serviço + Realizado', $r['servicoTop']['nome'] ?? '—')
-                ->description(($r['servicoTop']['qtd'] ?? 0) . 'x no período')
+                ->description(($r['servicoTop']['qtd'] ?? 0).'x no período')
                 ->icon(Heroicon::OutlinedScissors)
                 ->color('warning'),
         ])->columns(3);
@@ -169,10 +175,10 @@ class Relatorios extends Page implements HasTable
     public function table(Table $table): Table
     {
         $inicio = $this->dataInicio ?: now()->startOfMonth()->format('Y-m-d');
-        $fim    = $this->dataFim    ?: now()->endOfMonth()->format('Y-m-d');
-        $pid    = $this->filtroProfissional ? (int) $this->filtroProfissional : null;
+        $fim = $this->dataFim ?: now()->endOfMonth()->format('Y-m-d');
+        $pid = $this->filtroProfissional ? (int) $this->filtroProfissional : null;
 
-        $statsMap   = $this->buildBarbeiroMap($inicio, $fim, $pid);
+        $statsMap = $this->buildBarbeiroMap($inicio, $fim, $pid);
         $totalAtend = array_sum(array_column($statsMap, 'total'));
 
         return $table
@@ -183,7 +189,7 @@ class Relatorios extends Page implements HasTable
                     ->orderBy('nome')
             )
             ->heading('Desempenho por Barbeiro')
-            ->description('Período: ' . \Carbon\Carbon::parse($inicio)->format('d/m/Y') . ' a ' . \Carbon\Carbon::parse($fim)->format('d/m/Y'))
+            ->description('Período: '.Carbon::parse($inicio)->format('d/m/Y').' a '.Carbon::parse($fim)->format('d/m/Y'))
             ->columns([
                 TextColumn::make('nome')
                     ->label('Barbeiro')
@@ -199,7 +205,7 @@ class Relatorios extends Page implements HasTable
                 TextColumn::make('participacao')
                     ->label('Participação')
                     ->getStateUsing(fn ($record) => $totalAtend > 0
-                        ? round((($statsMap[$record->id]['total'] ?? 0) / $totalAtend) * 100, 1) . '%'
+                        ? round((($statsMap[$record->id]['total'] ?? 0) / $totalAtend) * 100, 1).'%'
                         : '0%')
                     ->badge()
                     ->color('gray')
@@ -207,19 +213,19 @@ class Relatorios extends Page implements HasTable
 
                 TextColumn::make('receita')
                     ->label('Receita')
-                    ->getStateUsing(fn ($record) => 'R$ ' . number_format($statsMap[$record->id]['receita'] ?? 0, 2, ',', '.'))
+                    ->getStateUsing(fn ($record) => 'R$ '.number_format($statsMap[$record->id]['receita'] ?? 0, 2, ',', '.'))
                     ->color('success')
                     ->weight(FontWeight::SemiBold)
                     ->alignEnd(),
 
                 TextColumn::make('ticket')
                     ->label('Ticket Médio')
-                    ->getStateUsing(fn ($record) => 'R$ ' . number_format($statsMap[$record->id]['ticket'] ?? 0, 2, ',', '.'))
+                    ->getStateUsing(fn ($record) => 'R$ '.number_format($statsMap[$record->id]['ticket'] ?? 0, 2, ',', '.'))
                     ->alignEnd(),
 
                 TextColumn::make('comissao')
                     ->label('Comissão')
-                    ->getStateUsing(fn ($record) => 'R$ ' . number_format($statsMap[$record->id]['comissao'] ?? 0, 2, ',', '.') . ' (' . ($statsMap[$record->id]['perc'] ?? 0) . '%)')
+                    ->getStateUsing(fn ($record) => 'R$ '.number_format($statsMap[$record->id]['comissao'] ?? 0, 2, ',', '.').' ('.($statsMap[$record->id]['perc'] ?? 0).'%)')
                     ->color('warning')
                     ->alignEnd(),
 
@@ -238,71 +244,72 @@ class Relatorios extends Page implements HasTable
     {
         return match ($this->filtroStatus) {
             'confirmado' => ['confirmado'],
-            'concluido'  => ['concluido'],
-            'pendente'   => ['pendente'],
-            'cancelado'  => ['cancelado'],
-            default      => ['confirmado', 'concluido'],
+            'concluido' => ['concluido'],
+            'pendente' => ['pendente'],
+            'cancelado' => ['cancelado'],
+            default => ['confirmado', 'concluido'],
         };
     }
 
     private function buildBarbeiroMap(string $inicio, string $fim, ?int $pid): array
     {
         $ags = Agendamento::whereIn('status', $this->statusFiltrados())
-            ->whereBetween('data_hora', [$inicio . ' 00:00:00', $fim . ' 23:59:59'])
+            ->whereBetween('data_hora', [$inicio.' 00:00:00', $fim.' 23:59:59'])
             ->with(['servico'])
             ->get();
 
         $map = [];
         foreach (Profissional::where('ativo', true)->get() as $prof) {
-            $profAgs  = $ags->where('profissional_id', $prof->id);
-            $receita  = $profAgs->sum(fn ($a) => $a->servico?->preco ?? 0);
-            $total    = $profAgs->count();
+            $profAgs = $ags->where('profissional_id', $prof->id);
+            $receita = $profAgs->sum(fn ($a) => $a->valor_total ?? $a->servico?->preco ?? 0);
+            $total = $profAgs->count();
             $percProf = (float) ($prof->comissao_percentual ?? 0);
             $map[$prof->id] = [
-                'total'    => $total,
-                'receita'  => $receita,
-                'ticket'   => $total > 0 ? $receita / $total : 0,
+                'total' => $total,
+                'receita' => $receita,
+                'ticket' => $total > 0 ? $receita / $total : 0,
                 'comissao' => round($receita * ($percProf / 100), 2),
                 'clientes' => $profAgs->pluck('cliente_telefone')->unique()->count(),
-                'perc'     => $percProf,
+                'perc' => $percProf,
             ];
         }
+
         return $map;
     }
 
     private function calcResumo(): array
     {
         $inicio = $this->dataInicio ?: now()->startOfMonth()->format('Y-m-d');
-        $fim    = $this->dataFim    ?: now()->endOfMonth()->format('Y-m-d');
-        $pid    = $this->filtroProfissional ? (int) $this->filtroProfissional : null;
+        $fim = $this->dataFim ?: now()->endOfMonth()->format('Y-m-d');
+        $pid = $this->filtroProfissional ? (int) $this->filtroProfissional : null;
 
         $statuses = $this->statusFiltrados();
 
-        $ags     = Agendamento::whereIn('status', $statuses)
-            ->whereBetween('data_hora', [$inicio . ' 00:00:00', $fim . ' 23:59:59'])
+        $ags = Agendamento::whereIn('status', $statuses)
+            ->whereBetween('data_hora', [$inicio.' 00:00:00', $fim.' 23:59:59'])
             ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
             ->with(['servico', 'profissional'])
             ->get();
 
-        $receita  = $ags->sum(fn ($a) => $a->servico?->preco ?? 0);
-        $total    = $ags->count();
+        $receita = $ags->sum(fn ($a) => $a->valor_total ?? $a->servico?->preco ?? 0);
+        $total = $ags->count();
         $ticketMed = $total > 0 ? $receita / $total : 0;
-        $unicos   = $ags->pluck('cliente_telefone')->unique()->count();
+        $unicos = $ags->pluck('cliente_telefone')->unique()->count();
 
         $comissoes = 0;
         foreach ($ags->groupBy('profissional_id') as $profId => $profAgs) {
             $prof = $profAgs->first()->profissional;
             $percProf = (float) ($prof?->comissao_percentual ?? 0);
-            $receitaProf = $profAgs->sum(fn ($a) => $a->servico?->preco ?? 0);
+            $receitaProf = $profAgs->sum(fn ($a) => $a->valor_total ?? $a->servico?->preco ?? 0);
             $comissoes += round($receitaProf * ($percProf / 100), 2);
         }
 
         $cancelados = Agendamento::where('status', 'cancelado')
-            ->whereBetween('data_hora', [$inicio . ' 00:00:00', $fim . ' 23:59:59'])
+            ->whereBetween('data_hora', [$inicio.' 00:00:00', $fim.' 23:59:59'])
             ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
             ->count();
 
-        $totalCriados = Agendamento::whereBetween('data_hora', [$inicio . ' 00:00:00', $fim . ' 23:59:59'])
+        $totalCriados = Agendamento::whereBetween('data_hora', [$inicio.' 00:00:00', $fim.' 23:59:59'])
             ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
             ->count();
 

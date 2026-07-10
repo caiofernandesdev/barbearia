@@ -6,7 +6,6 @@ use App\Models\Agendamento;
 use App\Models\Indisponibilidade;
 use App\Models\MensalistaHorarioFixo;
 use App\Models\Profissional;
-use App\Models\Servico;
 use Carbon\Carbon;
 use Illuminate\Support\Collection;
 
@@ -38,17 +37,18 @@ class DisponibilidadeService
      */
     public function calcular(
         Profissional $profissional,
-        Servico $servico,
+        int $duracaoMinutos,
         Carbon $data,
         string $horaAbertura,
         string $horaEncerramento,
         int $intervaloMinutos
     ): array {
-        $duracao  = $servico->duracao_minutos;
-        $dataStr  = $data->format('Y-m-d');
+        // Duração total do atendimento — em multi-serviço é a soma das durações
+        $duracao = $duracaoMinutos;
+        $dataStr = $data->format('Y-m-d');
 
-        $expedienteInicio = Carbon::parse($dataStr . ' ' . $horaAbertura);
-        $expedienteFim    = Carbon::parse($dataStr . ' ' . $horaEncerramento);
+        $expedienteInicio = Carbon::parse($dataStr.' '.$horaAbertura);
+        $expedienteFim = Carbon::parse($dataStr.' '.$horaEncerramento);
 
         // Agendamentos ativos do profissional neste dia (com serviço para obter duração)
         $agendamentos = Agendamento::where('profissional_id', $profissional->id)
@@ -59,11 +59,11 @@ class DisponibilidadeService
 
         // Indisponibilidades do profissional ou de toda a barbearia neste dia
         $indisponibilidades = Indisponibilidade::where(function ($q) use ($profissional) {
-                $q->where('profissional_id', $profissional->id)
-                  ->orWhereNull('profissional_id');
-            })
-            ->where('inicio', '<', $dataStr . ' 23:59:59')
-            ->where('fim', '>', $dataStr . ' 00:00:00')
+            $q->where('profissional_id', $profissional->id)
+                ->orWhereNull('profissional_id');
+        })
+            ->where('inicio', '<', $dataStr.' 23:59:59')
+            ->where('fim', '>', $dataStr.' 00:00:00')
             ->get();
 
         // Dia completamente bloqueado → sem slots
@@ -83,7 +83,7 @@ class DisponibilidadeService
 
         $horariosTrabalho = $profissional->horarios_trabalho ?? [];
 
-        if (!empty($horariosTrabalho)) {
+        if (! empty($horariosTrabalho)) {
             return $this->calcularPorLista(
                 $horariosTrabalho,
                 $agendamentos,
@@ -125,22 +125,32 @@ class DisponibilidadeService
         int $intervaloMinutos
     ): array {
         $dataStr = $data->format('Y-m-d');
-        $agora   = Carbon::now();
-        $slots   = [];
+        $agora = Carbon::now();
+        $slots = [];
 
         $candidatos = collect($horariosTrabalho)
-            ->map(fn ($h) => Carbon::parse($dataStr . ' ' . $h))
+            ->map(fn ($h) => Carbon::parse($dataStr.' '.$h))
             ->sortBy(fn ($c) => $c->timestamp)
             ->values();
 
         foreach ($candidatos as $inicio) {
             $fim = $inicio->copy()->addMinutes($duracao);
 
-            if ($fim->gt($expedienteFim)) continue;
-            if ($data->isToday() && $inicio->lt($agora->copy()->addMinutes(30))) continue;
-            if (in_array($inicio->format('H:i'), $fixosBloqueados)) continue;
-            if ($this->temSobreposicao($inicio, $fim, $agendamentos, $intervaloMinutos)) continue;
-            if ($this->bloqueadoPorIndisponibilidade($inicio, $fim, $indisponibilidades)) continue;
+            if ($fim->gt($expedienteFim)) {
+                continue;
+            }
+            if ($data->isToday() && $inicio->lt($agora->copy()->addMinutes(30))) {
+                continue;
+            }
+            if (in_array($inicio->format('H:i'), $fixosBloqueados)) {
+                continue;
+            }
+            if ($this->temSobreposicao($inicio, $fim, $agendamentos, $intervaloMinutos)) {
+                continue;
+            }
+            if ($this->bloqueadoPorIndisponibilidade($inicio, $fim, $indisponibilidades)) {
+                continue;
+            }
 
             $slots[] = ['hora' => $inicio->format('H:i'), 'datetime' => $inicio->format('Y-m-d H:i')];
         }
@@ -173,7 +183,7 @@ class DisponibilidadeService
             $intervaloMinutos
         );
 
-        $gaps  = $this->encontrarGaps($ocupados, $expedienteInicio, $expedienteFim);
+        $gaps = $this->encontrarGaps($ocupados, $expedienteInicio, $expedienteFim);
         $slots = [];
 
         foreach ($gaps as [$gapInicio, $gapFim]) {
@@ -181,7 +191,7 @@ class DisponibilidadeService
 
             while ($t->copy()->addMinutes($duracao)->lte($gapFim)) {
                 // Buffer de 30 min no dia atual
-                if (!($data->isToday() && $t->lt($agora->copy()->addMinutes(30)))) {
+                if (! ($data->isToday() && $t->lt($agora->copy()->addMinutes(30)))) {
                     $slots[] = ['hora' => $t->format('H:i'), 'datetime' => $t->format('Y-m-d H:i')];
                 }
                 $t->addMinutes($intervaloMinutos);
@@ -209,13 +219,14 @@ class DisponibilidadeService
         $ocupados = [];
 
         foreach ($agendamentos as $ag) {
-            $inicio     = Carbon::parse($ag->data_hora);
-            $duracaoAg  = $ag->servico?->duracao_minutos ?? $intervaloMinutos;
+            $inicio = Carbon::parse($ag->data_hora);
+            // duracao_total_minutos cobre agendamentos multi-serviço; fallback p/ antigos
+            $duracaoAg = $ag->duracao_total_minutos ?? $ag->servico?->duracao_minutos ?? $intervaloMinutos;
             $ocupados[] = [$inicio, $inicio->copy()->addMinutes($duracaoAg)];
         }
 
         foreach ($fixosBloqueados as $hora) {
-            $inicio     = Carbon::parse($dataStr . ' ' . $hora);
+            $inicio = Carbon::parse($dataStr.' '.$hora);
             $ocupados[] = [$inicio, $inicio->copy()->addMinutes($intervaloMinutos)];
         }
 
@@ -235,24 +246,27 @@ class DisponibilidadeService
                 return true;
             }
         }
+
         return false;
     }
 
     /**
      * Mescla intervalos sobrepostos ou adjacentes em um conjunto disjunto.
      *
-     * @param  array<int, array{0: Carbon, 1: Carbon}> $intervalos  ordenados por início
+     * @param  array<int, array{0: Carbon, 1: Carbon}>  $intervalos  ordenados por início
      * @return array<int, array{0: Carbon, 1: Carbon}>
      */
     private function mesclarIntervalos(array $intervalos): array
     {
-        if (empty($intervalos)) return [];
+        if (empty($intervalos)) {
+            return [];
+        }
 
         $merged = [$intervalos[0]];
 
         for ($i = 1, $n = count($intervalos); $i < $n; $i++) {
-            [$inicio, $fim]  = $intervalos[$i];
-            $ultimo          = &$merged[count($merged) - 1];
+            [$inicio, $fim] = $intervalos[$i];
+            $ultimo = &$merged[count($merged) - 1];
 
             if ($inicio->lte($ultimo[1])) {
                 // Sobrepõe ou é adjacente: expande o fim se necessário
@@ -270,7 +284,7 @@ class DisponibilidadeService
     /**
      * Retorna as lacunas livres dentro da janela do expediente.
      *
-     * @param  array<int, array{0: Carbon, 1: Carbon}> $ocupados  intervalos mesclados
+     * @param  array<int, array{0: Carbon, 1: Carbon}>  $ocupados  intervalos mesclados
      * @return array<int, array{0: Carbon, 1: Carbon}>
      */
     private function encontrarGaps(
@@ -278,7 +292,7 @@ class DisponibilidadeService
         Carbon $expedienteInicio,
         Carbon $expedienteFim
     ): array {
-        $gaps   = [];
+        $gaps = [];
         $cursor = $expedienteInicio->copy();
 
         foreach ($ocupados as [$busyInicio, $busyFim]) {
@@ -310,12 +324,13 @@ class DisponibilidadeService
     ): bool {
         foreach ($agendamentos as $ag) {
             $agInicio = Carbon::parse($ag->data_hora);
-            $agFim    = $agInicio->copy()->addMinutes($ag->servico?->duracao_minutos ?? $intervaloMinutos);
+            $agFim = $agInicio->copy()->addMinutes($ag->duracao_total_minutos ?? $ag->servico?->duracao_minutos ?? $intervaloMinutos);
 
             if ($inicio->lt($agFim) && $fim->gt($agInicio)) {
                 return true;
             }
         }
+
         return false;
     }
 }

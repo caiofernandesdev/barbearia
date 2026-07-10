@@ -271,15 +271,18 @@ function renderInput() {
             </div>
         `);
 
-    // ── Serviço — carrossel igual ao do barbeiro ──────────────────────────────
+    // ── Serviço — multi-seleção: marca 1 ou mais e clica em Continuar ────────
     } else if (estado === 'servico') {
+        const selecionados = dadosCliente.servicos_sel || [];
         const cards = servicos.map(s => {
+            const ativo = selecionados.includes(s.id);
             const fotoHtml = s.foto_url
                 ? `<img src="${s.foto_url}" alt="${sanitizeText(s.nome)}" class="w-16 h-16 rounded-full object-cover">`
                 : `<div class="w-16 h-16 rounded-full bg-amber-500 flex items-center justify-center text-2xl">✂️</div>`;
             return `
-            <button onclick="escolherServico(${s.id}, '${s.nome.replace(/'/g, "\\'")}', ${s.preco}, ${s.duracao_minutos})"
-                class="flex-shrink-0 snap-start flex flex-col items-center gap-2 p-3 rounded-xl bg-gray-700 hover:bg-gray-600 border-2 ${s.destaque ? 'border-amber-500' : 'border-transparent'} hover:border-amber-500 transition w-32 min-w-[8rem]">
+            <button onclick="toggleServico(${s.id})" data-serv="${s.id}"
+                class="serv-card flex-shrink-0 snap-start flex flex-col items-center gap-2 p-3 rounded-xl hover:bg-gray-600 border-2 transition w-32 min-w-[8rem]
+                    ${ativo ? 'border-amber-500 bg-gray-600' : 'border-transparent bg-gray-700'}">
                 ${fotoHtml}
                 <span class="text-white text-xs font-medium text-center leading-tight line-clamp-2 w-full"
                     title="${sanitizeText(s.nome)}">${sanitizeText(s.nome)}${s.destaque ? ' 🔥' : ''}</span>
@@ -298,9 +301,17 @@ function renderInput() {
                     <button onclick="scrollCarrossel('track-serv', 1)"
                         class="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-gray-600 hover:bg-amber-500 rounded-full flex items-center justify-center text-white text-xl font-bold transition">›</button>
                 </div>
+                <div id="serv-total" class="text-center text-white text-sm font-medium py-2 border border-gray-600 rounded-xl">
+                    Toque nos serviços para selecionar
+                </div>
+                <button onclick="confirmarServicos()"
+                    class="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-2xl py-3 text-sm font-semibold transition">
+                    Continuar ➜
+                </button>
                 ${btnVoltar('profissional')}
             </div>
         `);
+        atualizarTotalServicos();
 
     // ── Data + Hora — card combinado ──────────────────────────────────────────
     } else if (estado === 'data') {
@@ -404,6 +415,7 @@ function renderInput() {
                     <input type="hidden" name="cliente_telefone" value="">
                     <input type="hidden" name="profissional_id" value="">
                     <input type="hidden" name="servico_id" value="">
+                    <input type="hidden" name="servico_ids" value="">
                     <input type="hidden" name="data_hora" value="">
                     <input type="hidden" name="dados_extras" value="">
                     <button type="submit"
@@ -419,6 +431,7 @@ function renderInput() {
         form.querySelector('[name=cliente_telefone]').value = dadosCliente.telefone;
         form.querySelector('[name=profissional_id]').value  = dadosCliente.profissional_id;
         form.querySelector('[name=servico_id]').value       = dadosCliente.servico_id;
+        form.querySelector('[name=servico_ids]').value      = dadosCliente.servico_ids || String(dadosCliente.servico_id);
         form.querySelector('[name=data_hora]').value        = dadosCliente.data_hora;
         form.querySelector('[name=dados_extras]').value     = JSON.stringify(dadosCliente.dados_extras || {});
     }
@@ -562,26 +575,75 @@ function escolherProfissional(id, nome) {
     const prof = profissionais.find(p => p.id === id);
     dadosCliente.profissional_dias_trabalho = prof?.dias_trabalho ?? [1, 2, 3, 4, 5, 6];
 
-    fetch(`/${tenantSlug}/api/servicos`)
+    // Filtra pelos serviços que o profissional realiza + zera seleção anterior
+    dadosCliente.servicos_sel = [];
+    fetch(`/${tenantSlug}/api/servicos?profissional_id=${id}`)
     .then(r => r.json())
     .then(data => {
         servicos = data;
         estado = 'servico';
-        addMensagemBot('Ótima escolha! ✂️ Qual <strong>serviço</strong> você deseja?');
+        addMensagemBot('Ótima escolha! ✂️ Quais <strong>serviços</strong> você deseja? Pode marcar mais de um!');
         renderInput();
     })
     .catch(() => addMensagemBot('⚠️ Erro ao carregar serviços. Tente novamente.'));
 }
 
-function escolherServico(id, nome, preco, duracao) {
-    addMensagemCliente(nome + ' — R$ ' + parseFloat(preco).toFixed(2).replace('.', ','));
-    dadosCliente.servico_id      = id;
-    dadosCliente.servico_nome    = nome;
+// ── Multi-seleção de serviços ────────────────────────────────────────────────
+
+function toggleServico(id) {
+    dadosCliente.servicos_sel = dadosCliente.servicos_sel || [];
+    const idx = dadosCliente.servicos_sel.indexOf(id);
+    if (idx >= 0) dadosCliente.servicos_sel.splice(idx, 1);
+    else dadosCliente.servicos_sel.push(id);
+
+    const card = document.querySelector(`[data-serv="${id}"]`);
+    if (card) {
+        const ativo = dadosCliente.servicos_sel.includes(id);
+        card.classList.toggle('border-amber-500', ativo);
+        card.classList.toggle('bg-gray-600', ativo);
+        card.classList.toggle('border-transparent', !ativo);
+        card.classList.toggle('bg-gray-700', !ativo);
+    }
+    atualizarTotalServicos();
+}
+
+function servicosSelecionadosLista() {
+    return (dadosCliente.servicos_sel || [])
+        .map(id => servicos.find(s => s.id === id))
+        .filter(Boolean);
+}
+
+function atualizarTotalServicos() {
+    const el = document.getElementById('serv-total');
+    if (!el) return;
+    const sel = servicosSelecionadosLista();
+    if (!sel.length) {
+        el.textContent = 'Toque nos serviços para selecionar';
+        return;
+    }
+    const preco = sel.reduce((t, s) => t + parseFloat(s.preco), 0);
+    const dur   = sel.reduce((t, s) => t + s.duracao_minutos, 0);
+    el.innerHTML = `${sel.length} serviço${sel.length > 1 ? 's' : ''} — <strong class="text-amber-400">R$ ${preco.toFixed(2).replace('.', ',')}</strong> · ⏱ ${dur} min`;
+}
+
+function confirmarServicos() {
+    const sel = servicosSelecionadosLista();
+    if (!sel.length) {
+        addMensagemBot('⚠️ Escolha pelo menos um serviço para continuar.');
+        return;
+    }
+
+    const preco = sel.reduce((t, s) => t + parseFloat(s.preco), 0);
+    dadosCliente.servico_id      = sel[0].id;
+    dadosCliente.servico_ids     = sel.map(s => s.id).join(',');
+    dadosCliente.servico_nome    = sel.map(s => s.nome).join(' + ');
     dadosCliente.servico_preco   = preco;
-    dadosCliente.servico_duracao = duracao;
+    dadosCliente.servico_duracao = sel.reduce((t, s) => t + s.duracao_minutos, 0);
     dadosCliente.data            = null;
     dadosCliente.hora            = null;
     dadosCliente.data_hora       = null;
+
+    addMensagemCliente(dadosCliente.servico_nome + ' — R$ ' + preco.toFixed(2).replace('.', ','));
     estado = 'data';
     addMensagemBot('Combinado! 📅 Escolha o <strong>dia e horário</strong> do seu atendimento:');
     renderInput();
@@ -621,7 +683,8 @@ function selecionarDataNoCard(dataStr, rolar = true) {
 
     const params = new URLSearchParams({
         profissional_id: dadosCliente.profissional_id,
-        servico_id:      dadosCliente.servico_id,
+        // Todos os serviços: a API soma as durações para achar slots que caibam
+        servico_ids:     dadosCliente.servico_ids || String(dadosCliente.servico_id),
         data:            dataStr,
     });
 

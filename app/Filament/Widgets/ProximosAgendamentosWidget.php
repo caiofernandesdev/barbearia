@@ -12,9 +12,12 @@ class ProximosAgendamentosWidget extends TableWidget
 {
     protected static ?int $sort = 5;
 
-    public static function canView(): bool { return auth()->user()?->isAdmin() ?? false; }
+    public static function canView(): bool
+    {
+        return auth()->user()?->isAdmin() ?? false;
+    }
 
-    protected int | string | array $columnSpan = 'full';
+    protected int|string|array $columnSpan = 'full';
 
     public function table(Table $table): Table
     {
@@ -45,20 +48,21 @@ class ProximosAgendamentosWidget extends TableWidget
 
                 TextColumn::make('servico.nome')
                     ->label('Serviço')
-                    ->description(fn ($record) => 'R$ ' . number_format($record->servico?->preco ?? 0, 2, ',', '.')),
+                    ->getStateUsing(fn ($record) => $record->nomesServicos())
+                    ->description(fn ($record) => 'R$ '.number_format((float) ($record->valor_total ?? $record->servico?->preco ?? 0), 2, ',', '.')),
 
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'pendente'   => 'warning',
+                        'pendente' => 'warning',
                         'confirmado' => 'success',
-                        default      => 'gray',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'pendente'   => 'Pendente',
+                        'pendente' => 'Pendente',
                         'confirmado' => 'Confirmado',
-                        default      => ucfirst($state),
+                        default => ucfirst($state),
                     }),
             ])
             ->paginated(false)

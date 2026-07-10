@@ -24,8 +24,9 @@ class BarbeiroDashboardWidget extends StatsOverviewWidget
         $saudacao = match (true) {
             $hora < 12 => 'Bom dia',
             $hora < 18 => 'Boa tarde',
-            default    => 'Boa noite',
+            default => 'Boa noite',
         };
+
         return "$saudacao, $nome!";
     }
 
@@ -52,7 +53,7 @@ class BarbeiroDashboardWidget extends StatsOverviewWidget
         $confirmadosHoje = $agsHoje->where('status', 'confirmado')->count();
         $concluidosHoje = $agsHoje->where('status', 'concluido')->count();
         $receitaHoje = $agsHoje->whereIn('status', ['confirmado', 'concluido'])
-            ->sum(fn ($a) => $a->servico?->preco ?? 0);
+            ->sum(fn ($a) => $a->valor_total ?? $a->servico?->preco ?? 0);
 
         // Mês
         $agsMes = Agendamento::whereIn('status', ['confirmado', 'concluido'])
@@ -60,7 +61,7 @@ class BarbeiroDashboardWidget extends StatsOverviewWidget
             ->where('profissional_id', $pid)
             ->with('servico')->get();
 
-        $receitaMes = $agsMes->sum(fn ($a) => $a->servico?->preco ?? 0);
+        $receitaMes = $agsMes->sum(fn ($a) => $a->valor_total ?? $a->servico?->preco ?? 0);
         $totalMes = $agsMes->count();
         $ticketMedio = $totalMes > 0 ? $receitaMes / $totalMes : 0;
         $comissaoMes = round($receitaMes * ($percBarbeiro / 100), 2);
@@ -80,16 +81,16 @@ class BarbeiroDashboardWidget extends StatsOverviewWidget
                 ->icon(Heroicon::OutlinedCalendarDays)
                 ->color('warning'),
 
-            Stat::make('Faturamento Hoje', 'R$ ' . number_format($receitaHoje, 2, ',', '.'))
+            Stat::make('Faturamento Hoje', 'R$ '.number_format($receitaHoje, 2, ',', '.'))
                 ->icon(Heroicon::OutlinedCurrencyDollar)
                 ->color('success'),
 
-            Stat::make('Receita do Mês', 'R$ ' . number_format($receitaMes, 2, ',', '.'))
-                ->description('ticket médio R$ ' . number_format($ticketMedio, 2, ',', '.'))
+            Stat::make('Receita do Mês', 'R$ '.number_format($receitaMes, 2, ',', '.'))
+                ->description('ticket médio R$ '.number_format($ticketMedio, 2, ',', '.'))
                 ->chart($spark)
                 ->color('success'),
 
-            Stat::make('A Receber (' . $percBarbeiro . '%)', 'R$ ' . number_format($comissaoMes, 2, ',', '.'))
+            Stat::make('A Receber ('.$percBarbeiro.'%)', 'R$ '.number_format($comissaoMes, 2, ',', '.'))
                 ->description("$totalMes atendimento(s) no mês")
                 ->icon(Heroicon::OutlinedBanknotes)
                 ->color('info'),
