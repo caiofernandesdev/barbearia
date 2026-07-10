@@ -7,6 +7,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -28,6 +29,10 @@ class ConfiguracaoBarbeariaForm
                     FileUpload::make('logo')
                         ->label('Logo')
                         ->image()
+                        ->imageResizeMode('contain')
+                        ->imageResizeTargetWidth('800')
+                        ->imageResizeTargetHeight('800')
+                        ->maxSize(10240)
                         ->directory('barbearia')
                         ->imagePreviewHeight('80')
                         ->nullable()
@@ -51,12 +56,12 @@ class ConfiguracaoBarbeariaForm
                     Select::make('intervalo_minutos')
                         ->label('Intervalo entre slots')
                         ->options([
-                            15  => '15 minutos',
-                            20  => '20 minutos',
-                            30  => '30 minutos',
-                            45  => '45 minutos',
-                            60  => '1 hora',
-                            90  => '1h30min',
+                            15 => '15 minutos',
+                            20 => '20 minutos',
+                            30 => '30 minutos',
+                            45 => '45 minutos',
+                            60 => '1 hora',
+                            90 => '1h30min',
                             120 => '2 horas',
                         ])
                         ->default(60)
@@ -90,7 +95,7 @@ class ConfiguracaoBarbeariaForm
                         ->required()
                         ->helperText('O comando agendamentos:lembretes usa esse valor.'),
 
-                    \Filament\Forms\Components\Toggle::make('cancelar_nao_confirmados')
+                    Toggle::make('cancelar_nao_confirmados')
                         ->label('Cancelar automaticamente não confirmados')
                         ->helperText('Cancela agendamentos pendentes que não foram confirmados até X horas antes do horário.')
                         ->live(),
@@ -133,7 +138,7 @@ class ConfiguracaoBarbeariaForm
 
                     Placeholder::make('percentual_barbeiros_info')
                         ->label('Percentual dos Barbeiros')
-                        ->content(fn ($get) => (100 - (float) ($get('percentual_barbearia') ?? 60)) . '%')
+                        ->content(fn ($get) => (100 - (float) ($get('percentual_barbearia') ?? 60)).'%')
                         ->helperText('Calculado automaticamente: 100% − percentual da barbearia.'),
                 ]),
 

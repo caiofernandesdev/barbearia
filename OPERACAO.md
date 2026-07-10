@@ -64,6 +64,7 @@ php artisan migrate --force                       # SÓ se criou migration
 # Sempre (recompila os caches):
 php artisan config:cache && php artisan route:cache && php artisan view:cache \
   && php artisan event:cache && php artisan filament:cache-components
+chown -R www-data:www-data storage bootstrap/cache   # artisan como root deixa arquivos do root → 500
 supervisorctl restart barbearia-worker:*          # workers pegam código novo
 systemctl reload php8.3-fpm                       # limpa OPcache
 

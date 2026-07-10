@@ -46,6 +46,12 @@ class ProfissionalForm
             FileUpload::make('foto')
                 ->label('Foto')
                 ->image()
+                // Redimensiona no navegador ANTES do upload — fotos de galeria de
+                // celular (5-15MB) estourariam os limites de upload do servidor
+                ->imageResizeMode('contain')
+                ->imageResizeTargetWidth('1200')
+                ->imageResizeTargetHeight('1200')
+                ->maxSize(10240)
                 ->directory('profissionais')
                 ->nullable(),
 
@@ -77,7 +83,7 @@ class ProfissionalForm
                     CheckboxList::make('horarios_trabalho')
                         ->label('')
                         ->options(
-                            collect(range(6, 23))->flatMap(fn($h) => [
+                            collect(range(6, 23))->flatMap(fn ($h) => [
                                 sprintf('%02d:00', $h) => sprintf('%02d:00', $h),
                                 sprintf('%02d:30', $h) => sprintf('%02d:30', $h),
                             ])->toArray()
