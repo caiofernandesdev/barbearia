@@ -20,6 +20,7 @@ class ServicoForm
             FileUpload::make('foto')
                 ->label('Imagem do Serviço')
                 ->image()
+                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                 ->imageResizeMode('contain')
                 ->imageResizeTargetWidth('1200')
                 ->imageResizeTargetHeight('1200')

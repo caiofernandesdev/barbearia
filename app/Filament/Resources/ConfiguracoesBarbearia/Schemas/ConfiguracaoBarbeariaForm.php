@@ -30,6 +30,7 @@ class ConfiguracaoBarbeariaForm
                     FileUpload::make('logo')
                         ->label('Logo')
                         ->image()
+                        ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                         ->imageResizeMode('contain')
                         ->imageResizeTargetWidth('800')
                         ->imageResizeTargetHeight('800')

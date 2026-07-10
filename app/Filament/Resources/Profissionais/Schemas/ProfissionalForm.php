@@ -46,6 +46,9 @@ class ProfissionalForm
             FileUpload::make('foto')
                 ->label('Foto')
                 ->image()
+                // Sem HEIC: navegadores de PC não exibem; o iPhone converte p/ JPEG
+                // automaticamente quando o campo não aceita o formato
+                ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                 // Redimensiona no navegador ANTES do upload — fotos de galeria de
                 // celular (5-15MB) estourariam os limites de upload do servidor
                 ->imageResizeMode('contain')
