@@ -12,9 +12,13 @@ use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 
 /**
- * Agenda Fixa — monta o mês de um cliente mensalista escolhendo, em cada
- * ocorrência de um dia da semana, qual serviço ele fará. Gera os agendamentos
- * (o hook do model decide pendente/confirmado conforme o módulo WhatsApp).
+ * Agenda Fixa — monta o mês de um cliente escolhendo, em cada ocorrência de um
+ * dia da semana, o serviço E o horário. O padrão montado vira um ciclo que pode
+ * ser repetido por vários meses, mantendo a alternância contínua (ex: unha /
+ * reparo quinzenal, com horário que desliza conforme a duração).
+ *
+ * Gera agendamentos reais (o hook do model decide pendente/confirmado conforme
+ * o módulo WhatsApp). Não duplica os que já existem.
  */
 class AgendaFixa extends Page
 {
@@ -36,7 +40,6 @@ class AgendaFixa extends Page
     public static function canAccess(): bool
     {
         $u = auth()->user();
-        // Admin (dono) e barbeiro montam a agenda fixa dos clientes
         if (! $u || ! ($u->isAdmin() || $u->isBarbeiro())) {
             return false;
         }
@@ -53,31 +56,47 @@ class AgendaFixa extends Page
 
     public ?int $profissionalId = null;
 
-    public string $hora = '09:00';
+    /** Horário padrão que preenche todas as ocorrências (cada uma pode ser ajustada). */
+    public string $horaPadrao = '09:00';
 
     public ?int $diaSemana = null;
+
+    /** Quantos meses gerar, contando a partir do mês escolhido (1 = só ele). */
+    public int $repetirMeses = 1;
 
     /** ['Y-m-d' => servico_id|null] — serviço escolhido em cada ocorrência. */
     public array $servicoPorData = [];
 
+    /** ['Y-m-d' => 'H:i'] — horário de cada ocorrência (default = horaPadrao). */
+    public array $horaPorData = [];
+
     public function mount(): void
     {
         $this->mes = now()->format('Y-m');
-        // Pré-seleciona o cliente quando vem do botão na tabela de mensalistas
         if ($id = request('mensalista')) {
             $this->mensalistaId = (int) $id;
         }
     }
 
-    // Ao trocar mês/dia, reseta os serviços escolhidos (as datas mudam)
+    // Ao trocar mês/dia, as datas mudam → zera o que foi montado
     public function updatedMes(): void
     {
         $this->servicoPorData = [];
+        $this->horaPorData = [];
     }
 
     public function updatedDiaSemana(): void
     {
         $this->servicoPorData = [];
+        $this->horaPorData = [];
+    }
+
+    // "Horário padrão" preenche todas as ocorrências de uma vez
+    public function updatedHoraPadrao(): void
+    {
+        foreach ($this->ocorrencias as $oc) {
+            $this->horaPorData[$oc['data']] = $this->horaPadrao;
+        }
     }
 
     // ─── Opções dos selects ───────────────────────────────────────────────────
@@ -127,8 +146,13 @@ class AgendaFixa extends Page
 
         for ($d = $inicio->copy(); $d->lte($fim); $d->addDay()) {
             if ($d->dayOfWeek === (int) $this->diaSemana) {
+                $key = $d->format('Y-m-d');
+                // Garante um horário padrão para a linha
+                if (! isset($this->horaPorData[$key])) {
+                    $this->horaPorData[$key] = $this->horaPadrao;
+                }
                 $datas[] = [
-                    'data' => $d->format('Y-m-d'),
+                    'data' => $key,
                     'label' => $d->locale('pt_BR')->isoFormat('DD/MM (ddd)'),
                     'semana' => (int) ceil($d->day / 7),
                 ];
@@ -145,31 +169,39 @@ class AgendaFixa extends Page
         $this->validate([
             'mensalistaId' => 'required|integer',
             'profissionalId' => 'required|integer',
-            'hora' => 'required',
             'diaSemana' => 'required|integer',
+            'repetirMeses' => 'required|integer|min:1|max:12',
         ], [], [
             'mensalistaId' => 'cliente',
             'profissionalId' => 'profissional',
             'diaSemana' => 'dia da semana',
+            'repetirMeses' => 'meses',
         ]);
 
         $mensalista = Mensalista::findOrFail($this->mensalistaId);
-        $escolhidos = array_filter($this->servicoPorData); // só datas com serviço
 
-        if ($escolhidos === []) {
+        // Monta a lista de (data, serviço, hora) a criar.
+        $planejados = $this->repetirMeses <= 1
+            ? $this->planejarMesBase()   // respeita exatamente o montado (inclui "não vem")
+            : $this->planejarComCiclo(); // repete o padrão continuamente pelos meses
+
+        if ($planejados === []) {
             Notification::make()->title('Nenhum serviço selecionado')->warning()->send();
 
             return;
         }
 
+        $agora = now();
         $tenantId = app()->bound('current_tenant') ? app('current_tenant')?->id : null;
         $criados = 0;
         $pulados = 0;
 
-        foreach ($escolhidos as $data => $servicoId) {
-            $dataHora = Carbon::createFromFormat('Y-m-d H:i', $data.' '.substr($this->hora, 0, 5));
+        foreach ($planejados as $pl) {
+            $dataHora = Carbon::parse($pl['data'].' '.$pl['hora']);
+            if ($dataHora->lte($agora)) {
+                continue; // passado
+            }
 
-            // Não duplica: mesmo cliente, mesmo horário exato
             $existe = Agendamento::where('cliente_telefone', $mensalista->telefone)
                 ->where('data_hora', $dataHora)
                 ->whereIn('status', ['pendente', 'confirmado'])
@@ -181,12 +213,11 @@ class AgendaFixa extends Page
                 continue;
             }
 
-            // status omitido: o hook do model decide pendente (WhatsApp on) ou confirmado (off)
             Agendamento::create([
                 'cliente_nome' => $mensalista->nome,
                 'cliente_telefone' => $mensalista->telefone,
                 'profissional_id' => $this->profissionalId,
-                'servico_id' => (int) $servicoId,
+                'servico_id' => $pl['servico'],
                 'data_hora' => $dataHora,
                 'mensalista' => true,
                 'mensalista_id' => $mensalista->id,
@@ -202,5 +233,57 @@ class AgendaFixa extends Page
             ->send();
 
         $this->servicoPorData = [];
+        $this->horaPorData = [];
+    }
+
+    /** Só o mês base: exatamente as datas preenchidas (as "não vem" ficam de fora). */
+    private function planejarMesBase(): array
+    {
+        $planejados = [];
+        foreach ($this->ocorrencias as $oc) {
+            $servicoId = $this->servicoPorData[$oc['data']] ?? null;
+            if ($servicoId) {
+                $planejados[] = [
+                    'data' => $oc['data'],
+                    'servico' => (int) $servicoId,
+                    'hora' => substr($this->horaPorData[$oc['data']] ?? $this->horaPadrao, 0, 5),
+                ];
+            }
+        }
+
+        return $planejados;
+    }
+
+    /**
+     * Repetição: o padrão montado (serviço+hora das semanas preenchidas) vira um
+     * ciclo aplicado continuamente a cada ocorrência do dia da semana na janela,
+     * ancorado no início do mês base — mantém a alternância na virada do mês.
+     */
+    private function planejarComCiclo(): array
+    {
+        $ciclo = $this->planejarMesBase();
+        if ($ciclo === []) {
+            return [];
+        }
+
+        $inicio = Carbon::createFromFormat('Y-m-d', $this->mes.'-01')->startOfMonth();
+        $fim = $inicio->copy()->addMonths($this->repetirMeses - 1)->endOfMonth();
+
+        $planejados = [];
+        $i = 0;
+        for ($d = $inicio->copy(); $d->lte($fim); $d->addDay()) {
+            if ($d->dayOfWeek !== (int) $this->diaSemana) {
+                continue;
+            }
+            $item = $ciclo[$i % count($ciclo)];
+            $i++;
+            $planejados[] = [
+                'data' => $d->format('Y-m-d'),
+                'servico' => $item['servico'],
+                'hora' => $item['hora'],
+            ];
+        }
+
+        return $planejados;
     }
 }

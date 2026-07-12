@@ -59,7 +59,27 @@
             background: rgba(245,158,11,.15); color: #b45309; white-space: nowrap;
         }
         .af-oc-data { font-size: 15px; font-weight: 600; }
-        @media (min-width: 640px) { .af-oc select { max-width: 260px; margin-left: auto; } }
+        /* Mobile: serviço e horário empilhados full-width. Desktop: lado a lado. */
+        .af-oc-controls { display: flex; flex-direction: column; gap: 8px; width: 100%; }
+        .af-oc-controls select { width: 100%; }
+        .af-oc .af-hora { width: 100%; }
+        @media (min-width: 640px) {
+            .af-oc-controls { flex-direction: row; max-width: 420px; margin-left: auto; }
+            .af-oc-controls select { flex: 1; }
+            .af-oc .af-hora { width: 120px; flex-shrink: 0; }
+        }
+
+        .af-repetir {
+            display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+            margin: 16px 0 4px; font-size: 14px; font-weight: 600;
+        }
+        .af-repetir select {
+            padding: 8px 10px; border-radius: 8px;
+            border: 1px solid rgba(0,0,0,.18); background: #fff; color: #111827;
+            font-size: 15px; color-scheme: light;
+        }
+        .dark .af-repetir select { background: #26292f; color: #f3f4f6; border-color: rgba(255,255,255,.14); color-scheme: dark; }
+        .af-repetir span:last-child { opacity: .6; font-weight: 400; }
 
         .af-btn {
             width: 100%; margin-top: 6px;
@@ -119,17 +139,17 @@
                 </div>
 
                 <div class="af-field">
-                    <label>Horário</label>
-                    <input type="time" wire:model.live="hora">
+                    <label>Horário padrão</label>
+                    <input type="time" wire:model.live="horaPadrao">
                 </div>
             </div>
         </div>
 
-        {{-- Passo 2: serviço em cada data --}}
+        {{-- Passo 2: serviço e horário em cada data --}}
         @if(!empty($this->ocorrencias))
             <div class="af-card">
-                <h3>2 · Serviço de cada dia</h3>
-                <p class="sub">Defina o serviço em cada data. Deixe "não vem" nos dias em que o cliente não aparece.</p>
+                <h3>2 · Serviço e horário de cada semana</h3>
+                <p class="sub">Defina o serviço e o horário em cada data. Deixe "não vem" nos dias em que o cliente não aparece.</p>
 
                 @foreach($this->ocorrencias as $oc)
                     <div class="af-oc">
@@ -137,14 +157,28 @@
                             <span class="af-badge">{{ $oc['semana'] }}ª sem</span>
                             <span class="af-oc-data">{{ $oc['label'] }}</span>
                         </div>
-                        <select wire:model="servicoPorData.{{ $oc['data'] }}">
-                            <option value="">— não vem —</option>
-                            @foreach($this->servicos as $id => $nome)
-                                <option value="{{ $id }}">{{ $nome }}</option>
-                            @endforeach
-                        </select>
+                        <div class="af-oc-controls">
+                            <select wire:model="servicoPorData.{{ $oc['data'] }}">
+                                <option value="">— não vem —</option>
+                                @foreach($this->servicos as $id => $nome)
+                                    <option value="{{ $id }}">{{ $nome }}</option>
+                                @endforeach
+                            </select>
+                            <input type="time" wire:model="horaPorData.{{ $oc['data'] }}" class="af-hora">
+                        </div>
                     </div>
                 @endforeach
+
+                {{-- Repetir por meses --}}
+                <div class="af-repetir">
+                    <span>🔁 Repetir esse padrão por</span>
+                    <select wire:model.live="repetirMeses">
+                        @for($n = 1; $n <= 12; $n++)
+                            <option value="{{ $n }}">{{ $n }} {{ $n === 1 ? 'mês' : 'meses' }}</option>
+                        @endfor
+                    </select>
+                    <span>(a partir de {{ $this->meses[$this->mes] ?? '' }})</span>
+                </div>
 
                 <button type="button" class="af-btn" wire:click="gerar" wire:loading.attr="disabled">
                     <span wire:loading.remove wire:target="gerar">✓ Gerar agendamentos</span>

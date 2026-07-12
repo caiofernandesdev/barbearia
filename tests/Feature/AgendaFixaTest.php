@@ -10,6 +10,7 @@ use App\Models\Profissional;
 use App\Models\Servico;
 use App\Models\Tenant;
 use App\Models\User;
+use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
@@ -32,6 +33,8 @@ class AgendaFixaTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+        // Fixa "hoje" antes de julho/2026 para que as datas dos testes sejam futuras
+        Carbon::setTestNow(Carbon::parse('2026-06-15 08:00'));
         Queue::fake();
         app()->forgetInstance('current_tenant');
 
@@ -49,13 +52,19 @@ class AgendaFixaTest extends TestCase
         $this->reparo = Servico::forceCreate(['nome' => 'Reparo', 'preco' => 25, 'duracao_minutos' => 30, 'tenant_id' => $this->tenant->id]);
     }
 
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+        parent::tearDown();
+    }
+
     private function pagina(): AgendaFixa
     {
         $p = new AgendaFixa;
         $p->mount();
         $p->mensalistaId = $this->cliente->id;
         $p->profissionalId = $this->prof->id;
-        $p->hora = '14:00';
+        $p->horaPadrao = '14:00';
 
         return $p;
     }
@@ -96,6 +105,50 @@ class AgendaFixaTest extends TestCase
         $this->assertTrue($ags->every(fn ($a) => $a->data_hora->format('H:i') === '14:00'));
         $this->assertTrue($ags->every(fn ($a) => $a->status === 'pendente'));
         $this->assertTrue($ags->every(fn ($a) => $a->mensalista === true));
+    }
+
+    public function test_horario_por_data_e_respeitado(): void
+    {
+        $p = $this->pagina();
+        $p->mes = '2026-07';
+        $p->diaSemana = 2;
+        $p->getOcorrenciasProperty(); // inicializa horaPorData com o padrão
+        // Fernanda: horário desliza 10h / 9h conforme o serviço
+        $p->servicoPorData = ['2026-07-07' => $this->unha->id, '2026-07-14' => $this->reparo->id];
+        $p->horaPorData['2026-07-07'] = '10:00';
+        $p->horaPorData['2026-07-14'] = '09:00';
+
+        $p->gerar();
+
+        $ags = Agendamento::withoutGlobalScopes()->orderBy('data_hora')->get()->keyBy(fn ($a) => $a->data_hora->format('Y-m-d'));
+        $this->assertSame('10:00', $ags['2026-07-07']->data_hora->format('H:i'));
+        $this->assertSame('09:00', $ags['2026-07-14']->data_hora->format('H:i'));
+    }
+
+    public function test_repetir_por_meses_mantem_alternancia_continua(): void
+    {
+        $p = $this->pagina();
+        $p->mes = '2026-07';
+        $p->diaSemana = 2; // terça
+        $p->repetirMeses = 2; // julho + agosto
+        $p->getOcorrenciasProperty();
+        // Alternância período 2: unha, reparo (nas 4 terças de julho)
+        $p->servicoPorData = [
+            '2026-07-07' => $this->unha->id,
+            '2026-07-14' => $this->reparo->id,
+            '2026-07-21' => $this->unha->id,
+            '2026-07-28' => $this->reparo->id,
+        ];
+
+        $p->gerar();
+
+        $ags = Agendamento::withoutGlobalScopes()->orderBy('data_hora')->get();
+        // Julho (4) + agosto (4 terças: 04,11,18,25) = 8
+        $this->assertCount(8, $ags);
+        // A alternância continua na virada: 28/07 = reparo → 04/08 = unha
+        $porData = $ags->keyBy(fn ($a) => $a->data_hora->format('Y-m-d'));
+        $this->assertSame($this->unha->id, $porData['2026-08-04']->servico_id);
+        $this->assertSame($this->reparo->id, $porData['2026-08-11']->servico_id);
     }
 
     public function test_datas_sem_servico_sao_ignoradas(): void
