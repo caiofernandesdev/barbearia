@@ -11,11 +11,17 @@ class BarbeirosChart extends ChartWidget
 {
     protected static ?int $sort = 4;
 
-    public static function canView(): bool { return auth()->user()?->isAdmin() ?? false; }
+    public static function canView(): bool
+    {
+        return auth()->user()?->isAdmin() ?? false;
+    }
 
     protected ?string $maxHeight = '250px';
 
-    public function getHeading(): ?string { return 'Atendimentos por Barbeiro — Este Mês'; }
+    public function getHeading(): ?string
+    {
+        return 'Atendimentos por Profissional — Este Mês';
+    }
 
     protected function getData(): array
     {
@@ -30,20 +36,24 @@ class BarbeirosChart extends ChartWidget
                 ->groupBy('profissional_id')
                 ->pluck('total', 'profissional_id');
 
-            $labels = []; $dados = [];
-            $cores  = ['#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
+            $labels = [];
+            $dados = [];
+            $cores = ['#f59e0b', '#10b981', '#3b82f6', '#ef4444', '#8b5cf6', '#ec4899', '#14b8a6'];
 
             foreach ($profissionais as $prof) {
                 $labels[] = $prof->nome;
-                $dados[]  = $counts[$prof->id] ?? 0;
+                $dados[] = $counts[$prof->id] ?? 0;
             }
 
             return [
                 'datasets' => [['label' => 'Atendimentos', 'data' => $dados, 'backgroundColor' => array_slice($cores, 0, count($profissionais)), 'borderWidth' => 0]],
-                'labels'   => $labels,
+                'labels' => $labels,
             ];
         });
     }
 
-    protected function getType(): string { return 'doughnut'; }
+    protected function getType(): string
+    {
+        return 'doughnut';
+    }
 }

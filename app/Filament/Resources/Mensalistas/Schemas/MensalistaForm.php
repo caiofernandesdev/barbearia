@@ -30,8 +30,8 @@ class MensalistaForm
             Select::make('tipo')
                 ->label('Tipo de Cliente')
                 ->options([
-                    'avulso'         => 'Avulso — atendimento esporádico, sem restrição',
-                    'mensalista'     => 'Mensalista — limite de cortes por semana',
+                    'avulso' => 'Avulso — atendimento esporádico, sem restrição',
+                    'mensalista' => 'Mensalista — limite de cortes por semana',
                     'mensalista_fixo' => 'Mensalista Fixo — horário semanal fixo',
                 ])
                 ->default('avulso')
@@ -45,8 +45,8 @@ class MensalistaForm
                 ->default(1)
                 ->minValue(1)
                 ->maxValue(7)
-                ->helperText('Sobrescreve o limite global configurado na barbearia.')
-                ->visible(fn(Get $get): bool => $get('tipo') === 'mensalista'),
+                ->helperText('Sobrescreve o limite global configurado no estabelecimento.')
+                ->visible(fn (Get $get): bool => $get('tipo') === 'mensalista'),
 
             TextInput::make('valor_mensalidade')
                 ->label('Valor da mensalidade (R$)')
@@ -55,7 +55,7 @@ class MensalistaForm
                 ->minValue(0)
                 ->prefix('R$')
                 ->helperText('Valor cobrado mensalmente deste cliente. Usado no cálculo do Salário Emocional.')
-                ->visible(fn(Get $get): bool => in_array($get('tipo'), ['mensalista', 'mensalista_fixo'])),
+                ->visible(fn (Get $get): bool => in_array($get('tipo'), ['mensalista', 'mensalista_fixo'])),
 
             // Repeater para horários fixos — visível apenas quando tipo = mensalista_fixo
             Repeater::make('horariosFixos')
@@ -63,7 +63,7 @@ class MensalistaForm
                 ->relationship()
                 ->schema([
                     Select::make('profissional_id')
-                        ->label('Barbeiro')
+                        ->label('Profissional')
                         ->relationship('profissional', 'nome')
                         ->required(),
 
@@ -88,7 +88,7 @@ class MensalistaForm
                     Select::make('hora')
                         ->label('Horário')
                         ->options(
-                            collect(range(6, 22))->flatMap(fn($h) => [
+                            collect(range(6, 22))->flatMap(fn ($h) => [
                                 sprintf('%02d:00', $h) => sprintf('%02d:00', $h),
                                 sprintf('%02d:30', $h) => sprintf('%02d:30', $h),
                             ])->prepend('Selecione', '')->toArray()
@@ -102,7 +102,7 @@ class MensalistaForm
                 ->columns(2)
                 ->addActionLabel('+ Adicionar horário fixo')
                 ->helperText('Esses horários são bloqueados na agenda para outros clientes e exibidos ao mensalista fixo ao identificar o telefone.')
-                ->visible(fn(Get $get): bool => $get('tipo') === 'mensalista_fixo'),
+                ->visible(fn (Get $get): bool => $get('tipo') === 'mensalista_fixo'),
 
         ]);
     }

@@ -176,7 +176,7 @@ class RelatorioExportController extends Controller
 
             if ($rel['desempenho_barbeiro']) {
                 fputcsv($out, ['DESEMPENHO POR BARBEIRO'], ';');
-                fputcsv($out, ['Barbeiro', 'Atendimentos', 'Receita (R$)', 'Ticket Médio (R$)', '% Comissão', 'Comissão (R$)', 'Clientes Únicos'], ';');
+                fputcsv($out, ['Profissional', 'Atendimentos', 'Receita (R$)', 'Ticket Médio (R$)', '% Comissão', 'Comissão (R$)', 'Clientes Únicos'], ';');
                 foreach ($barbeiros as $b) {
                     fputcsv($out, [
                         $b['nome'], $b['total'],
@@ -202,7 +202,7 @@ class RelatorioExportController extends Controller
             if ($rel['agendamentos_periodo']) {
                 fputcsv($out, ['LISTA DE AGENDAMENTOS DO PERÍODO'], ';');
                 fputcsv($out, array_merge(
-                    ['Data', 'Hora', 'Cliente', 'Telefone', 'Barbeiro', 'Serviço', 'Valor (R$)', 'Status'],
+                    ['Data', 'Hora', 'Cliente', 'Telefone', 'Profissional', 'Serviço', 'Valor (R$)', 'Status'],
                     $campos->pluck('nome')->all() // uma coluna por campo personalizado
                 ), ';');
                 foreach ($agsLista as $ag) {

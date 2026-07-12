@@ -36,21 +36,21 @@ class UsuarioForm
             Select::make('role')
                 ->label('Perfil')
                 ->options([
-                    'admin'    => 'Dono / Admin (acesso total)',
-                    'barbeiro' => 'Barbeiro (painel próprio)',
+                    'admin' => 'Dono / Admin (acesso total)',
+                    'barbeiro' => 'Profissional (painel próprio)',
                 ])
                 ->default('barbeiro')
                 ->required()
                 ->live(),
 
             Select::make('profissional_id')
-                ->label('Barbeiro vinculado')
+                ->label('Profissional vinculado')
                 ->options(Profissional::where('ativo', true)->orderBy('nome')->pluck('nome', 'id'))
                 ->placeholder('Selecione o profissional...')
                 ->searchable()
                 ->nullable()
                 ->visible(fn ($get) => $get('role') === 'barbeiro')
-                ->helperText('Vincule este login ao cadastro do barbeiro para filtrar os dados dele.'),
+                ->helperText('Vincule este login ao cadastro do profissional para filtrar os dados dele.'),
         ]);
     }
 }

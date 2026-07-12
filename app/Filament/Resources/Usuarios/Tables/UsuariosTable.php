@@ -26,18 +26,18 @@ class UsuariosTable
                     ->label('Perfil')
                     ->badge()
                     ->color(fn ($state) => match ($state) {
-                        'admin'    => 'warning',
+                        'admin' => 'warning',
                         'barbeiro' => 'info',
-                        default    => 'gray',
+                        default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'admin'    => 'Admin',
-                        'barbeiro' => 'Barbeiro',
-                        default    => ucfirst($state),
+                        'admin' => 'Admin',
+                        'barbeiro' => 'Profissional',
+                        default => ucfirst($state),
                     }),
 
                 TextColumn::make('profissional.nome')
-                    ->label('Barbeiro vinculado')
+                    ->label('Profissional vinculado')
                     ->placeholder('—')
                     ->sortable(),
 

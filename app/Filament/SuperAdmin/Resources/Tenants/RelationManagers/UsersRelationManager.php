@@ -41,7 +41,7 @@ class UsersRelationManager extends RelationManager
                 ->label('Perfil')
                 ->options([
                     'admin' => 'Admin (dono do estabelecimento)',
-                    'barbeiro' => 'Barbeiro',
+                    'barbeiro' => 'Profissional',
                 ])
                 ->default('admin')
                 ->required(),
@@ -82,7 +82,7 @@ class UsersRelationManager extends RelationManager
                     })
                     ->formatStateUsing(fn (string $state) => match ($state) {
                         'admin' => 'Admin',
-                        'barbeiro' => 'Barbeiro',
+                        'barbeiro' => 'Profissional',
                         default => $state,
                     }),
 

@@ -78,7 +78,7 @@ class SalarioEmocional extends Page implements HasTable
                 ->live(),
 
             Select::make('profissional_id')
-                ->label('Barbeiro')
+                ->label('Profissional')
                 ->options(Profissional::where('ativo', true)->pluck('nome', 'id'))
                 ->placeholder('Todos os barbeiros')
                 ->live()
@@ -103,7 +103,7 @@ class SalarioEmocional extends Page implements HasTable
                 ->icon(Heroicon::OutlinedCurrencyDollar)
                 ->color('success'),
 
-            Stat::make('Para a barbearia (50%)', 'R$ '.number_format($r['valorBarbearia'], 2, ',', '.'))
+            Stat::make('Para o estabelecimento (50%)', 'R$ '.number_format($r['valorBarbearia'], 2, ',', '.'))
                 ->icon(Heroicon::OutlinedReceiptPercent)
                 ->color('warning'),
 
@@ -135,11 +135,11 @@ class SalarioEmocional extends Page implements HasTable
                     ->when($profissionalId, fn ($q) => $q->where('id', $profissionalId))
                     ->orderBy('nome')
             )
-            ->heading('Detalhamento por Barbeiro')
+            ->heading('Detalhamento por Profissional')
             ->description('Participação proporcional + consolidação financeira do período')
             ->columns([
                 TextColumn::make('nome')
-                    ->label('Barbeiro')
+                    ->label('Profissional')
                     ->weight(FontWeight::SemiBold),
 
                 TextColumn::make('qtd_mensalistas')

@@ -22,7 +22,7 @@ class ConfiguracaoBarbeariaForm
                 ->columns(2)
                 ->schema([
                     TextInput::make('nome_barbearia')
-                        ->label('Nome da Barbearia')
+                        ->label('Nome do Estabelecimento')
                         ->required()
                         ->maxLength(100)
                         ->helperText('Aparece no cabeçalho e nas páginas públicas de agendamento.'),
@@ -159,7 +159,7 @@ class ConfiguracaoBarbeariaForm
                 ->columns(2)
                 ->schema([
                     TextInput::make('percentual_barbearia')
-                        ->label('Percentual da Barbearia (%)')
+                        ->label('Percentual do Estabelecimento (%)')
                         ->numeric()
                         ->default(60)
                         ->minValue(0)
@@ -170,7 +170,7 @@ class ConfiguracaoBarbeariaForm
                         ->helperText('Percentual da receita retido pela barbearia sobre cada serviço.'),
 
                     Placeholder::make('percentual_barbeiros_info')
-                        ->label('Percentual dos Barbeiros')
+                        ->label('Percentual dos Profissionais')
                         ->content(fn ($get) => (100 - (float) ($get('percentual_barbearia') ?? 60)).'%')
                         ->helperText('Calculado automaticamente: 100% − percentual da barbearia.'),
                 ]),

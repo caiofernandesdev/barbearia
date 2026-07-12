@@ -4,7 +4,6 @@ namespace App\Filament\Resources\ConfiguracoesBarbearia\Pages;
 
 use App\Filament\Resources\ConfiguracoesBarbearia\ConfiguracaoBarbeariaResource;
 use App\Models\ConfiguracaoBarbearia;
-use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 
@@ -12,12 +11,12 @@ class EditConfiguracaoBarbearia extends EditRecord
 {
     protected static string $resource = ConfiguracaoBarbeariaResource::class;
 
-    protected static ?string $title = 'Configurações da Barbearia';
+    protected static ?string $title = 'Configurações do Estabelecimento';
 
     /**
      * Ignora o parâmetro de rota e sempre carrega o registro singleton.
      */
-    public function mount(int | string | null $record = null): void
+    public function mount(int|string|null $record = null): void
     {
         $this->record = ConfiguracaoBarbearia::getInstance();
         $this->fillForm();

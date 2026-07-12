@@ -66,7 +66,7 @@ class AgendamentosRelatorioTable extends Component implements HasActions, HasSch
                     ->searchable(),
 
                 TextColumn::make('profissional.nome')
-                    ->label('Barbeiro')
+                    ->label('Profissional')
                     ->sortable(),
 
                 TextColumn::make('servico.nome')

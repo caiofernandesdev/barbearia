@@ -45,7 +45,7 @@ class ProximosAgendamentosWidget extends TableWidget
                     ->description(fn ($record) => $record->cliente_telefone),
 
                 TextColumn::make('profissional.nome')
-                    ->label('Barbeiro'),
+                    ->label('Profissional'),
 
                 TextColumn::make('servico.nome')
                     ->label('Serviço')

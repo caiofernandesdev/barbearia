@@ -120,7 +120,7 @@ class Relatorios extends Page implements HasTable
                 ->displayFormat('d/m/Y'),
 
             Select::make('filtroProfissional')
-                ->label('Barbeiro')
+                ->label('Profissional')
                 ->options(Profissional::where('ativo', true)->orderBy('nome')->pluck('nome', 'id'))
                 ->placeholder('Todos os barbeiros')
                 ->live(),
@@ -211,11 +211,11 @@ class Relatorios extends Page implements HasTable
                     ->when($pid, fn ($q) => $q->where('id', $pid))
                     ->orderBy('nome')
             )
-            ->heading('Desempenho por Barbeiro')
+            ->heading('Desempenho por Profissional')
             ->description('Período: '.Carbon::parse($inicio)->format('d/m/Y').' a '.Carbon::parse($fim)->format('d/m/Y'))
             ->columns([
                 TextColumn::make('nome')
-                    ->label('Barbeiro')
+                    ->label('Profissional')
                     ->weight(FontWeight::SemiBold),
 
                 TextColumn::make('atendimentos')

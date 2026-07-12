@@ -89,7 +89,7 @@ class DashboardHeaderWidget extends StatsOverviewWidget
                 ->color('warning'),
 
             Stat::make('Clientes Hoje', (string) $data['clientesHoje'])
-                ->description("{$data['totalBarbeiros']} barbeiro(s)")
+                ->description("{$data['totalBarbeiros']} profissional(is)")
                 ->icon(Heroicon::OutlinedUsers)
                 ->color('info'),
 
