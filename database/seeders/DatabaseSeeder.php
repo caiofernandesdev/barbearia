@@ -40,7 +40,7 @@ class DatabaseSeeder extends Seeder
             'descricao' => 'Tudo do Básico + WhatsApp + Relatórios + Salário Emocional',
             'preco_mensal' => 197.00,
             // Relatórios granulares (rel_*): Pro tem os principais
-            'features' => ['mensalistas', 'indisponibilidades', 'relatorios', 'salario_emocional', 'whatsapp',
+            'features' => ['mensalistas', 'indisponibilidades', 'relatorios', 'salario_emocional', 'whatsapp', 'agenda_fixa',
                 'rel_atendimentos', 'rel_receita', 'rel_clientes_unicos', 'rel_cancelamentos',
                 'rel_servico_top', 'rel_desempenho_barbeiro', 'rel_agendamentos_periodo'],
             'ativo' => true,
@@ -51,7 +51,7 @@ class DatabaseSeeder extends Seeder
             'preco_mensal' => 397.00,
             // Enterprise: todos os relatórios (inclui evolução mensal)
             'features' => array_merge(
-                ['mensalistas', 'indisponibilidades', 'relatorios', 'repescagem', 'salario_emocional', 'whatsapp', 'campos_agendamento', 'import_export'],
+                ['mensalistas', 'indisponibilidades', 'relatorios', 'repescagem', 'salario_emocional', 'whatsapp', 'campos_agendamento', 'agenda_fixa', 'import_export'],
                 array_keys(Plano::RELATORIOS)
             ),
             'ativo' => true,

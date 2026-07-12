@@ -133,7 +133,7 @@ class AgendaFixaTest extends TestCase
     {
         $plano = Plano::forceCreate([
             'nome' => 'P-'.uniqid(), 'preco_mensal' => 100,
-            'features' => ['mensalistas'], 'ativo' => true,
+            'features' => ['mensalistas', 'agenda_fixa'], 'ativo' => true,
         ]);
         $this->tenant->update(['plano_id' => $plano->id]);
         app()->instance('current_tenant', $this->tenant->fresh());
@@ -147,7 +147,7 @@ class AgendaFixaTest extends TestCase
         $this->actingAs($admin, 'admin')
             ->get('/admin/agenda-fixa?mensalista='.$this->cliente->id)
             ->assertOk()
-            ->assertSee('Montar agenda do mês');
+            ->assertSee('Quem e quando');
     }
 
     public function test_whatsapp_desligado_gera_confirmado(): void

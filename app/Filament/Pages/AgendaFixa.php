@@ -35,12 +35,14 @@ class AgendaFixa extends Page
 
     public static function canAccess(): bool
     {
-        if (! auth()->user()?->isAdmin()) {
+        $u = auth()->user();
+        // Admin (dono) e barbeiro montam a agenda fixa dos clientes
+        if (! $u || ! ($u->isAdmin() || $u->isBarbeiro())) {
             return false;
         }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
 
-        return $tenant?->hasFeature('mensalistas') ?? false;
+        return $tenant?->hasFeature('agenda_fixa') ?? false;
     }
 
     // ─── Estado (Livewire) ────────────────────────────────────────────────────

@@ -68,6 +68,7 @@ class PlanosResource extends Resource
                     'salario_emocional' => 'Salário emocional',
                     'whatsapp' => 'Integração WhatsApp',
                     'campos_agendamento' => 'Campos personalizados no agendamento',
+                    'agenda_fixa' => 'Agenda Fixa (planejamento mensal do cliente)',
                     'import_export' => 'Importação / Exportação',
                 ])
                 ->columns(2)

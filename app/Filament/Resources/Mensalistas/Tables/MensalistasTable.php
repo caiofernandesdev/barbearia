@@ -66,6 +66,7 @@ class MensalistasTable
                     ->label('Agenda Fixa')
                     ->icon('heroicon-o-calendar-days')
                     ->color('warning')
+                    ->visible(fn () => (app()->bound('current_tenant') ? app('current_tenant')?->hasFeature('agenda_fixa') : false) ?? false)
                     ->url(fn ($record) => AgendaFixa::getUrl(['mensalista' => $record->id])),
 
                 EditAction::make(),
