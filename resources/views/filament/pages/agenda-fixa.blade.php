@@ -17,17 +17,28 @@
         @media (min-width: 640px) { .af-fields { grid-template-columns: 1fr 1fr; } }
 
         .af-field label { display: block; font-size: 13px; font-weight: 600; margin-bottom: 6px; }
-        .af-field select, .af-field input {
+
+        /* Cores sólidas + color-scheme para o dropdown/time nativo respeitar o tema.
+           Sem isso, o dropdown abre branco no PC e o texto some. */
+        .af-field select, .af-field input, .af-oc select {
             width: 100%;
             padding: 11px 12px;
             border-radius: 10px;
-            border: 1px solid rgba(120,120,120,.35);
-            background: transparent;
-            color: inherit;
+            border: 1px solid rgba(0,0,0,.18);
+            background: #ffffff;
+            color: #111827;
             font-size: 16px; /* 16px evita zoom automático no iOS */
+            color-scheme: light;
+            box-sizing: border-box;
         }
-        .af-field select:focus, .af-field input:focus {
-            outline: 2px solid rgb(var(--primary-500, 245 158 11) / .5);
+        .dark .af-field select, .dark .af-field input, .dark .af-oc select {
+            background: #26292f;
+            color: #f3f4f6;
+            border-color: rgba(255,255,255,.14);
+            color-scheme: dark; /* dropdown e time picker escuros nativos */
+        }
+        .af-field select:focus, .af-field input:focus, .af-oc select:focus {
+            outline: 2px solid rgba(245,158,11,.55);
             outline-offset: 1px;
         }
 
@@ -48,12 +59,6 @@
             background: rgba(245,158,11,.15); color: #b45309; white-space: nowrap;
         }
         .af-oc-data { font-size: 15px; font-weight: 600; }
-        .af-oc select {
-            width: 100%;
-            padding: 11px 12px; border-radius: 10px;
-            border: 1px solid rgba(120,120,120,.35);
-            background: transparent; color: inherit; font-size: 16px;
-        }
         @media (min-width: 640px) { .af-oc select { max-width: 260px; margin-left: auto; } }
 
         .af-btn {
