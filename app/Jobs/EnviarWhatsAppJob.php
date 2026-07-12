@@ -16,6 +16,7 @@ class EnviarWhatsAppJob implements ShouldQueue
     use Dispatchable, InteractsWithQueue, Queueable, SerializesModels;
 
     public int $tries = 3;
+
     public int $backoff = 10;
 
     public function __construct(
@@ -30,12 +31,20 @@ class EnviarWhatsAppJob implements ShouldQueue
             $tenant = Tenant::find($this->tenantId);
             if ($tenant) {
                 app()->instance('current_tenant', $tenant);
+
+                // Módulo WhatsApp desligado para este tenant: não envia nada
+                if (! $tenant->whatsappAtivo()) {
+                    Log::info("WhatsApp inativo no tenant {$tenant->id} — job ignorado");
+
+                    return;
+                }
             }
         }
 
-        $whatsapp = new WhatsAppService();
+        $whatsapp = new WhatsAppService;
         if (! $whatsapp->enabled()) {
             Log::info("WhatsApp desativado — job ignorado para {$this->telefone}");
+
             return;
         }
 

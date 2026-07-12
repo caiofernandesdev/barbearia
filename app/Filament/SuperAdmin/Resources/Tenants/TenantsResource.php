@@ -5,16 +5,19 @@ namespace App\Filament\SuperAdmin\Resources\Tenants;
 use App\Filament\SuperAdmin\Resources\Tenants\Pages\CreateTenant;
 use App\Filament\SuperAdmin\Resources\Tenants\Pages\EditTenant;
 use App\Filament\SuperAdmin\Resources\Tenants\Pages\ListTenants;
-use App\Filament\SuperAdmin\Resources\Tenants\RelationManagers;
 use App\Models\Plano;
 use App\Models\Tenant;
 use App\Models\TipoEstabelecimento;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Resources\Resource;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -29,7 +32,9 @@ class TenantsResource extends Resource
     {
         return 'heroicon-o-building-storefront';
     }
+
     protected static ?string $modelLabel = 'Estabelecimento';
+
     protected static ?string $pluralModelLabel = 'Estabelecimentos';
 
     public static function getNavigationGroup(): ?string
@@ -69,7 +74,7 @@ class TenantsResource extends Resource
                 ->label('Ativo')
                 ->default(true),
 
-            \Filament\Schemas\Components\Section::make('Admin inicial')
+            Section::make('Admin inicial')
                 ->description('Cria o usuário administrador do estabelecimento (somente na criação)')
                 ->hiddenOn('edit')
                 ->schema([
@@ -92,11 +97,15 @@ class TenantsResource extends Resource
                         ->minLength(6),
                 ]),
 
-
-            \Filament\Schemas\Components\Section::make('WhatsApp / Evolution API')
+            Section::make('WhatsApp / Evolution API')
                 ->description('Configuração de integração com WhatsApp para este estabelecimento')
                 ->collapsed()
                 ->schema([
+                    Toggle::make('whatsapp_ativo')
+                        ->label('Módulo WhatsApp ativo')
+                        ->default(true)
+                        ->helperText('Desligado: agendamentos já nascem confirmados, sem mensagens nem pedido de confirmação. É o módulo pago que você vende.'),
+
                     TextInput::make('whatsapp_config.base_url')
                         ->label('URL da Evolution API')
                         ->placeholder('https://api.evolution.com.br')
@@ -141,6 +150,12 @@ class TenantsResource extends Resource
                     ->label('Ativo')
                     ->boolean(),
 
+                IconColumn::make('whatsapp_ativo')
+                    ->label('WhatsApp')
+                    ->boolean()
+                    ->trueColor('success')
+                    ->falseColor('gray'),
+
                 TextColumn::make('created_at')
                     ->label('Criado em')
                     ->date('d/m/Y')
@@ -149,12 +164,12 @@ class TenantsResource extends Resource
             ->defaultSort('created_at', 'desc')
             ->filters([])
             ->actions([
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ])
             ->bulkActions([
-                \Filament\Actions\BulkActionGroup::make([
-                    \Filament\Actions\DeleteBulkAction::make(),
+                BulkActionGroup::make([
+                    DeleteBulkAction::make(),
                 ]),
             ]);
     }
@@ -169,9 +184,9 @@ class TenantsResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListTenants::route('/'),
+            'index' => ListTenants::route('/'),
             'create' => CreateTenant::route('/create'),
-            'edit'   => EditTenant::route('/{record}/edit'),
+            'edit' => EditTenant::route('/{record}/edit'),
         ];
     }
 }

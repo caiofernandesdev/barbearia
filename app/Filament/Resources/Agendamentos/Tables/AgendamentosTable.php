@@ -151,6 +151,8 @@ class AgendamentosTable
                     ->modalHeading('Pedir confirmação por WhatsApp?')
                     ->modalDescription(fn ($record) => "Enviar mensagem pedindo confirmação para {$record->cliente_nome} ({$record->cliente_telefone})?")
                     ->modalSubmitActionLabel('Enviar')
+                    // Sem módulo WhatsApp ativo não há confirmação por mensagem
+                    ->visible(fn () => (app()->bound('current_tenant') ? app('current_tenant')?->whatsappAtivo() : false) ?? false)
                     ->hidden(fn ($record) => $record->status === 'cancelado')
                     ->action(function ($record) {
                         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
@@ -171,6 +173,7 @@ class AgendamentosTable
                     ->modalHeading('Pedir confirmação por WhatsApp?')
                     ->modalDescription(fn (Collection $records) => "Enviar mensagem de confirmação para {$records->count()} agendamento(s) selecionado(s)?")
                     ->modalSubmitActionLabel('Enviar para todos')
+                    ->visible(fn () => (app()->bound('current_tenant') ? app('current_tenant')?->whatsappAtivo() : false) ?? false)
                     ->deselectRecordsAfterCompletion()
                     ->action(function (Collection $records) {
                         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;

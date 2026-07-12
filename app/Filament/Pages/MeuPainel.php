@@ -108,6 +108,7 @@ class MeuPainel extends Page implements HasTable
                     ->modalHeading('Pedir confirmação por WhatsApp?')
                     ->modalDescription(fn ($record) => "Enviar para {$record->cliente_nome} ({$record->cliente_telefone})?")
                     ->modalSubmitActionLabel('Enviar')
+                    ->visible(fn () => (app()->bound('current_tenant') ? app('current_tenant')?->whatsappAtivo() : false) ?? false)
                     ->hidden(fn ($record) => $record->status !== 'pendente')
                     ->action(function ($record) {
                         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
@@ -125,6 +126,7 @@ class MeuPainel extends Page implements HasTable
                     ->modalHeading('Pedir confirmação em massa?')
                     ->modalDescription(fn (Collection $records) => "Enviar para {$records->count()} agendamento(s)?")
                     ->modalSubmitActionLabel('Enviar para todos')
+                    ->visible(fn () => (app()->bound('current_tenant') ? app('current_tenant')?->whatsappAtivo() : false) ?? false)
                     ->deselectRecordsAfterCompletion()
                     ->action(function (Collection $records) {
                         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;

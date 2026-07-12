@@ -11,13 +11,15 @@ use Illuminate\Console\Command;
 
 class EnviarLembretesAgendamentos extends Command
 {
-    protected $signature   = 'agendamentos:lembretes';
+    protected $signature = 'agendamentos:lembretes';
+
     protected $description = 'Envia lembrete por WhatsApp para agendamentos pendentes';
 
     public function handle(): int
     {
-        $tenants = Tenant::where('ativo', true)->get();
-        $total   = 0;
+        // Só tenants com o módulo WhatsApp ligado — sem ele não há lembrete/confirmação
+        $tenants = Tenant::where('ativo', true)->where('whatsapp_ativo', true)->get();
+        $total = 0;
 
         foreach ($tenants as $tenant) {
             app()->instance('current_tenant', $tenant);
@@ -25,11 +27,13 @@ class EnviarLembretesAgendamentos extends Command
             $config = ConfiguracaoBarbearia::withoutGlobalScopes()
                 ->where('tenant_id', $tenant->id)->first();
 
-            if (! $config) continue;
+            if (! $config) {
+                continue;
+            }
 
             $nomeBarbearia = $config->nome_barbearia;
-            $diasAntes     = $config->dias_antecedencia_lembrete ?? 1;
-            $dataAlvo      = now()->addDays($diasAntes);
+            $diasAntes = $config->dias_antecedencia_lembrete ?? 1;
+            $dataAlvo = now()->addDays($diasAntes);
 
             $agendamentos = Agendamento::withoutGlobalScopes()
                 ->where('tenant_id', $tenant->id)
@@ -49,6 +53,7 @@ class EnviarLembretesAgendamentos extends Command
         }
 
         $this->info("Lembretes na fila: {$total}");
+
         return self::SUCCESS;
     }
 }

@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['slug', 'nome', 'tipo', 'tipo_estabelecimento_id', 'plano_id', 'whatsapp_config', 'ativo'])]
+#[Fillable(['slug', 'nome', 'tipo', 'tipo_estabelecimento_id', 'plano_id', 'whatsapp_config', 'whatsapp_ativo', 'ativo'])]
 class Tenant extends Model
 {
     protected $table = 'tenants';
@@ -14,8 +14,15 @@ class Tenant extends Model
     {
         return [
             'whatsapp_config' => 'array',
+            'whatsapp_ativo' => 'boolean',
             'ativo' => 'boolean',
         ];
+    }
+
+    /** Módulo WhatsApp ligado para este estabelecimento? Controla envio e status. */
+    public function whatsappAtivo(): bool
+    {
+        return (bool) $this->whatsapp_ativo;
     }
 
     public function tipoEstabelecimento()

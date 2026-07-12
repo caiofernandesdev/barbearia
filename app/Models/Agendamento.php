@@ -42,6 +42,15 @@ class Agendamento extends Model
                 }
             }
         });
+
+        // Sem WhatsApp ativo não há como o cliente confirmar → nasce confirmado.
+        // Centralizado aqui: cobre booking público, painel admin e agenda do dia.
+        static::creating(function (Agendamento $ag) {
+            if (in_array($ag->status, [null, 'pendente'], true)) {
+                $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+                $ag->status = ($tenant && ! $tenant->whatsappAtivo()) ? 'confirmado' : 'pendente';
+            }
+        });
     }
 
     public function profissional()

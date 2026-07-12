@@ -2,11 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Jobs\EnviarWhatsAppJob;
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
 use App\Models\Tenant;
-use App\Jobs\EnviarWhatsAppJob;
-use Carbon\Carbon;
 use Illuminate\Console\Command;
 
 class CancelarNaoConfirmados extends Command
@@ -17,7 +16,8 @@ class CancelarNaoConfirmados extends Command
 
     public function handle(): int
     {
-        $tenants = Tenant::where('ativo', true)->get();
+        // Sem WhatsApp os agendamentos já nascem confirmados — nada a cancelar por falta de confirmação
+        $tenants = Tenant::where('ativo', true)->where('whatsapp_ativo', true)->get();
         $totalCancelados = 0;
 
         foreach ($tenants as $tenant) {
