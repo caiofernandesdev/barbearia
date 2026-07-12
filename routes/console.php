@@ -16,3 +16,6 @@ Schedule::command('agendamentos:lembretes')->dailyAt('09:00');
 
 // Cancela automaticamente pendentes não confirmados dentro do prazo
 Schedule::command('agendamentos:cancelar-nao-confirmados')->everyFifteenMinutes();
+
+// Mantém a agenda dos mensalistas fixos sempre populada (~8 semanas à frente)
+Schedule::command('agendamentos:gerar-fixos')->dailyAt('05:00');
