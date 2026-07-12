@@ -2,38 +2,46 @@
 
 namespace App\Filament\Pages;
 
+use App\Jobs\EnviarWhatsAppJob;
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
-use App\Jobs\EnviarWhatsAppJob;
+use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
-use Filament\Support\Icons\Heroicon;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
 
-class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
+class RepescagemAvulsos extends Page implements HasActions, HasSchemas, HasTable
 {
-    use InteractsWithTable, InteractsWithActions, InteractsWithSchemas;
+    use InteractsWithActions, InteractsWithSchemas, InteractsWithTable;
 
     protected string $view = 'filament.pages.repescagem-avulsos';
 
     protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedUserGroup;
+
     protected static ?string $navigationLabel = 'Repescagem';
-    protected static ?string $title           = 'Repescagem de Avulsos';
+
+    protected static ?string $title = 'Repescagem de Avulsos';
+
     protected static ?int $navigationSort = 2;
 
-    public static function getNavigationGroup(): string { return 'Clientes'; }
+    public static function getNavigationGroup(): string
+    {
+        return 'Clientes';
+    }
 
     public int $diasSemAgendar = 30;
 
@@ -61,8 +69,11 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
 
     public static function canAccess(): bool
     {
-        if (! auth()->user()?->isAdmin()) return false;
+        if (! auth()->user()?->isAdmin()) {
+            return false;
+        }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
         return $tenant?->hasFeature('repescagem') ?? false;
     }
 
@@ -77,12 +88,12 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
         }
 
         return implode("\n", [
-            "Olá, {nome}! 👋",
-            "",
-            "Sentimos sua falta na *{$nomeBarbearia}*! 💈",
-            "",
-            "Que tal agendar um horário?",
-            "",
+            'Olá, {nome}! 👋',
+            '',
+            "Sentimos sua falta na *{$nomeBarbearia}*! ✨",
+            '',
+            'Que tal agendar um horário?',
+            '',
             "Acesse: {$link}",
         ]);
     }
@@ -90,6 +101,7 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
     private function getTenantLink(): string
     {
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
         return $tenant ? url("/{$tenant->slug}") : url('/');
     }
 
@@ -98,6 +110,7 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
         $msg = str_replace('{nome}', $nome, $mensagem);
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
         EnviarWhatsAppJob::dispatch($telefone, $msg, $tenant?->id);
+
         return true;
     }
 
@@ -131,12 +144,12 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
             ])
             ->defaultSort('dias_ausente', 'desc')
             ->headerActions([
-                \Filament\Actions\Action::make('filtro_dias')
+                Action::make('filtro_dias')
                     ->label(fn () => "Ausentes há mais de {$this->diasSemAgendar} dias")
                     ->icon('heroicon-o-funnel')
                     ->color('gray')
                     ->form([
-                        \Filament\Forms\Components\Select::make('dias')
+                        Select::make('dias')
                             ->label('Ausentes há mais de')
                             ->options([15 => '15 dias', 30 => '30 dias', 45 => '45 dias', 60 => '60 dias', 90 => '90 dias'])
                             ->default($this->diasSemAgendar),
@@ -144,7 +157,7 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
                     ->action(fn (array $data) => $this->diasSemAgendar = $data['dias']),
             ])
             ->recordActions([
-                \Filament\Actions\Action::make('enviar_whatsapp')
+                Action::make('enviar_whatsapp')
                     ->label('Chamar de volta')
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('success')
@@ -153,7 +166,9 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
                     ->modalDescription(fn ($record) => $record ? "Enviar mensagem para {$record->cliente_nome} ({$record->cliente_telefone})?" : '')
                     ->modalSubmitActionLabel('Enviar')
                     ->action(function ($record) {
-                        if (! $record) return;
+                        if (! $record) {
+                            return;
+                        }
                         $enviado = $this->enviarMensagem($record->cliente_telefone, $record->cliente_nome, $this->getMensagemPadrao());
                         Notification::make()
                             ->title($enviado ? 'Mensagem enviada!' : 'Falha no envio')
@@ -162,7 +177,7 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
                     }),
             ])
             ->toolbarActions([
-                \Filament\Actions\BulkAction::make('enviar_massa')
+                BulkAction::make('enviar_massa')
                     ->label('Chamar de volta')
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('success')
@@ -174,13 +189,14 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
                             ->required()
                             ->helperText('{nome} será substituído pelo nome de cada cliente'),
                     ])
-                    ->modalHeading(fn () => 'Chamar de volta ' . count($this->selectedTableRecords) . ' cliente(s)')
+                    ->modalHeading(fn () => 'Chamar de volta '.count($this->selectedTableRecords).' cliente(s)')
                     ->modalSubmitActionLabel('Enviar para todos')
                     ->deselectRecordsAfterCompletion()
                     ->action(function (array $data) {
                         $telefones = $this->selectedTableRecords;
                         if (empty($telefones)) {
                             Notification::make()->title('Nenhum cliente selecionado')->warning()->send();
+
                             return;
                         }
 
@@ -199,8 +215,12 @@ class RepescagemAvulsos extends Page implements HasTable, HasActions, HasSchemas
                                 $falhas++;
                             }
                         }
-                        if ($ok > 0) Notification::make()->title("$ok mensagem(ns) enviada(s)!")->success()->send();
-                        if ($falhas > 0) Notification::make()->title("$falhas falha(s)")->danger()->send();
+                        if ($ok > 0) {
+                            Notification::make()->title("$ok mensagem(ns) enviada(s)!")->success()->send();
+                        }
+                        if ($falhas > 0) {
+                            Notification::make()->title("$falhas falha(s)")->danger()->send();
+                        }
                     }),
             ]);
     }

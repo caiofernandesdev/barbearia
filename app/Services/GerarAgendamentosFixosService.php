@@ -24,7 +24,7 @@ class GerarAgendamentosFixosService
         $limite = $agora->copy()->addWeeks($semanas);
         $criados = 0;
 
-        $fixos = $mensalista->horariosFixos()->where('ativo', true)->get();
+        $fixos = $mensalista->horariosFixos()->where('ativo', true)->with('servico')->get();
 
         foreach ($fixos as $fixo) {
             // Primeira ocorrência do dia da semana a partir de hoje
@@ -47,7 +47,13 @@ class GerarAgendamentosFixosService
                     ->whereIn('status', ['pendente', 'confirmado'])
                     ->exists();
 
-                if ($existe) {
+                // Não sobrepõe outro cliente no mesmo profissional/horário
+                $duracao = (int) ($fixo->servico?->duracao_minutos ?? 30);
+                $conflito = Agendamento::temConflito(
+                    (int) $fixo->profissional_id, $dataHora, $duracao, $mensalista->tenant_id
+                );
+
+                if ($existe || $conflito) {
                     continue;
                 }
 

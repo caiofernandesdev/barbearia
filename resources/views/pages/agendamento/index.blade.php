@@ -558,7 +558,7 @@ function carregarProfissionais() {
     .then(data => {
         profissionais = data;
         estado = 'profissional';
-        addMensagemBot('Perfeito! 💈 Com qual <strong>profissional</strong> você prefere ser atendido?');
+        addMensagemBot('Perfeito! ✨ Com qual <strong>profissional</strong> você prefere ser atendido?');
         renderInput();
     })
     .catch(() => addMensagemBot('⚠️ Erro ao carregar profissionais. Recarregue a página.'));

@@ -45,7 +45,7 @@
 <body>
 
 <div class="header">
-    <h1>{{ $config?->nome_barbearia ?? 'Barbearia' }} — Relatório de Desempenho</h1>
+    <h1>{{ $config?->nome_barbearia ?? 'Estabelecimento' }} — Relatório de Desempenho</h1>
     <div class="sub">Período: {{ $inicio }} a {{ $fim }} &nbsp;|&nbsp; Gerado em {{ now()->format('d/m/Y H:i') }}</div>
 </div>
 
@@ -77,11 +77,11 @@
 
 @if($rel['desempenho_barbeiro'] ?? true)
 {{-- Desempenho por Barbeiro --}}
-<h2>Desempenho por Barbeiro</h2>
+<h2>Desempenho por Profissional</h2>
 <table>
     <thead>
         <tr>
-            <th>Barbeiro</th>
+            <th>Profissional</th>
             <th class="c">Atendimentos</th>
             <th class="r">Receita</th>
             <th class="r">Ticket Médio</th>
@@ -148,7 +148,7 @@
             <th>Data</th>
             <th>Hora</th>
             <th>Cliente</th>
-            <th>Barbeiro</th>
+            <th>Profissional</th>
             <th>Serviço</th>
             <th class="r">Valor</th>
             <th class="c">Status</th>
@@ -187,7 +187,7 @@
 @endif
 
 <div class="footer">
-    {{ $config?->nome_barbearia ?? 'Barbearia' }} &nbsp;·&nbsp; Relatório gerado em {{ now()->format('d/m/Y \à\s H:i') }}
+    {{ $config?->nome_barbearia ?? 'Estabelecimento' }} &nbsp;·&nbsp; Relatório gerado em {{ now()->format('d/m/Y \à\s H:i') }}
 </div>
 
 </body>

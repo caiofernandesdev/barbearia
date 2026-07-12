@@ -56,7 +56,7 @@ class CancelarNaoConfirmados extends Command
                 $profNome = $ag->profissional->nome ?? '';
                 $servNome = $ag->servico->nome ?? '';
 
-                EnviarWhatsAppJob::dispatch($ag->cliente_telefone, "Olá, {$ag->cliente_nome}! 😔\n\nSeu agendamento na *{$nomeBarbearia}* foi cancelado por falta de confirmação.\n\n📅 *Data:* {$data}\n⏰ *Hora:* {$hora}\n👨 *Profissional:* {$profNome}\n\nSe quiser remarcar, acesse nosso link. 😊", $tenant->id);
+                EnviarWhatsAppJob::dispatch($ag->cliente_telefone, "Olá, {$ag->cliente_nome}! 😔\n\nSeu agendamento na *{$nomeBarbearia}* foi cancelado por falta de confirmação.\n\n📅 *Data:* {$data}\n⏰ *Hora:* {$hora}\n👤 *Profissional:* {$profNome}\n\nSe quiser remarcar, acesse nosso link. 😊", $tenant->id);
 
                 if ($ag->profissional && $ag->profissional->telefone) {
                     EnviarWhatsAppJob::dispatch($ag->profissional->telefone, "⚠️ *Horário liberado*\n\nCliente *{$ag->cliente_nome}* não confirmou.\n\n📅 *Data:* {$data}\n⏰ *Hora:* {$hora}\n✂️ *Serviço:* {$servNome}\n\nHorário livre.", $tenant->id);

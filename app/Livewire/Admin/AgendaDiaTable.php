@@ -89,16 +89,15 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
             return;
         }
 
-        // Regra: slot não pode estar ocupado
-        $slotOcupado = Agendamento::where('profissional_id', $this->profissionalId)
-            ->where('data_hora', $dataHora)
-            ->whereIn('status', ['pendente', 'confirmado'])
-            ->exists();
+        // Regra: o horário não pode se sobrepor a outro atendimento (considera a duração)
+        $inicio = Carbon::parse($dataHora);
+        $duracao = Servico::find($this->servicoId)?->duracao_minutos ?? 30;
+        $tenantId = auth('admin')->user()?->tenant_id;
 
-        if ($slotOcupado) {
+        if (Agendamento::temConflito((int) $this->profissionalId, $inicio, $duracao, $tenantId)) {
             Notification::make()
-                ->title('Horário já ocupado')
-                ->body("O horário {$this->horaSelecionada} já tem um agendamento.")
+                ->title('Horário indisponível')
+                ->body("O horário {$this->horaSelecionada} conflita com outro atendimento desse profissional.")
                 ->danger()
                 ->send();
 

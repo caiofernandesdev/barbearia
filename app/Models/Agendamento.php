@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Traits\BelongsToTenant;
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -67,6 +68,33 @@ class Agendamento extends Model
     public function servicos()
     {
         return $this->belongsToMany(Servico::class, 'agendamento_servico');
+    }
+
+    /**
+     * O profissional já tem um agendamento ativo que se sobrepõe a esta janela?
+     *
+     * Considera a duração real de cada agendamento (não só o horário de início) —
+     * é a checagem central de conflito usada em todos os pontos de criação.
+     * Overlap: novoInicio < fimExistente && novoFim > inicioExistente.
+     */
+    public static function temConflito(int $profissionalId, Carbon $inicio, int $duracaoMin, ?int $tenantId, ?int $ignorarId = null): bool
+    {
+        $fim = $inicio->copy()->addMinutes(max(1, $duracaoMin));
+
+        return static::withoutGlobalScopes()
+            ->where('profissional_id', $profissionalId)
+            ->when($tenantId, fn ($q) => $q->where('tenant_id', $tenantId))
+            ->whereIn('status', ['pendente', 'confirmado'])
+            ->whereDate('data_hora', $inicio->toDateString())
+            ->when($ignorarId, fn ($q) => $q->where('id', '!=', $ignorarId))
+            ->with('servico')
+            ->get()
+            ->contains(function ($ag) use ($inicio, $fim) {
+                $agInicio = Carbon::parse($ag->data_hora);
+                $agFim = $agInicio->copy()->addMinutes($ag->duracao_total_minutos ?? $ag->servico?->duracao_minutos ?? 30);
+
+                return $inicio->lt($agFim) && $fim->gt($agInicio);
+            });
     }
 
     /** Nomes dos serviços para exibição — cobre agendamentos antigos (pivot vazio). */

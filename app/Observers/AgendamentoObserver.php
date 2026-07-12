@@ -98,7 +98,7 @@ class AgendamentoObserver
     {
         $servicos = $ag->nomesServicos();
 
-        return "Olá, {$ag->cliente_nome}! 👋\n\nRecebemos seu agendamento na *{$nb}*!\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👨 *Profissional:* {$ag->profissional->nome}\n💈 *Serviço:* {$servicos}\n\nAguarde nossa confirmação. 😊";
+        return "Olá, {$ag->cliente_nome}! 👋\n\nRecebemos seu agendamento na *{$nb}*!\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👤 *Profissional:* {$ag->profissional->nome}\n✨ *Serviço:* {$servicos}\n\nAguarde nossa confirmação. 😊";
     }
 
     public static function mensagemConfirmado(Agendamento $ag, string $nb): string
@@ -106,7 +106,7 @@ class AgendamentoObserver
         $servicos = $ag->nomesServicos();
         $preco = 'R$ '.number_format((float) ($ag->valor_total ?? $ag->servico?->preco ?? 0), 2, ',', '.');
 
-        return "Olá, {$ag->cliente_nome}! ✂️\n\nSeu agendamento na *{$nb}* foi *confirmado*!\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👨 *Profissional:* {$ag->profissional->nome}\n💈 *Serviço:* {$servicos}\n💰 *Valor:* {$preco}\n\nTe esperamos lá! 💈";
+        return "Olá, {$ag->cliente_nome}! ✨\n\nSeu agendamento na *{$nb}* foi *confirmado*!\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👤 *Profissional:* {$ag->profissional->nome}\n✨ *Serviço:* {$servicos}\n💰 *Valor:* {$preco}\n\nTe esperamos lá! 😊";
     }
 
     public static function mensagemCancelado(Agendamento $ag, string $nb): string
@@ -121,11 +121,11 @@ class AgendamentoObserver
 
     public static function mensagemLembrete(Agendamento $ag, string $nb): string
     {
-        return "Olá, {$ag->cliente_nome}! 👋\n\nGostaríamos de confirmar seu agendamento na *{$nb}*:\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👨 *Profissional:* {$ag->profissional->nome}\n\nResponda *1* para confirmar ✅\nResponda *2* para cancelar ❌";
+        return "Olá, {$ag->cliente_nome}! 👋\n\nGostaríamos de confirmar seu agendamento na *{$nb}*:\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👤 *Profissional:* {$ag->profissional->nome}\n\nResponda *1* para confirmar ✅\nResponda *2* para cancelar ❌";
     }
 
     public static function mensagemLembreteConfirmado(Agendamento $ag, string $nb): string
     {
-        return "Olá, {$ag->cliente_nome}! 👋\n\nLembrete: seu agendamento na *{$nb}* é *amanhã* e já está confirmado! ✅\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n\nTe esperamos lá! 💈";
+        return "Olá, {$ag->cliente_nome}! 👋\n\nLembrete: seu agendamento na *{$nb}* é *amanhã* e já está confirmado! ✅\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n\nTe esperamos lá! 😊";
     }
 }

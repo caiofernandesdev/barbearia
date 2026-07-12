@@ -20,7 +20,7 @@ class AgendamentoController extends Controller
         $config = ConfiguracaoBarbearia::getInstance();
 
         return view('pages.agendamento.index', [
-            'nomeBarbearia' => $config->nome_barbearia ?? 'Barbearia',
+            'nomeBarbearia' => $config->nome_barbearia ?? 'Estabelecimento',
             'logoUrl' => $config->logo ? url('storage/'.$config->logo) : null,
             'tenantSlug' => $request->route('tenant'),
             'tema' => $config->tema_agendamento ?? 'escuro',
@@ -319,6 +319,18 @@ class AgendamentoController extends Controller
             }
         }
 
+        // Anti-double-booking: o profissional já pode ter sido reservado nesse
+        // intervalo (corrida entre dois clientes, ou horário manipulado no form)
+        $inicio = Carbon::parse($request->data_hora);
+        $duracaoTotal = (int) $servicosSelecionados->sum('duracao_minutos');
+        $tenantId = app()->bound('current_tenant') ? app('current_tenant')?->id : null;
+
+        if (Agendamento::temConflito((int) $request->profissional_id, $inicio, $duracaoTotal, $tenantId)) {
+            return back()->withErrors([
+                'data_hora' => 'Esse horário acabou de ser reservado. Escolha outro, por favor.',
+            ])->withInput();
+        }
+
         $dadosExtras = $request->input('dados_extras');
         if (is_string($dadosExtras)) {
             $dadosExtras = json_decode($dadosExtras, true);
@@ -355,7 +367,7 @@ class AgendamentoController extends Controller
     {
         $agendamento = Agendamento::with(['profissional', 'servico', 'servicos'])->findOrFail($request->route('agendamentoId'));
         $config = ConfiguracaoBarbearia::getInstance();
-        $nomeBarbearia = $config->nome_barbearia ?? 'Barbearia';
+        $nomeBarbearia = $config->nome_barbearia ?? 'Estabelecimento';
         $tema = $config->tema_agendamento ?? 'escuro';
         $tenantSlug = $request->route('tenant');
 
@@ -375,7 +387,7 @@ class AgendamentoController extends Controller
             ->get();
 
         $config = ConfiguracaoBarbearia::getInstance();
-        $nomeBarbearia = $config->nome_barbearia ?? 'Barbearia';
+        $nomeBarbearia = $config->nome_barbearia ?? 'Estabelecimento';
         $tema = $config->tema_agendamento ?? 'escuro';
         $tenantSlug = $request->route('tenant');
 

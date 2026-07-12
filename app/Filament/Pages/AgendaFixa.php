@@ -193,6 +193,7 @@ class AgendaFixa extends Page
 
         $agora = now();
         $tenantId = app()->bound('current_tenant') ? app('current_tenant')?->id : null;
+        $duracoes = Servico::whereIn('id', array_column($planejados, 'servico'))->pluck('duracao_minutos', 'id');
         $criados = 0;
         $pulados = 0;
 
@@ -207,7 +208,12 @@ class AgendaFixa extends Page
                 ->whereIn('status', ['pendente', 'confirmado'])
                 ->exists();
 
-            if ($existe) {
+            // Pula também se o horário conflita com outro cliente do mesmo profissional
+            $conflito = Agendamento::temConflito(
+                (int) $this->profissionalId, $dataHora, (int) ($duracoes[$pl['servico']] ?? 30), $tenantId
+            );
+
+            if ($existe || $conflito) {
                 $pulados++;
 
                 continue;
