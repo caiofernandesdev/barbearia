@@ -1,6 +1,6 @@
 <div>
     <x-filament::section>
-        <x-slot name="heading">Minha Agenda</x-slot>
+        <x-slot name="heading">{{ $heading }}</x-slot>
 
         {{-- Seletor de dias --}}
         <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:12px; -webkit-overflow-scrolling:touch;">

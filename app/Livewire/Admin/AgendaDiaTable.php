@@ -20,6 +20,8 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
 
     public ?int $profissionalId = null;
 
+    public string $heading = 'Minha Agenda';
+
     public string $dataSelecionada = '';
 
     public string $horaSelecionada = '';
