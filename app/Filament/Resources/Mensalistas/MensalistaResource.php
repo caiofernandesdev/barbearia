@@ -16,11 +16,16 @@ class MensalistaResource extends Resource
 {
     protected static ?string $model = Mensalista::class;
 
-    protected static \BackedEnum|string|null $navigationIcon  = 'heroicon-o-user-group';
-    protected static ?string $navigationLabel = 'Mensalistas';
-    protected static ?string $modelLabel      = 'Mensalista';
-    protected static ?string $pluralModelLabel = 'Mensalistas';
-    protected static ?int    $navigationSort  = 1;
+    protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-user-group';
+
+    protected static ?string $navigationLabel = 'Clientes';
+
+    protected static ?string $modelLabel = 'Cliente';
+
+    protected static ?string $pluralModelLabel = 'Clientes';
+
+    protected static ?int $navigationSort = 1;
+
     protected static ?string $recordTitleAttribute = 'nome';
 
     public static function getNavigationGroup(): string
@@ -30,8 +35,11 @@ class MensalistaResource extends Resource
 
     public static function canAccess(): bool
     {
-        if (! auth()->user()?->isAdmin()) return false;
+        if (! auth()->user()?->isAdmin()) {
+            return false;
+        }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
         return $tenant?->hasFeature('mensalistas') ?? false;
     }
 
@@ -48,9 +56,9 @@ class MensalistaResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListMensalistas::route('/'),
+            'index' => ListMensalistas::route('/'),
             'create' => CreateMensalista::route('/create'),
-            'edit'   => EditMensalista::route('/{record}/edit'),
+            'edit' => EditMensalista::route('/{record}/edit'),
         ];
     }
 }

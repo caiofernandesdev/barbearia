@@ -63,7 +63,11 @@ class MeuPainel extends Page implements HasTable
                         'concluido' => 'Concluído',
                         'cancelado' => 'Cancelado',
                     ])
-                    ->default('pendente'),
+                    // Sem WhatsApp os agendamentos nascem confirmados — não faz sentido
+                    // pré-filtrar por "pendente" (esconderia tudo). Aí mostra todos.
+                    ->default(fn () => (app()->bound('current_tenant') && app('current_tenant')?->whatsappAtivo())
+                        ? 'pendente'
+                        : null),
             ])
             ->columns([
                 TextColumn::make('data_hora')
