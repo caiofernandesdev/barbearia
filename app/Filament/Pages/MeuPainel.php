@@ -120,6 +120,21 @@ class MeuPainel extends Page implements HasTable
                         EnviarWhatsAppJob::dispatch($record->cliente_telefone, $msg, $record->tenant_id);
                         Notification::make()->title('Mensagem enviada!')->success()->send();
                     }),
+
+                // Só aparece se o profissional tiver a permissão de cancelar
+                Action::make('cancelar')
+                    ->label('Cancelar')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Cancelar agendamento?')
+                    ->modalDescription(fn ($record) => "Cancelar o atendimento de {$record->cliente_nome}? O horário será liberado.")
+                    ->modalSubmitActionLabel('Sim, cancelar')
+                    ->visible(fn ($record) => auth()->user()?->podeCancelar() && $record->status !== 'cancelado')
+                    ->action(function ($record) {
+                        $record->update(['status' => 'cancelado']);
+                        Notification::make()->title('Agendamento cancelado')->success()->send();
+                    }),
             ])
             ->toolbarActions([
                 BulkAction::make('confirmar_massa')

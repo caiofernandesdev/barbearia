@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Usuarios\Schemas;
 use App\Models\Profissional;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Schema;
 
 class UsuarioForm
@@ -51,6 +52,12 @@ class UsuarioForm
                 ->nullable()
                 ->visible(fn ($get) => $get('role') === 'barbeiro')
                 ->helperText('Vincule este login ao cadastro do profissional para filtrar os dados dele.'),
+
+            Toggle::make('pode_cancelar')
+                ->label('Pode cancelar agendamentos')
+                ->default(false)
+                ->visible(fn ($get) => $get('role') === 'barbeiro')
+                ->helperText('Se ligado, este profissional pode cancelar agendamentos no painel dele.'),
         ]);
     }
 }

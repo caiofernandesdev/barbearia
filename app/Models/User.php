@@ -12,24 +12,42 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 
-#[Fillable(['name', 'email', 'password', 'role', 'profissional_id', 'tenant_id'])]
+#[Fillable(['name', 'email', 'password', 'role', 'profissional_id', 'pode_cancelar', 'tenant_id'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, BelongsToTenant;
+    use BelongsToTenant, HasFactory, Notifiable;
 
     public function canAccessPanel(Panel $panel): bool
     {
         if ($panel->getId() === 'super-admin') {
             return $this->role === 'super_admin';
         }
+
         return in_array($this->role, ['admin', 'barbeiro']);
     }
 
-    public function isSuperAdmin(): bool { return $this->role === 'super_admin'; }
-    public function isAdmin(): bool      { return $this->role === 'admin'; }
-    public function isBarbeiro(): bool   { return $this->role === 'barbeiro'; }
+    public function isSuperAdmin(): bool
+    {
+        return $this->role === 'super_admin';
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === 'admin';
+    }
+
+    public function isBarbeiro(): bool
+    {
+        return $this->role === 'barbeiro';
+    }
+
+    /** Admin sempre pode; profissional só se tiver a permissão marcada. */
+    public function podeCancelar(): bool
+    {
+        return $this->isAdmin() || (bool) $this->pode_cancelar;
+    }
 
     public function profissional()
     {
@@ -40,7 +58,8 @@ class User extends Authenticatable implements FilamentUser
     {
         return [
             'email_verified_at' => 'datetime',
-            'password'          => 'hashed',
+            'password' => 'hashed',
+            'pode_cancelar' => 'boolean',
         ];
     }
 }
