@@ -73,23 +73,9 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         $telefone = preg_replace('/\D/', '', $this->clienteTelefone);
         $dataHora = $this->dataSelecionada.' '.$this->horaSelecionada.':00';
 
-        // Regra: 1 agendamento ativo por cliente
-        $ativo = Agendamento::where('cliente_telefone', $telefone)
-            ->whereIn('status', ['pendente', 'confirmado'])
-            ->first();
-
-        if ($ativo) {
-            $quando = $ativo->data_hora->format('d/m/Y H:i');
-            Notification::make()
-                ->title('Cliente já tem agendamento ativo')
-                ->body("{$ativo->cliente_nome} já tem agendamento em {$quando}. Cancele antes de criar outro.")
-                ->danger()
-                ->send();
-
-            return;
-        }
-
-        // Regra: o horário não pode se sobrepor a outro atendimento (considera a duração)
+        // No painel interno o dono/profissional pode marcar várias sessões para o
+        // mesmo cliente (mensalista, sessões futuras). A única trava é o conflito de
+        // horário: o slot não pode se sobrepor a outro atendimento (considera a duração).
         $inicio = Carbon::parse($dataHora);
         $duracao = Servico::find($this->servicoId)?->duracao_minutos ?? 30;
         $tenantId = auth('admin')->user()?->tenant_id;
