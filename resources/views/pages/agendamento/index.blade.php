@@ -88,6 +88,7 @@
 const tenantSlug = @json($tenantSlug);
 const nomeBarbeariaInicial = "{{ mb_strtoupper(mb_substr($nomeBarbearia, 0, 1)) }}";
 const logoUrl = @json($logoUrl);
+const temListaEspera = @json($temListaEspera ?? false);
 
 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
@@ -694,7 +695,15 @@ function selecionarDataNoCard(dataStr, rolar = true) {
     .then(r => r.json())
     .then(slots => {
         if (!Array.isArray(slots) || !slots.length) {
-            container.innerHTML = '<p class="text-center text-gray-400 text-sm py-2">Nenhum horário disponível. Escolha outra data.</p>';
+            let html = '<p class="text-center text-gray-400 text-sm py-2">Nenhum horário disponível nesse dia.</p>';
+            // Oferece a lista de espera quando o estabelecimento tem o módulo
+            if (temListaEspera) {
+                html += `<button type="button" onclick="mostrarListaEspera('${dataStr}')"
+                    class="w-full mt-1 bg-gray-700 hover:bg-amber-500 text-white rounded-2xl py-3 text-sm font-semibold transition border border-amber-500/40">
+                    ✋ Entrar na lista de espera desse dia
+                </button>`;
+            }
+            container.innerHTML = html;
             return;
         }
         const grid = slots.map(h =>
@@ -709,6 +718,52 @@ function selecionarDataNoCard(dataStr, rolar = true) {
     .catch(() => {
         container.innerHTML = '<p class="text-center text-red-400 text-sm py-2">Erro ao carregar. Tente novamente.</p>';
     });
+}
+
+// ── Lista de espera ──────────────────────────────────────────────────────────
+function mostrarListaEspera(dataStr) {
+    const container = document.getElementById('slots-container');
+    if (!container) return;
+    const dataFmt = new Date(dataStr + 'T00:00').toLocaleDateString('pt-BR');
+    container.innerHTML = `
+        <div class="bg-gray-700 rounded-2xl p-4 space-y-3">
+            <p class="text-white text-sm">Deixe seu horário preferido para <strong>${dataFmt}</strong>. Se abrir vaga, o estabelecimento entra em contato.</p>
+            <div>
+                <label class="block text-gray-300 text-xs mb-1">Horário que você gostaria</label>
+                <input type="time" id="le-hora" class="w-full bg-gray-800 text-white rounded-xl px-4 py-3 text-sm border border-gray-600 focus:border-amber-500 focus:outline-none">
+            </div>
+            <button type="button" onclick="enviarListaEspera('${dataStr}')"
+                class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-2xl text-sm transition">
+                Entrar na lista de espera
+            </button>
+        </div>`;
+    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+}
+
+function enviarListaEspera(dataStr) {
+    const hora = document.getElementById('le-hora')?.value;
+    if (!hora) { addMensagemBot('⚠️ Informe o horário que você gostaria.'); return; }
+
+    fetch(`/${tenantSlug}/lista-espera`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': csrfToken, 'Accept': 'application/json' },
+        body: JSON.stringify({
+            cliente_nome: dadosCliente.nome,
+            cliente_telefone: dadosCliente.telefone,
+            profissional_id: dadosCliente.profissional_id,
+            servico_id: dadosCliente.servico_id,
+            data: dataStr,
+            hora_preferida: hora,
+        }),
+    })
+    .then(r => { if (!r.ok) throw new Error(); return r.json(); })
+    .then(() => {
+        const dataFmt = new Date(dataStr + 'T00:00').toLocaleDateString('pt-BR');
+        // Remove o card de horários e confirma a entrada na lista
+        if (cardAtivo) cardAtivo.remove();
+        addMensagemBot(`✅ Pronto, ${dadosCliente.nome}! Você entrou na lista de espera de <strong>${dataFmt}</strong> às <strong>${hora}</strong>. Se abrir vaga, entraremos em contato. 😊`);
+    })
+    .catch(() => addMensagemBot('⚠️ Não foi possível entrar na lista. Tente novamente.'));
 }
 
 function selecionarHoraNoCard(hora, datetime) {

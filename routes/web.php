@@ -32,6 +32,10 @@ Route::prefix('{tenant}')
         Route::post('/cancelar/{agendamentoId}', [AgendamentoController::class, 'cancelar'])
             ->name('agendamento.cancelar');
 
+        // Lista de espera — cliente entra quando o dia não tem horário
+        Route::post('/lista-espera', [AgendamentoController::class, 'entrarListaEspera'])
+            ->name('agendamento.lista-espera')->middleware('throttle:20,1');
+
         // APIs públicas
         Route::get('/api/profissionais', [AgendamentoController::class, 'profissionais'])
             ->name('api.profissionais')->middleware('throttle:60,1');

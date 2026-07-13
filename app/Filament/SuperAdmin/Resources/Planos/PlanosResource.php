@@ -69,6 +69,7 @@ class PlanosResource extends Resource
                     'whatsapp' => 'Integração WhatsApp',
                     'campos_agendamento' => 'Campos personalizados no agendamento',
                     'agenda_fixa' => 'Agenda Fixa (planejamento mensal do cliente)',
+                    'lista_espera' => 'Lista de espera (dias lotados)',
                     'import_export' => 'Importação / Exportação',
                 ])
                 ->columns(2)

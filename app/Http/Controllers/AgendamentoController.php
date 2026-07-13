@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Agendamento;
 use App\Models\CampoPersonalizado;
 use App\Models\ConfiguracaoBarbearia;
+use App\Models\ListaEspera;
 use App\Models\Mensalista;
 use App\Models\Profissional;
 use App\Models\Servico;
@@ -19,11 +20,14 @@ class AgendamentoController extends Controller
     {
         $config = ConfiguracaoBarbearia::getInstance();
 
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
         return view('pages.agendamento.index', [
             'nomeBarbearia' => $config->nome_barbearia ?? 'Estabelecimento',
             'logoUrl' => $config->logo ? url('storage/'.$config->logo) : null,
             'tenantSlug' => $request->route('tenant'),
             'tema' => $config->tema_agendamento ?? 'escuro',
+            'temListaEspera' => $tenant?->hasFeature('lista_espera') ?? false,
         ]);
     }
 
@@ -361,6 +365,52 @@ class AgendamentoController extends Controller
         session(['agendamentos_telefone' => $telefone]);
 
         return redirect()->route('agendamento.confirmado', ['tenant' => $request->route('tenant'), 'agendamentoId' => $agendamento->id]);
+    }
+
+    /**
+     * Cliente entra na lista de espera de um dia lotado, informando o horário
+     * que gostaria (dentro do expediente). Só quando o tenant tem o módulo.
+     */
+    public function entrarListaEspera(Request $request)
+    {
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+        if (! $tenant?->hasFeature('lista_espera')) {
+            abort(404);
+        }
+
+        $request->validate([
+            'cliente_nome' => 'required|string|max:100',
+            'cliente_telefone' => 'required|string',
+            'profissional_id' => 'required|exists:profissionais,id',
+            'servico_id' => 'nullable|exists:servicos,id',
+            'data' => 'required|date_format:Y-m-d|after_or_equal:today',
+            'hora_preferida' => 'required|date_format:H:i',
+        ], [
+            'hora_preferida.required' => 'Informe o horário que você gostaria.',
+            'data.after_or_equal' => 'Escolha uma data futura.',
+        ]);
+
+        $telefone = preg_replace('/\D/', '', $request->cliente_telefone);
+
+        // Não duplica: mesmo cliente, profissional, dia e horário desejado
+        ListaEspera::firstOrCreate(
+            [
+                'cliente_telefone' => $telefone,
+                'profissional_id' => $request->profissional_id,
+                'data' => $request->data,
+                'hora_preferida' => $request->hora_preferida,
+                'status' => 'aguardando',
+            ],
+            [
+                'cliente_nome' => $request->cliente_nome,
+                'servico_id' => $request->servico_id,
+                'tenant_id' => $tenant->id,
+            ]
+        );
+
+        session(['agendamentos_telefone' => $telefone]);
+
+        return response()->json(['ok' => true]);
     }
 
     public function confirmado(Request $request)
