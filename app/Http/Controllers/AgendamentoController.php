@@ -382,8 +382,9 @@ class AgendamentoController extends Controller
         $profissional = Profissional::findOrFail($request->profissional_id);
         $config = ConfiguracaoBarbearia::getInstance();
 
-        // Profissional com horários próprios usa a lista dele; senão gera pelo expediente
-        $horarios = collect($profissional->horarios_trabalho ?? []);
+        // Profissional com horários próprios naquele dia usa a lista dele; senão
+        // gera pelo expediente do estabelecimento
+        $horarios = collect($profissional->horariosDoDia(Carbon::parse($request->data)->dayOfWeek));
 
         if ($horarios->isEmpty()) {
             $inicio = Carbon::parse($config->horario_abertura ?? '08:00');

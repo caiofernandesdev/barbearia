@@ -14,11 +14,12 @@ use Illuminate\Support\Collection;
  *
  * Dois modos de operação:
  *
- * MODO LISTA — quando o profissional tem `horarios_trabalho` configurados
+ * MODO LISTA — quando o profissional tem horários configurados para aquele dia
+ *   (via `horarios_por_dia` ou, na falta dele, a lista única `horarios_trabalho`)
  *   Usa os horários pré-definidos como candidatos e descarta os que colidem
  *   com agendamentos existentes. Retrocompatível com o fluxo de barbearia.
  *
- * MODO GAP-BASED — quando `horarios_trabalho` está vazio
+ * MODO GAP-BASED — quando o profissional não tem horários para aquele dia
  *   1. Monta todos os intervalos ocupados (agendamentos + mensalistas fixos)
  *   2. Mescla intervalos sobrepostos
  *   3. Identifica as lacunas livres entre abertura e encerramento
@@ -81,7 +82,8 @@ class DisponibilidadeService
             ->map(fn ($h) => substr($h, 0, 5))
             ->toArray();
 
-        $horariosTrabalho = $profissional->horarios_trabalho ?? [];
+        // Horários do dia da semana — respeita a configuração por dia, se houver
+        $horariosTrabalho = $profissional->horariosDoDia($data->dayOfWeek);
 
         if (! empty($horariosTrabalho)) {
             return $this->calcularPorLista(

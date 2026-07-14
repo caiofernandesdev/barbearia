@@ -11,6 +11,46 @@ use Filament\Schemas\Schema;
 
 class ProfissionalForm
 {
+    /** 0=Dom ... 6=Sáb — mesma convenção do Carbon::dayOfWeek */
+    private const DIAS = [
+        0 => 'Domingo',
+        1 => 'Segunda-feira',
+        2 => 'Terça-feira',
+        3 => 'Quarta-feira',
+        4 => 'Quinta-feira',
+        5 => 'Sexta-feira',
+        6 => 'Sábado',
+    ];
+
+    /** Slots de meia em meia hora, das 6h às 23h30 */
+    private static function opcoesHorarios(): array
+    {
+        return collect(range(6, 23))->flatMap(fn ($h) => [
+            sprintf('%02d:00', $h) => sprintf('%02d:00', $h),
+            sprintf('%02d:30', $h) => sprintf('%02d:30', $h),
+        ])->toArray();
+    }
+
+    /** Uma lista de horários por dia da semana, visível só nos dias trabalhados */
+    private static function camposPorDia(): array
+    {
+        return collect(self::DIAS)->map(
+            fn (string $label, int $num) => CheckboxList::make("horarios_por_dia.{$num}")
+                ->label($label)
+                ->options(self::opcoesHorarios())
+                ->columns(6)
+                ->visible(function ($get) use ($num) {
+                    if (! $get('horarios_por_dia_ativo')) {
+                        return false;
+                    }
+                    // O CheckboxList devolve os dias como string; compara normalizado
+                    $dias = array_map('strval', $get('dias_trabalho') ?? []);
+
+                    return in_array((string) $num, $dias, true);
+                })
+        )->values()->all();
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
@@ -76,31 +116,31 @@ class ProfissionalForm
                 ->schema([
                     CheckboxList::make('dias_trabalho')
                         ->label('')
-                        ->options([
-                            0 => 'Domingo',
-                            1 => 'Segunda-feira',
-                            2 => 'Terça-feira',
-                            3 => 'Quarta-feira',
-                            4 => 'Quinta-feira',
-                            5 => 'Sexta-feira',
-                            6 => 'Sábado',
-                        ])
+                        ->options(self::DIAS)
                         ->columns(4)
-                        ->default([1, 2, 3, 4, 5, 6]),
+                        ->default([1, 2, 3, 4, 5, 6])
+                        // Reativo: os campos de horário por dia seguem esta seleção
+                        ->live(),
                 ]),
 
             Section::make('Horários Específicos')
-                ->description('Opcional. Se selecionados, apenas esses horários serão exibidos para este profissional. Se deixar em branco, o sistema usa todos os slots do intervalo configurado.')
+                ->description('Opcional. Se deixar tudo em branco, o sistema usa todos os slots do intervalo configurado.')
                 ->schema([
+                    Toggle::make('horarios_por_dia_ativo')
+                        ->label('Definir horários diferentes para cada dia')
+                        ->helperText('Desligado: a mesma lista de horários vale para todos os dias. Ligado: você escolhe os horários dia a dia.')
+                        ->default(false)
+                        ->live(),
+
+                    // Label explícito: o Filament 4 ignora ->label('') e cai no
+                    // nome da coluna ("Horarios trabalho")
                     CheckboxList::make('horarios_trabalho')
-                        ->label('')
-                        ->options(
-                            collect(range(6, 23))->flatMap(fn ($h) => [
-                                sprintf('%02d:00', $h) => sprintf('%02d:00', $h),
-                                sprintf('%02d:30', $h) => sprintf('%02d:30', $h),
-                            ])->toArray()
-                        )
-                        ->columns(6),
+                        ->label('Horários (todos os dias)')
+                        ->options(self::opcoesHorarios())
+                        ->columns(6)
+                        ->visible(fn ($get) => ! $get('horarios_por_dia_ativo')),
+
+                    ...self::camposPorDia(),
                 ]),
         ]);
     }
