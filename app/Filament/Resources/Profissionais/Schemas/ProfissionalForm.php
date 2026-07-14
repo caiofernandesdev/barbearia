@@ -59,13 +59,15 @@ class ProfissionalForm
                 ->required()
                 ->maxLength(100),
 
+            // Opcional de propósito: a coluna é nullable e todo o envio já checa
+            // telefone vazio antes de disparar. Exigir aqui travava a edição de
+            // profissionais cadastrados antes deste campo existir.
             TextInput::make('telefone')
                 ->label('WhatsApp do profissional')
                 ->tel()
-                ->required()
                 ->maxLength(20)
                 ->placeholder('(11) 99999-9999')
-                ->helperText('Recebe notificações de novos agendamentos e cancelamentos.'),
+                ->helperText('Recebe notificações de novos agendamentos e cancelamentos. Sem telefone, ele não recebe nenhum aviso.'),
 
             TextInput::make('limite_mensalistas')
                 ->label('Limite de Mensalistas')

@@ -26,6 +26,15 @@ class ProfissionaisTable
                     ->searchable()
                     ->sortable(),
 
+                // Sem telefone o profissional não recebe nenhum aviso por WhatsApp —
+                // sinaliza para o dono não descobrir isso só quando faltar mensagem
+                TextColumn::make('telefone')
+                    ->label('WhatsApp')
+                    ->placeholder('sem telefone — não recebe avisos')
+                    ->badge()
+                    ->color(fn ($state) => filled($state) ? 'gray' : 'warning')
+                    ->icon(fn ($state) => filled($state) ? null : 'heroicon-o-exclamation-triangle'),
+
                 TextColumn::make('limite_mensalistas')
                     ->label('Limite Mensalistas')
                     ->sortable(),

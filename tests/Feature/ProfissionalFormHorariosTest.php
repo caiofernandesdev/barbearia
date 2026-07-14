@@ -87,6 +87,27 @@ class ProfissionalFormHorariosTest extends TestCase
         $this->assertSame(['10:00'], $p->horariosDoDia(2), 'terça não podia ser afetada');
     }
 
+    /**
+     * Profissionais cadastrados antes do campo telefone existir ficam com ele
+     * nulo. A coluna é nullable e todo envio checa telefone vazio, então o form
+     * não pode travar a edição deles.
+     */
+    public function test_salva_profissional_sem_telefone(): void
+    {
+        $p = Profissional::forceCreate([
+            'nome' => 'Antigo', 'telefone' => null, 'ativo' => true,
+            'dias_trabalho' => [1], 'tenant_id' => $this->tenant->id,
+        ]);
+
+        Livewire::test(EditProfissional::class, ['record' => $p->getRouteKey()])
+            ->fillForm(['limite_mensalistas' => 5])
+            ->call('save')
+            ->assertHasNoFormErrors();
+
+        $this->assertSame(5, $p->fresh()->limite_mensalistas);
+        $this->assertNull($p->fresh()->telefone);
+    }
+
     public function test_modo_lista_unica_continua_gravando_normal(): void
     {
         Livewire::test(CreateProfissional::class)
