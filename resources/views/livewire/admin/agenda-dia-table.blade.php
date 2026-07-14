@@ -42,6 +42,14 @@
                         <div style="font-size:9px; color:#fcd34d; opacity:0.9; margin-top:1px;">📝 {{ $slot['extras'] }}</div>
                         @endif
                     </div>
+                @elseif($slot['indisponivel'])
+                    <div style="padding:12px 8px; border-radius:12px; text-align:center; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.35);">
+                        <div style="font-size:16px; font-weight:bold; color:#a78bfa;">{{ $slot['hora'] }}</div>
+                        <div style="font-size:10px; color:#c4b5fd; margin-top:2px;">🔒 Indisponível</div>
+                        @if(!empty($slot['motivo']))
+                        <div style="font-size:10px; color:#c4b5fd; opacity:0.7;">{{ $slot['motivo'] }}</div>
+                        @endif
+                    </div>
                 @elseif($slot['passado'])
                     <div style="padding:12px 8px; border-radius:12px; text-align:center; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); opacity:0.3;">
                         <div style="font-size:16px; font-weight:bold; color:#6b7280;">{{ $slot['hora'] }}</div>
@@ -68,6 +76,7 @@
         <div style="display:flex; gap:16px; justify-content:center; margin-top:16px; font-size:12px; color:#9ca3af;">
             <span><span style="color:#10b981;">●</span> Disponível</span>
             <span><span style="color:#ef4444;">●</span> Ocupado</span>
+            <span><span style="color:#a78bfa;">●</span> Indisponível</span>
             <span><span style="color:#6b7280;">●</span> Passado</span>
         </div>
     </x-filament::section>

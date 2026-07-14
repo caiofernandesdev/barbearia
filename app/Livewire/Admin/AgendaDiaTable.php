@@ -4,6 +4,7 @@ namespace App\Livewire\Admin;
 
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
+use App\Models\Indisponibilidade;
 use App\Models\Profissional;
 use App\Models\Servico;
 use Carbon\Carbon;
@@ -90,6 +91,26 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
             return;
         }
 
+        // Não deixa marcar por cima de uma indisponibilidade (própria ou do estabelecimento)
+        $slotFim = $inicio->copy()->addMinutes($duracao);
+        $bloqueado = Indisponibilidade::where('inicio', '<', $slotFim)
+            ->where('fim', '>', $inicio)
+            ->where(function ($q) {
+                $q->whereNull('profissional_id')
+                    ->orWhere('profissional_id', $this->profissionalId);
+            })
+            ->exists();
+
+        if ($bloqueado) {
+            Notification::make()
+                ->title('Horário indisponível')
+                ->body("O horário {$this->horaSelecionada} está marcado como indisponível.")
+                ->danger()
+                ->send();
+
+            return;
+        }
+
         Agendamento::create([
             'cliente_nome' => $this->clienteNome,
             'cliente_telefone' => $telefone,
@@ -168,6 +189,26 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
                 return ['inicio' => $inicio, 'fim' => $inicio->copy()->addMinutes($duracao), 'ag' => $a];
             });
 
+        // Bloqueios de indisponibilidade que tocam este dia — do próprio profissional
+        // ou de todo o estabelecimento (profissional_id nulo). O tenant já é filtrado
+        // pelo global scope do BelongsToTenant.
+        $diaInicio = Carbon::parse($data->format('Y-m-d').' 00:00:00');
+        $diaFim = Carbon::parse($data->format('Y-m-d').' 23:59:59');
+        $bloqueios = Indisponibilidade::where('inicio', '<=', $diaFim)
+            ->where('fim', '>=', $diaInicio)
+            ->where(function ($q) use ($pid) {
+                $q->whereNull('profissional_id');
+                if ($pid) {
+                    $q->orWhere('profissional_id', $pid);
+                }
+            })
+            ->get()
+            ->map(fn ($i) => [
+                'inicio' => Carbon::parse($i->inicio),
+                'fim' => Carbon::parse($i->fim),
+                'motivo' => $i->motivo,
+            ]);
+
         $slots = [];
         $cursor = Carbon::parse($data->format('Y-m-d').' '.$abertura);
         $fim = Carbon::parse($data->format('Y-m-d').' '.$encerramento);
@@ -183,9 +224,14 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
             // Primeiro slot do atendimento (os demais são continuação)
             $ehInicio = $ocupacao && $ocupacao['inicio']->between($slotInicio, $slotFim->copy()->subSecond());
 
+            // Slot bloqueado por indisponibilidade (mesma regra de sobreposição)
+            $bloqueio = $bloqueios->first(fn ($b) => $slotInicio->lt($b['fim']) && $slotFim->gt($b['inicio']));
+
             $slots[] = [
                 'hora' => $slotInicio->format('H:i'),
                 'ocupado' => $ag !== null,
+                'indisponivel' => $bloqueio !== null,
+                'motivo' => $bloqueio['motivo'] ?? null,
                 'passado' => $data->isToday() && $slotInicio->lt($agora),
                 'cliente' => $ag?->cliente_nome,
                 'servico' => $ag ? ($ehInicio ? $ag->nomesServicos() : '⤷ continuação') : null,
