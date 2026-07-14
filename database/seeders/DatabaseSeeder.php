@@ -33,6 +33,8 @@ class DatabaseSeeder extends Seeder
             'descricao' => 'Agendamento online + painel admin básico',
             'preco_mensal' => 97.00,
             'features' => ['mensalistas', 'indisponibilidades'],
+            'max_profissionais' => 2,
+            'max_usuarios' => 3,
             'ativo' => true,
         ]);
 
@@ -43,6 +45,8 @@ class DatabaseSeeder extends Seeder
             'features' => ['mensalistas', 'indisponibilidades', 'relatorios', 'salario_emocional', 'whatsapp', 'agenda_fixa', 'lista_espera',
                 'rel_atendimentos', 'rel_receita', 'rel_clientes_unicos', 'rel_cancelamentos',
                 'rel_servico_top', 'rel_desempenho_barbeiro', 'rel_agendamentos_periodo'],
+            'max_profissionais' => 8,
+            'max_usuarios' => 10,
             'ativo' => true,
         ]);
 

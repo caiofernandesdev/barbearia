@@ -58,6 +58,20 @@ class PlanosResource extends Resource
                 ->prefix('R$')
                 ->default(0),
 
+            TextInput::make('max_profissionais')
+                ->label('Máximo de profissionais')
+                ->numeric()
+                ->default(0)
+                ->minValue(0)
+                ->helperText('0 = ilimitado.'),
+
+            TextInput::make('max_usuarios')
+                ->label('Máximo de usuários (logins)')
+                ->numeric()
+                ->default(0)
+                ->minValue(0)
+                ->helperText('0 = ilimitado. Conta admins e profissionais com acesso.'),
+
             CheckboxList::make('features')
                 ->label('Módulos inclusos')
                 ->options([

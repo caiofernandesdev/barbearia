@@ -25,6 +25,28 @@ class Tenant extends Model
         return (bool) $this->whatsapp_ativo;
     }
 
+    /** Ainda cabe mais um profissional no limite do plano? (0 = ilimitado) */
+    public function podeAdicionarProfissional(): bool
+    {
+        $max = (int) ($this->plano?->max_profissionais ?? 0);
+        if ($max <= 0) {
+            return true;
+        }
+
+        return Profissional::withoutGlobalScopes()->where('tenant_id', $this->id)->count() < $max;
+    }
+
+    /** Ainda cabe mais um usuário no limite do plano? (0 = ilimitado) */
+    public function podeAdicionarUsuario(): bool
+    {
+        $max = (int) ($this->plano?->max_usuarios ?? 0);
+        if ($max <= 0) {
+            return true;
+        }
+
+        return User::withoutGlobalScopes()->where('tenant_id', $this->id)->count() < $max;
+    }
+
     public function tipoEstabelecimento()
     {
         return $this->belongsTo(TipoEstabelecimento::class);

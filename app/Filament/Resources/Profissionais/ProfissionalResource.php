@@ -10,8 +10,8 @@ use App\Filament\Resources\Profissionais\Tables\ProfissionaisTable;
 use App\Models\Profissional;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Tables\Table;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Table;
 
 class ProfissionalResource extends Resource
 {
@@ -37,6 +37,17 @@ class ProfissionalResource extends Resource
     public static function canAccess(): bool
     {
         return auth()->user()?->isAdmin() ?? false;
+    }
+
+    // Esconde "Novo profissional" quando o plano atingiu o limite
+    public static function canCreate(): bool
+    {
+        if (! parent::canCreate()) {
+            return false;
+        }
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
+        return $tenant?->podeAdicionarProfissional() ?? true;
     }
 
     public static function form(Schema $schema): Schema

@@ -38,6 +38,17 @@ class UsuarioResource extends Resource
         return auth()->user()?->isAdmin() ?? false;
     }
 
+    // Esconde "Novo usuário" quando o plano atingiu o limite de logins
+    public static function canCreate(): bool
+    {
+        if (! parent::canCreate()) {
+            return false;
+        }
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
+        return $tenant?->podeAdicionarUsuario() ?? true;
+    }
+
     public static function form(Schema $schema): Schema
     {
         return UsuarioForm::configure($schema);
@@ -51,9 +62,9 @@ class UsuarioResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListUsuarios::route('/'),
+            'index' => ListUsuarios::route('/'),
             'create' => CreateUsuario::route('/create'),
-            'edit'   => EditUsuario::route('/{record}/edit'),
+            'edit' => EditUsuario::route('/{record}/edit'),
         ];
     }
 }

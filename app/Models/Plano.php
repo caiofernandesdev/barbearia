@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['nome', 'descricao', 'preco_mensal', 'features', 'ativo'])]
+#[Fillable(['nome', 'descricao', 'preco_mensal', 'features', 'max_profissionais', 'max_usuarios', 'ativo'])]
 class Plano extends Model
 {
     /**
@@ -30,6 +30,8 @@ class Plano extends Model
         return [
             'features' => 'array',
             'preco_mensal' => 'decimal:2',
+            'max_profissionais' => 'integer',
+            'max_usuarios' => 'integer',
             'ativo' => 'boolean',
         ];
     }
