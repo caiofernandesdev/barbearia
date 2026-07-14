@@ -724,25 +724,46 @@ function selecionarDataNoCard(dataStr, rolar = true) {
 function mostrarListaEspera(dataStr) {
     const container = document.getElementById('slots-container');
     if (!container) return;
+    horaEsperaSelecionada = null;
     const dataFmt = new Date(dataStr + 'T00:00').toLocaleDateString('pt-BR');
-    container.innerHTML = `
-        <div class="bg-gray-700 rounded-2xl p-4 space-y-3">
-            <p class="text-white text-sm">Deixe seu horário preferido para <strong>${dataFmt}</strong>. Se abrir vaga, o estabelecimento entra em contato.</p>
-            <div>
-                <label class="block text-gray-300 text-xs mb-1">Horário que você gostaria</label>
-                <input type="time" id="le-hora" class="w-full bg-gray-800 text-white rounded-xl px-4 py-3 text-sm border border-gray-600 focus:border-amber-500 focus:outline-none">
-            </div>
-            <button type="button" onclick="enviarListaEspera('${dataStr}')"
-                class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-2xl text-sm transition">
-                Entrar na lista de espera
-            </button>
-        </div>`;
-    container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    container.innerHTML = `<div class="text-center py-3 text-gray-400 text-sm animate-pulse">Carregando horários...</div>`;
+
+    // Busca a grade de horários que o profissional atende nesse dia
+    fetch(`/${tenantSlug}/api/grade-horarios?profissional_id=${dadosCliente.profissional_id}&data=${dataStr}`)
+    .then(r => r.json())
+    .then(horarios => {
+        const opcoes = (Array.isArray(horarios) ? horarios : [])
+            .map(h => `<button type="button" onclick="selecionarHoraEspera(this, '${h}')" data-le-hora="${h}"
+                class="le-hora-btn bg-gray-800 hover:bg-amber-500 text-white rounded-xl py-2.5 text-sm font-bold transition border-2 border-transparent">${h}</button>`)
+            .join('');
+        container.innerHTML = `
+            <div class="bg-gray-700 rounded-2xl p-4 space-y-3">
+                <p class="text-white text-sm">Escolha o horário que você gostaria para <strong>${dataFmt}</strong>. Se abrir vaga, entramos em contato.</p>
+                <div class="grid grid-cols-3 gap-2">${opcoes || '<p class="col-span-3 text-gray-400 text-sm text-center">Sem horários configurados.</p>'}</div>
+                <button type="button" onclick="enviarListaEspera('${dataStr}')"
+                    class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-2xl text-sm transition">
+                    Entrar na lista de espera
+                </button>
+            </div>`;
+        container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    })
+    .catch(() => addMensagemBot('⚠️ Erro ao carregar horários. Tente novamente.'));
+}
+
+let horaEsperaSelecionada = null;
+function selecionarHoraEspera(btn, hora) {
+    document.querySelectorAll('.le-hora-btn').forEach(el => {
+        el.classList.remove('bg-amber-500', 'border-amber-400');
+        el.classList.add('bg-gray-800', 'border-transparent');
+    });
+    btn.classList.remove('bg-gray-800', 'border-transparent');
+    btn.classList.add('bg-amber-500', 'border-amber-400');
+    horaEsperaSelecionada = hora;
 }
 
 function enviarListaEspera(dataStr) {
-    const hora = document.getElementById('le-hora')?.value;
-    if (!hora) { addMensagemBot('⚠️ Informe o horário que você gostaria.'); return; }
+    const hora = horaEsperaSelecionada;
+    if (!hora) { addMensagemBot('⚠️ Escolha o horário que você gostaria.'); return; }
 
     fetch(`/${tenantSlug}/lista-espera`, {
         method: 'POST',

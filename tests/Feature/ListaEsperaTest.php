@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Agendamento;
+use App\Models\ConfiguracaoBarbearia;
 use App\Models\ListaEspera;
 use App\Models\Plano;
 use App\Models\Profissional;
@@ -85,6 +86,20 @@ class ListaEsperaTest extends TestCase
 
         $this->postJson("/{$this->tenant->slug}/lista-espera", $this->payload())->assertNotFound();
         $this->assertSame(0, ListaEspera::withoutGlobalScopes()->count());
+    }
+
+    public function test_grade_horarios_retorna_o_expediente_do_profissional(): void
+    {
+        ConfiguracaoBarbearia::forceCreate([
+            'nome_barbearia' => 'X', 'horario_abertura' => '08:00', 'horario_encerramento' => '11:00',
+            'intervalo_minutos' => 60, 'mensalista_limite_cortes_semana' => 1, 'tenant_id' => $this->tenant->id,
+        ]);
+
+        $resp = $this->getJson("/{$this->tenant->slug}/api/grade-horarios?profissional_id={$this->prof->id}&data=2026-07-20");
+
+        $resp->assertOk();
+        // 08–11h de hora em hora → 08:00, 09:00, 10:00
+        $this->assertEqualsCanonicalizing(['08:00', '09:00', '10:00'], $resp->json());
     }
 
     public function test_admin_ve_a_pagina_lista_de_espera(): void

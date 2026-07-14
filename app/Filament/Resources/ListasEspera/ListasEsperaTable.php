@@ -3,9 +3,12 @@
 namespace App\Filament\Resources\ListasEspera;
 
 use App\Models\Agendamento;
+use App\Models\ConfiguracaoBarbearia;
+use App\Services\DisponibilidadeService;
 use Carbon\Carbon;
 use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
+use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -77,19 +80,26 @@ class ListasEsperaTable
                     ->label('Encaixar')
                     ->icon('heroicon-o-calendar-days')
                     ->color('success')
-                    ->requiresConfirmation()
-                    ->modalHeading('Encaixar na agenda?')
-                    ->modalDescription(fn ($record) => "Criar o agendamento de {$record->cliente_nome} em ".$record->data->format('d/m/Y')." às {$record->hora_preferida}?")
+                    ->modalHeading('Encaixar na agenda')
                     ->modalSubmitActionLabel('Encaixar')
                     ->visible(fn ($record) => $record->status === 'aguardando')
-                    ->action(function ($record) {
-                        $inicio = Carbon::parse($record->data->format('Y-m-d').' '.$record->hora_preferida);
+                    // O dono escolhe qualquer horário livre do profissional nesse dia
+                    ->schema([
+                        Select::make('hora')
+                            ->label('Horário')
+                            ->options(fn ($record) => self::horariosLivres($record))
+                            ->default(fn ($record) => $record->hora_preferida)
+                            ->helperText(fn ($record) => "Cliente pediu {$record->hora_preferida}. Escolha o horário livre para encaixar.")
+                            ->required(),
+                    ])
+                    ->action(function (array $data, $record) {
+                        $inicio = Carbon::parse($record->data->format('Y-m-d').' '.$data['hora']);
                         $duracao = (int) ($record->servico?->duracao_minutos ?? 30);
 
                         if (Agendamento::temConflito((int) $record->profissional_id, $inicio, $duracao, $record->tenant_id)) {
                             Notification::make()
                                 ->title('Horário ocupado')
-                                ->body('Esse horário já tem outro atendimento. Combine outro com o cliente.')
+                                ->body('Esse horário já tem outro atendimento. Escolha outro.')
                                 ->danger()
                                 ->send();
 
@@ -111,5 +121,37 @@ class ListasEsperaTable
 
                 DeleteAction::make()->label('Remover'),
             ]);
+    }
+
+    /**
+     * Horários livres do profissional no dia do pedido (para encaixar).
+     * Inclui o horário pedido pelo cliente, se ainda não estiver ocupado.
+     */
+    private static function horariosLivres($record): array
+    {
+        $config = ConfiguracaoBarbearia::getInstance();
+        $duracao = (int) ($record->servico?->duracao_minutos ?? $config->intervalo_minutos ?? 30);
+
+        $slots = app(DisponibilidadeService::class)->calcular(
+            $record->profissional,
+            $duracao,
+            Carbon::parse($record->data->format('Y-m-d')),
+            $config->horario_abertura ?? '08:00',
+            $config->horario_encerramento ?? '19:00',
+            (int) ($config->intervalo_minutos ?? 60),
+        );
+
+        $horas = collect($slots)->pluck('hora');
+
+        // Garante o horário pedido na lista, se estiver livre de conflito
+        $pedido = $record->hora_preferida;
+        if (! $horas->contains($pedido)) {
+            $inicio = Carbon::parse($record->data->format('Y-m-d').' '.$pedido);
+            if (! Agendamento::temConflito((int) $record->profissional_id, $inicio, $duracao, $record->tenant_id)) {
+                $horas->push($pedido);
+            }
+        }
+
+        return $horas->unique()->sort()->mapWithKeys(fn ($h) => [$h => $h])->all();
     }
 }

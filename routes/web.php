@@ -45,6 +45,8 @@ Route::prefix('{tenant}')
             ->name('api.verificar-telefone')->middleware('throttle:20,1');
         Route::get('/api/horarios-disponiveis', [AgendamentoController::class, 'horariosDisponiveis'])
             ->name('api.horarios-disponiveis')->middleware('throttle:60,1');
+        Route::get('/api/grade-horarios', [AgendamentoController::class, 'gradeHorarios'])
+            ->name('api.grade-horarios')->middleware('throttle:60,1');
         Route::get('/api/campos-extras', [AgendamentoController::class, 'camposExtras'])
             ->name('api.campos-extras')->middleware('throttle:60,1');
 

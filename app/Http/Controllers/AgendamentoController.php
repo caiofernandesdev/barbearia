@@ -368,6 +368,38 @@ class AgendamentoController extends Controller
     }
 
     /**
+     * Grade completa de horários que o profissional atende num dia (todos os
+     * slots do expediente, ocupados ou não). Usada na lista de espera para o
+     * cliente escolher o horário que gostaria, como se fosse marcar.
+     */
+    public function gradeHorarios(Request $request): JsonResponse
+    {
+        $request->validate([
+            'profissional_id' => 'required|exists:profissionais,id',
+            'data' => 'required|date_format:Y-m-d',
+        ]);
+
+        $profissional = Profissional::findOrFail($request->profissional_id);
+        $config = ConfiguracaoBarbearia::getInstance();
+
+        // Profissional com horários próprios usa a lista dele; senão gera pelo expediente
+        $horarios = collect($profissional->horarios_trabalho ?? []);
+
+        if ($horarios->isEmpty()) {
+            $inicio = Carbon::parse($config->horario_abertura ?? '08:00');
+            $fim = Carbon::parse($config->horario_encerramento ?? '19:00');
+            $intervalo = (int) ($config->intervalo_minutos ?? 60);
+            for ($t = $inicio->copy(); $t->lt($fim); $t->addMinutes($intervalo)) {
+                $horarios->push($t->format('H:i'));
+            }
+        }
+
+        return response()->json(
+            $horarios->map(fn ($h) => substr($h, 0, 5))->unique()->sort()->values()
+        );
+    }
+
+    /**
      * Cliente entra na lista de espera de um dia lotado, informando o horário
      * que gostaria (dentro do expediente). Só quando o tenant tem o módulo.
      */
