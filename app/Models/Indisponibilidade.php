@@ -10,13 +10,14 @@ use Illuminate\Database\Eloquent\Model;
 class Indisponibilidade extends Model
 {
     use BelongsToTenant;
+
     protected $table = 'indisponibilidades';
 
     protected function casts(): array
     {
         return [
             'inicio' => 'datetime',
-            'fim'    => 'datetime',
+            'fim' => 'datetime',
         ];
     }
 
@@ -30,6 +31,6 @@ class Indisponibilidade extends Model
     {
         return $this->profissional_id
             ? ($this->profissional->nome ?? 'Profissional')
-            : 'Toda a barbearia';
+            : 'Todo o estabelecimento';
     }
 }

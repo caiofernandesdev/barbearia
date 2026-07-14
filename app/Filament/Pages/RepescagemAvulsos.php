@@ -84,7 +84,8 @@ class RepescagemAvulsos extends Page implements HasActions, HasSchemas, HasTable
         $link = $this->getTenantLink();
 
         if (! empty($config->mensagem_repescagem)) {
-            return str_replace(['{barbearia}', '{link}'], [$nomeBarbearia, $link], $config->mensagem_repescagem);
+            // {estabelecimento} é o novo nome; {barbearia} mantido por compatibilidade
+            return str_replace(['{estabelecimento}', '{barbearia}', '{link}'], [$nomeBarbearia, $nomeBarbearia, $link], $config->mensagem_repescagem);
         }
 
         return implode("\n", [

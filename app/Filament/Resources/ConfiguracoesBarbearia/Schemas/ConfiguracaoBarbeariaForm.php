@@ -150,12 +150,12 @@ class ConfiguracaoBarbeariaForm
                     Textarea::make('mensagem_repescagem')
                         ->label('Mensagem padrão de repescagem')
                         ->rows(4)
-                        ->placeholder("Olá, {nome}! 👋\n\nFaz tempo que não te vemos por aqui na {barbearia}!\nQue tal agendar um horário?\n\nAcesse: {link}")
-                        ->helperText('Variáveis: {nome}, {barbearia}, {link}. Deixe vazio para usar a mensagem padrão do sistema.'),
+                        ->placeholder("Olá, {nome}! 👋\n\nFaz tempo que não te vemos por aqui na {estabelecimento}!\nQue tal agendar um horário?\n\nAcesse: {link}")
+                        ->helperText('Variáveis: {nome}, {estabelecimento}, {link}. Deixe vazio para usar a mensagem padrão do sistema.'),
                 ]),
 
             Section::make('Financeiro')
-                ->description('Define a divisão de receita entre a barbearia e os barbeiros.')
+                ->description('Define a divisão de receita entre o estabelecimento e os profissionais.')
                 ->columns(2)
                 ->schema([
                     TextInput::make('percentual_barbearia')
@@ -167,12 +167,12 @@ class ConfiguracaoBarbeariaForm
                         ->suffix('%')
                         ->required()
                         ->live()
-                        ->helperText('Percentual da receita retido pela barbearia sobre cada serviço.'),
+                        ->helperText('Percentual da receita retido pelo estabelecimento sobre cada serviço.'),
 
                     Placeholder::make('percentual_barbeiros_info')
                         ->label('Percentual dos Profissionais')
                         ->content(fn ($get) => (100 - (float) ($get('percentual_barbearia') ?? 60)).'%')
-                        ->helperText('Calculado automaticamente: 100% − percentual da barbearia.'),
+                        ->helperText('Calculado automaticamente: 100% − percentual do estabelecimento.'),
                 ]),
 
         ]);

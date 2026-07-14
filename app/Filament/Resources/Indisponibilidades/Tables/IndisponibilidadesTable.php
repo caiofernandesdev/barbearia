@@ -16,7 +16,7 @@ class IndisponibilidadesTable
                 TextColumn::make('escopo')
                     ->label('Escopo')
                     ->badge()
-                    ->color(fn ($state) => $state === 'Toda a barbearia' ? 'danger' : 'warning'),
+                    ->color(fn ($state) => $state === 'Todo o estabelecimento' ? 'danger' : 'warning'),
 
                 TextColumn::make('inicio')
                     ->label('Início')

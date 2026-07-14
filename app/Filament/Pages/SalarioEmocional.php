@@ -80,7 +80,7 @@ class SalarioEmocional extends Page implements HasTable
             Select::make('profissional_id')
                 ->label('Profissional')
                 ->options(Profissional::where('ativo', true)->pluck('nome', 'id'))
-                ->placeholder('Todos os barbeiros')
+                ->placeholder('Todos os profissionais')
                 ->live()
                 ->hidden(fn () => auth()->user()?->isBarbeiro()),
         ])->columns(3)->statePath('data');

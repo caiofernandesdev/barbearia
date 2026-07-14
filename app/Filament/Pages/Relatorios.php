@@ -122,7 +122,7 @@ class Relatorios extends Page implements HasTable
             Select::make('filtroProfissional')
                 ->label('Profissional')
                 ->options(Profissional::where('ativo', true)->orderBy('nome')->pluck('nome', 'id'))
-                ->placeholder('Todos os barbeiros')
+                ->placeholder('Todos os profissionais')
                 ->live(),
 
             Select::make('filtroStatus')

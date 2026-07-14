@@ -16,7 +16,7 @@ class IndisponibilidadeForm
             Select::make('profissional_id')
                 ->label('Profissional')
                 ->options(fn () => Profissional::orderBy('nome')->pluck('nome', 'id')->toArray())
-                ->placeholder('Toda a barbearia')
+                ->placeholder('Todo o estabelecimento')
                 ->searchable()
                 ->nullable(),
 
