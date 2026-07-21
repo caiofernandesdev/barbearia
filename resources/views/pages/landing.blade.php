@@ -244,7 +244,7 @@
                 {{-- Starter --}}
                 <div class="bg-white/5 rounded-2xl p-6 sm:p-8 border border-white/10">
                     <h3 class="font-bold text-lg mb-1">Starter</h3>
-                    <div class="text-2xl sm:text-3xl font-black mb-1">R$ 97<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
+                    <div class="text-2xl sm:text-3xl font-black mb-1">R$ 79,90<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
                     <p class="text-gray-500 text-xs sm:text-sm mb-6">Pra começar a organizar</p>
                     <ul class="space-y-2.5 text-xs sm:text-sm text-gray-300 mb-8">
                         <li>✅ Agendamento online</li>
@@ -254,7 +254,7 @@
                         <li class="text-gray-600">✕ WhatsApp</li>
                         <li class="text-gray-600">✕ Relatórios</li>
                     </ul>
-                    <a href="https://wa.me/5514998382598?text=Quero%20o%20plano%20Starter" target="_blank"
+                    <a href="https://wa.me/5514996118316?text=Quero%20o%20plano%20Starter" target="_blank"
                        class="block text-center bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold text-sm transition">
                         Começar agora
                     </a>
@@ -266,7 +266,7 @@
                         MAIS POPULAR
                     </div>
                     <h3 class="font-bold text-lg mb-1">Pro</h3>
-                    <div class="text-2xl sm:text-3xl font-black mb-1">R$ 197<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
+                    <div class="text-2xl sm:text-3xl font-black mb-1">R$ 159,90<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
                     <p class="text-gray-500 text-xs sm:text-sm mb-6">Pra crescer com inteligência</p>
                     <ul class="space-y-2.5 text-xs sm:text-sm text-gray-300 mb-8">
                         <li>✅ Tudo do Starter</li>
@@ -276,7 +276,7 @@
                         <li>✅ Painel do profissional</li>
                         <li class="text-gray-600">✕ Repescagem</li>
                     </ul>
-                    <a href="https://wa.me/5514998382598?text=Quero%20o%20plano%20Pro" target="_blank"
+                    <a href="https://wa.me/5514996118316?text=Quero%20o%20plano%20Pro" target="_blank"
                        class="block text-center bg-brand-500 hover:bg-brand-600 text-black py-3 rounded-xl font-bold text-sm transition">
                         Quero o Pro →
                     </a>
@@ -285,7 +285,7 @@
                 {{-- Enterprise --}}
                 <div class="bg-white/5 rounded-2xl p-6 sm:p-8 border border-white/10 sm:col-span-2 lg:col-span-1">
                     <h3 class="font-bold text-lg mb-1">Enterprise</h3>
-                    <div class="text-2xl sm:text-3xl font-black mb-1">R$ 397<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
+                    <div class="text-2xl sm:text-3xl font-black mb-1">R$ 239,90<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
                     <p class="text-gray-500 text-xs sm:text-sm mb-6">Tudo liberado, sem limites</p>
                     <ul class="space-y-2.5 text-xs sm:text-sm text-gray-300 mb-8">
                         <li>✅ Tudo do Pro</li>
@@ -295,7 +295,7 @@
                         <li>✅ Suporte prioritário</li>
                         <li>✅ Multi-estabelecimento</li>
                     </ul>
-                    <a href="https://wa.me/5514998382598?text=Quero%20o%20plano%20Enterprise" target="_blank"
+                    <a href="https://wa.me/5514996118316?text=Quero%20o%20plano%20Enterprise" target="_blank"
                        class="block text-center bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold text-sm transition">
                         Falar com consultor
                     </a>
@@ -309,7 +309,7 @@
         <div class="max-w-3xl mx-auto text-center bg-gradient-to-br from-brand-500/20 to-brand-600/5 rounded-3xl p-8 sm:p-12 border border-brand-500/20 glow">
             <h2 class="text-3xl sm:text-4xl font-black mb-4">Pronto pra automatizar?</h2>
             <p class="text-gray-400 text-base sm:text-lg mb-6 sm:mb-8">Teste grátis por 7 dias. Sem cartão de crédito.</p>
-            <a href="https://wa.me/5514998382598?text=Quero%20testar%20o%20Atendix%20grátis" target="_blank"
+            <a href="https://wa.me/5514996118316?text=Quero%20testar%20o%20Atendix%20grátis" target="_blank"
                class="inline-block bg-brand-500 hover:bg-brand-600 text-black font-bold px-8 sm:px-10 py-3.5 sm:py-4 rounded-2xl text-base sm:text-lg transition transform hover:scale-105">
                 Começar agora →
             </a>
