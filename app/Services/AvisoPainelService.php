@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Jobs\EnviarPushJob;
 use App\Models\Agendamento;
 use App\Models\User;
 use Filament\Actions\Action;
@@ -79,6 +80,8 @@ class AvisoPainelService
             return;
         }
 
+        $url = route('filament.admin.pages.agenda-geral');
+
         $notificacao = Notification::make()
             ->title($titulo)
             ->body($corpo)
@@ -87,12 +90,19 @@ class AvisoPainelService
             ->actions([
                 Action::make('ver')
                     ->label('Ver na agenda')
-                    ->url(route('filament.admin.pages.agenda-geral'))
+                    ->url($url)
                     ->markAsRead(),
             ]);
 
         foreach ($destinatarios as $user) {
+            // Sininho: sempre. Push: só pra quem autorizou algum aparelho.
             $notificacao->sendToDatabase($user);
+
+            EnviarPushJob::dispatch($user->id, [
+                'title' => $titulo,
+                'body' => $corpo,
+                'url' => $url,
+            ]);
         }
     }
 

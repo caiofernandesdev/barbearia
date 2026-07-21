@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\Admin\PushSubscriptionController;
 use App\Http\Controllers\Admin\RelatorioExportController;
 use App\Http\Controllers\AgendamentoController;
 use App\Http\Controllers\WhatsAppWebhookController;
@@ -64,4 +65,10 @@ Route::prefix('{tenant}')
 Route::middleware('auth:admin')->prefix('admin-exports')->group(function () {
     Route::get('/relatorio-excel', [RelatorioExportController::class, 'excel'])->name('admin.relatorio.excel');
     Route::get('/relatorio-pdf', [RelatorioExportController::class, 'pdf'])->name('admin.relatorio.pdf');
+});
+
+// ─── Push do painel — registro dos aparelhos do usuário logado ───────────────
+Route::middleware('auth:admin')->prefix('admin-push')->group(function () {
+    Route::post('/inscrever', [PushSubscriptionController::class, 'store'])->name('admin.push.inscrever');
+    Route::post('/desinscrever', [PushSubscriptionController::class, 'destroy'])->name('admin.push.desinscrever');
 });

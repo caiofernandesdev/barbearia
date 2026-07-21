@@ -14,6 +14,8 @@ use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Contracts\View\View;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -78,6 +80,11 @@ class AdminPanelProvider extends PanelProvider
             ->authMiddleware([
                 Authenticate::class,
                 SetTenantFromAuthMiddleware::class,
-            ]);
+            ])
+            // Manifest + service worker + botão de ativar os avisos push
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn (): View => view('filament.push'),
+            );
     }
 }

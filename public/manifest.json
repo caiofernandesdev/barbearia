@@ -1,0 +1,26 @@
+{
+    "name": "Atendix — Painel",
+    "short_name": "Atendix",
+    "description": "Agenda e avisos do seu estabelecimento",
+    "start_url": "/admin",
+    "scope": "/",
+    "display": "standalone",
+    "orientation": "portrait",
+    "background_color": "#111827",
+    "theme_color": "#f59e0b",
+    "lang": "pt-BR",
+    "icons": [
+        {
+            "src": "/images/logo-icone.png",
+            "sizes": "192x192",
+            "type": "image/png",
+            "purpose": "any"
+        },
+        {
+            "src": "/images/logo-icone.png",
+            "sizes": "512x512",
+            "type": "image/png",
+            "purpose": "any"
+        }
+    ]
+}
