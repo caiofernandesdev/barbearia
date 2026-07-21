@@ -19,6 +19,12 @@
 /public/fonts-manifest.dev.json
 /public/hot
 /public/storage
+# Assets publicados pelo Filament: o `composer install` roda filament:upgrade e
+# reescreve tudo isso. Versionar fazia o servidor ficar "sujo" a cada deploy e
+# abortar o git pull seguinte.
+/public/css/filament
+/public/js/filament
+/public/fonts/filament
 /storage/*.key
 /storage/pail
 /vendor
