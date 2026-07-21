@@ -94,6 +94,61 @@ class LandingPrecosTest extends TestCase
             ->assertSee('R$ 79,90');
     }
 
+    public function test_landing_mostra_os_limites_do_plano(): void
+    {
+        Plano::forceCreate([
+            'nome' => 'Básico', 'slug' => 'starter', 'preco_mensal' => 79.90,
+            'features' => [], 'ativo' => true,
+            'max_profissionais' => 1, 'max_usuarios' => 2,
+        ]);
+
+        $this->get('/')
+            ->assertOk()
+            // Singular no 1, plural no resto
+            ->assertSee('1 profissional · 2 logins');
+    }
+
+    public function test_limite_zero_vira_ilimitado(): void
+    {
+        Plano::forceCreate([
+            'nome' => 'Enterprise', 'slug' => 'enterprise', 'preco_mensal' => 239.90,
+            'features' => [], 'ativo' => true,
+            'max_profissionais' => 0, 'max_usuarios' => 0,
+        ]);
+
+        $this->get('/')->assertOk()->assertSee('Profissionais ilimitados · logins ilimitados');
+    }
+
+    /**
+     * A vitrine não pode negar o que todo plano entrega. WhatsApp e
+     * relatórios estão nos três planos — não podem aparecer como ausentes
+     * em card nenhum, que era o erro da copy antiga.
+     */
+    public function test_copy_nao_nega_modulo_que_todo_plano_tem(): void
+    {
+        $this->tresPlanos();
+
+        $html = $this->get('/')->assertOk()->getContent();
+
+        $this->assertStringNotContainsString('✕ WhatsApp', $html);
+        $this->assertStringNotContainsString('✕ Relatórios', $html);
+    }
+
+    /**
+     * Repescagem existe no Pro e no Enterprise, mas não no Básico: só o
+     * primeiro card pode marcá-la como ausente.
+     */
+    public function test_repescagem_so_aparece_como_ausente_no_primeiro_card(): void
+    {
+        $this->tresPlanos();
+
+        $html = $this->get('/')->assertOk()->getContent();
+        $cards = explode('MAIS POPULAR', $html);
+
+        $this->assertStringContainsString('✕ Repescagem', $cards[0], 'Básico não tem repescagem');
+        $this->assertStringNotContainsString('✕ Repescagem', $cards[1], 'Pro e Enterprise têm');
+    }
+
     public function test_preco_redondo_nao_mostra_centavos(): void
     {
         $this->plano('Pro', 200.00);
@@ -115,7 +170,7 @@ class LandingPrecosTest extends TestCase
 
     // ─── Migrations ───────────────────────────────────────────────────────────
 
-    public function test_migration_renomeia_basico_e_atualiza_precos(): void
+    public function test_migration_atualiza_precos_sem_renomear(): void
     {
         DB::table('planos')->delete();
         $this->plano('Básico', 97.00, 'starter');
@@ -123,9 +178,9 @@ class LandingPrecosTest extends TestCase
 
         $this->migration('2026_07_21_000001_atualiza_precos_dos_planos')->up();
 
-        $this->assertDatabaseHas('planos', ['nome' => 'Starter', 'preco_mensal' => 79.90]);
+        // Preço alinhado, nome preservado — quem batiza o plano é o dono
+        $this->assertDatabaseHas('planos', ['nome' => 'Básico', 'preco_mensal' => 79.90]);
         $this->assertDatabaseHas('planos', ['nome' => 'Pro', 'preco_mensal' => 159.90]);
-        $this->assertDatabaseMissing('planos', ['nome' => 'Básico']);
     }
 
     public function test_migration_preserva_preco_ja_customizado(): void

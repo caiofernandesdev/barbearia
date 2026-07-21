@@ -254,14 +254,17 @@
                 <div class="bg-white/5 rounded-2xl p-6 sm:p-8 border border-white/10">
                     <h3 class="font-bold text-lg mb-1">{{ $pStarter->nome }}</h3>
                     <div class="text-2xl sm:text-3xl font-black mb-1">R$ {{ $pStarter->preco_formatado }}<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
-                    <p class="text-gray-500 text-xs sm:text-sm mb-6">Pra começar a organizar</p>
+                    <p class="text-gray-500 text-xs sm:text-sm mb-1">Pra começar a organizar</p>
+                    <p class="text-gray-600 text-[11px] sm:text-xs mb-6">{{ $pStarter->limites_resumo }}</p>
                     <ul class="space-y-2.5 text-xs sm:text-sm text-gray-300 mb-8">
-                        <li>✅ Agendamento online</li>
+                        <li>✅ Agendamento online 24h</li>
                         <li>✅ Painel administrativo</li>
+                        <li>✅ Integração WhatsApp</li>
+                        <li>✅ Relatórios essenciais</li>
                         <li>✅ Gestão de mensalistas</li>
                         <li>✅ Indisponibilidades</li>
-                        <li class="text-gray-600">✕ WhatsApp</li>
-                        <li class="text-gray-600">✕ Relatórios</li>
+                        <li class="text-gray-600">✕ Repescagem de clientes</li>
+                        <li class="text-gray-600">✕ Lista de espera</li>
                     </ul>
                     <a href="https://wa.me/5514996118316?text={{ urlencode('Quero o plano '.$pStarter->nome) }}" target="_blank"
                        class="block text-center bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold text-sm transition">
@@ -278,14 +281,16 @@
                     </div>
                     <h3 class="font-bold text-lg mb-1">{{ $pPro->nome }}</h3>
                     <div class="text-2xl sm:text-3xl font-black mb-1">R$ {{ $pPro->preco_formatado }}<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
-                    <p class="text-gray-500 text-xs sm:text-sm mb-6">Pra crescer com inteligência</p>
+                    <p class="text-gray-500 text-xs sm:text-sm mb-1">Pra crescer com inteligência</p>
+                    <p class="text-gray-600 text-[11px] sm:text-xs mb-6">{{ $pPro->limites_resumo }}</p>
                     <ul class="space-y-2.5 text-xs sm:text-sm text-gray-300 mb-8">
-                        <li>✅ Tudo do Starter</li>
-                        <li>✅ Integração WhatsApp</li>
-                        <li>✅ Relatórios + PDF/Excel</li>
-                        <li>✅ Salário Emocional</li>
+                        <li>✅ Tudo do {{ $pStarter->nome ?? 'plano anterior' }}</li>
+                        <li>✅ Repescagem de clientes</li>
+                        <li>✅ Lista de espera (dias lotados)</li>
+                        <li>✅ Relatórios completos + PDF/Excel</li>
                         <li>✅ Painel do profissional</li>
-                        <li class="text-gray-600">✕ Repescagem</li>
+                        <li class="text-gray-600">✕ Salário Emocional</li>
+                        <li class="text-gray-600">✕ Agenda Fixa</li>
                     </ul>
                     <a href="https://wa.me/5514996118316?text={{ urlencode('Quero o plano '.$pPro->nome) }}" target="_blank"
                        class="block text-center bg-brand-500 hover:bg-brand-600 text-black py-3 rounded-xl font-bold text-sm transition">
@@ -299,16 +304,15 @@
                 <div class="bg-white/5 rounded-2xl p-6 sm:p-8 border border-white/10 sm:col-span-2 lg:col-span-1">
                     <h3 class="font-bold text-lg mb-1">{{ $pEnterprise->nome }}</h3>
                     <div class="text-2xl sm:text-3xl font-black mb-1">R$ {{ $pEnterprise->preco_formatado }}<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
-                    <p class="text-gray-500 text-xs sm:text-sm mb-6">Tudo liberado, sem limites</p>
+                    <p class="text-gray-500 text-xs sm:text-sm mb-1">Todos os módulos liberados</p>
+                    <p class="text-gray-600 text-[11px] sm:text-xs mb-6">{{ $pEnterprise->limites_resumo }}</p>
                     <ul class="space-y-2.5 text-xs sm:text-sm text-gray-300 mb-8">
-                        <li>✅ Tudo do Pro</li>
-                        <li>✅ Repescagem de clientes</li>
+                        <li>✅ Tudo do {{ $pPro->nome ?? 'plano anterior' }}</li>
+                        <li>✅ Salário Emocional</li>
                         <li>✅ Agenda Fixa</li>
-                        <li>✅ Lista de espera</li>
                         <li>✅ Campos personalizados</li>
-                        <li>✅ Import/Export</li>
+                        <li>✅ Todos os relatórios</li>
                         <li>✅ Suporte prioritário</li>
-                        <li>✅ Multi-estabelecimento</li>
                     </ul>
                     <a href="https://wa.me/5514996118316?text={{ urlencode('Quero o plano '.$pEnterprise->nome) }}" target="_blank"
                        class="block text-center bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold text-sm transition">

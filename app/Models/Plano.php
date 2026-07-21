@@ -55,6 +55,20 @@ class Plano extends Model
         return in_array($feature, $this->features ?? []);
     }
 
+    /** Limites do plano em texto: "5 profissionais · 5 logins" (0 = ilimitado) */
+    public function getLimitesResumoAttribute(): string
+    {
+        $prof = $this->max_profissionais > 0
+            ? $this->max_profissionais.($this->max_profissionais === 1 ? ' profissional' : ' profissionais')
+            : 'Profissionais ilimitados';
+
+        $logins = $this->max_usuarios > 0
+            ? $this->max_usuarios.($this->max_usuarios === 1 ? ' login' : ' logins')
+            : 'logins ilimitados';
+
+        return $prof.' · '.$logins;
+    }
+
     /**
      * Preço em pt-BR para exibição (landing). Omite os centavos quando
      * são zero: 97.00 => "97" e 79.90 => "79,90".

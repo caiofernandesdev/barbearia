@@ -119,10 +119,22 @@ class PlanosResource extends Resource
                     ->money('BRL')
                     ->sortable(),
 
+                // A lista de features crua poluía demais; o detalhe fica na edição
                 TextColumn::make('features')
-                    ->label('Features')
-                    ->formatStateUsing(fn ($record) => implode(', ', $record->features ?? []))
-                    ->wrap(),
+                    ->label('Módulos')
+                    ->badge()
+                    ->getStateUsing(fn ($record) => collect($record->features ?? [])
+                        ->reject(fn ($f) => str_starts_with($f, 'rel_'))
+                        ->count().' módulos')
+                    ->color('gray'),
+
+                TextColumn::make('limites')
+                    ->label('Limites')
+                    ->getStateUsing(fn ($record) => sprintf(
+                        '%s prof · %s logins',
+                        $record->max_profissionais > 0 ? $record->max_profissionais : '∞',
+                        $record->max_usuarios > 0 ? $record->max_usuarios : '∞',
+                    )),
 
                 TextColumn::make('tenants_count')
                     ->label('Clientes')

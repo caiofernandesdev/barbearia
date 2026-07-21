@@ -4,72 +4,45 @@ use Illuminate\Database\Migrations\Migration;
 use Illuminate\Support\Facades\DB;
 
 /**
- * Alinha os planos cadastrados com a tabela de preços da landing.
+ * Alinha os preços dos planos com a tabela exibida na landing.
  *
- * A landing passou a ler nome e preço do banco, então sem isso o site
- * voltaria a exibir os valores antigos no deploy.
+ * A landing passou a ler o preço do banco, então um ambiente ainda nos
+ * valores antigos mostraria preço desatualizado no site.
  *
- * Cada alteração é condicionada ao valor antigo: se alguém já ajustou o
- * preço pelo super admin, a migration não encosta naquele plano.
+ * Cada plano só é alterado se o preço ainda for o antigo — quem já ajustou
+ * pelo super admin (o caso de produção) não é tocado. O nome também não é
+ * alterado: a ligação com o card da landing é pelo slug, não pelo nome.
  */
 return new class extends Migration
 {
-    /** nome atual => [nome novo, preço antigo, preço novo] */
-    private const PLANOS = [
-        'Básico' => ['Starter', 97.00, 79.90],
-        'Pro' => ['Pro', 197.00, 159.90],
-        'Enterprise' => ['Enterprise', 397.00, 239.90],
+    /** nome => [preço antigo, preço novo] */
+    private const PRECOS = [
+        'Básico' => [97.00, 79.90],
+        'Starter' => [97.00, 79.90],
+        'Pro' => [197.00, 159.90],
+        'Enterprise' => [397.00, 239.90],
     ];
 
     public function up(): void
     {
-        foreach (self::PLANOS as $nomeAtual => [$nomeNovo, $precoAntigo, $precoNovo]) {
-            $plano = DB::table('planos')->where('nome', $nomeAtual)->first();
-
-            if (! $plano) {
-                continue;
-            }
-
-            $mudancas = [];
-
-            // Só renomeia se o nome novo ainda não estiver em uso
-            if ($nomeNovo !== $nomeAtual && ! DB::table('planos')->where('nome', $nomeNovo)->exists()) {
-                $mudancas['nome'] = $nomeNovo;
-            }
-
-            // Preserva preço já ajustado manualmente
-            if ((float) $plano->preco_mensal === $precoAntigo) {
-                $mudancas['preco_mensal'] = $precoNovo;
-            }
-
-            if ($mudancas) {
-                DB::table('planos')->where('id', $plano->id)->update($mudancas);
-            }
-        }
+        $this->aplicar(fn ($de, $para) => [$de, $para]);
     }
 
     public function down(): void
     {
-        foreach (self::PLANOS as $nomeAntigo => [$nomeNovo, $precoAntigo, $precoNovo]) {
-            $plano = DB::table('planos')->where('nome', $nomeNovo)->first();
+        $this->aplicar(fn ($de, $para) => [$para, $de]);
+    }
 
-            if (! $plano) {
-                continue;
-            }
+    /** @param  callable(float, float): array{0: float, 1: float}  $direcao */
+    private function aplicar(callable $direcao): void
+    {
+        foreach (self::PRECOS as $nome => [$antigo, $novo]) {
+            [$esperado, $aplicar] = $direcao($antigo, $novo);
 
-            $mudancas = [];
-
-            if ($nomeNovo !== $nomeAntigo && ! DB::table('planos')->where('nome', $nomeAntigo)->exists()) {
-                $mudancas['nome'] = $nomeAntigo;
-            }
-
-            if ((float) $plano->preco_mensal === $precoNovo) {
-                $mudancas['preco_mensal'] = $precoAntigo;
-            }
-
-            if ($mudancas) {
-                DB::table('planos')->where('id', $plano->id)->update($mudancas);
-            }
+            DB::table('planos')
+                ->where('nome', $nome)
+                ->where('preco_mensal', $esperado)
+                ->update(['preco_mensal' => $aplicar]);
         }
     }
 };
