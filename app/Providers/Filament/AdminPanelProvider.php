@@ -44,13 +44,10 @@ class AdminPanelProvider extends PanelProvider
                 .'</div>'
             ))
             ->favicon(asset('images/logo-icone.png'))
-            ->navigationGroups([
-                NavigationGroup::make('Agenda'),
-                NavigationGroup::make('Clientes'),
-                NavigationGroup::make('Cadastros'),
-                NavigationGroup::make('Financeiro'),
-                NavigationGroup::make('Sistema'),
-            ])
+            // Sininho de avisos (novo agendamento, cancelamento). Não depende de
+            // WhatsApp nem de serviço externo — fica no próprio painel.
+            ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->pages([

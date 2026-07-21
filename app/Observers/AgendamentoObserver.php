@@ -6,6 +6,7 @@ use App\Jobs\EnviarWhatsAppJob;
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
 use App\Models\Tenant;
+use App\Services\AvisoPainelService;
 
 class AgendamentoObserver
 {
@@ -28,6 +29,11 @@ class AgendamentoObserver
         EnviarWhatsAppJob::dispatch($telefone, $mensagem, $tenantId);
     }
 
+    private function avisos(): AvisoPainelService
+    {
+        return app(AvisoPainelService::class);
+    }
+
     public function created(Agendamento $agendamento): void
     {
         $this->ensureTenant($agendamento);
@@ -36,6 +42,8 @@ class AgendamentoObserver
 
         $this->enviar($agendamento->cliente_telefone, static::mensagemRecebido($agendamento, $nomeBarbearia), $tid);
         $this->notificarBarbeiro($agendamento, $nomeBarbearia, 'novo');
+        // Sininho do painel — chega mesmo sem WhatsApp configurado
+        $this->avisos()->novoAgendamento($agendamento);
     }
 
     public function updated(Agendamento $agendamento): void
@@ -47,6 +55,7 @@ class AgendamentoObserver
         if ($agendamento->wasChanged('data_hora')) {
             $this->enviar($agendamento->cliente_telefone, static::mensagemReagendado($agendamento, $nomeBarbearia), $tid);
             $this->notificarBarbeiro($agendamento, $nomeBarbearia, 'reagendado');
+            $this->avisos()->agendamentoRemarcado($agendamento);
 
             return;
         }
@@ -60,6 +69,7 @@ class AgendamentoObserver
             'cancelado' => (function () use ($agendamento, $nomeBarbearia, $tid) {
                 $this->enviar($agendamento->cliente_telefone, static::mensagemCancelado($agendamento, $nomeBarbearia), $tid);
                 $this->notificarBarbeiro($agendamento, $nomeBarbearia, 'cancelado');
+                $this->avisos()->agendamentoCancelado($agendamento);
             })(),
             default => null,
         };
