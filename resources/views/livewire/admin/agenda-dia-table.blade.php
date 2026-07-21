@@ -34,14 +34,33 @@
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
             @forelse($slots as $slot)
                 @if($slot['ocupado'])
-                    <div style="padding:12px 8px; border-radius:12px; text-align:center; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3);">
-                        <div style="font-size:16px; font-weight:bold; color:#ef4444;">{{ $slot['hora'] }}</div>
-                        <div style="font-size:11px; color:#fca5a5; margin-top:2px;">{{ $slot['cliente'] }}</div>
-                        <div style="font-size:10px; color:#fca5a5; opacity:0.7;">{{ $slot['servico'] }}</div>
-                        @if(!empty($slot['extras']))
-                        <div style="font-size:9px; color:#fcd34d; opacity:0.9; margin-top:1px;">📝 {{ $slot['extras'] }}</div>
-                        @endif
-                    </div>
+                    @if($slot['cancelavel'])
+                        {{-- Clicável: abre a confirmação de cancelamento --}}
+                        <button
+                            wire:click="abrirCancelamento({{ $slot['agendamento_id'] }})"
+                            title="Cancelar o agendamento de {{ $slot['cliente'] }}"
+                            style="width:100%; padding:12px 8px; border-radius:12px; text-align:center; cursor:pointer; transition:all 0.15s;
+                                background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3);"
+                            onmouseover="this.style.background='rgba(239,68,68,0.28)'"
+                            onmouseout="this.style.background='rgba(239,68,68,0.15)'"
+                        >
+                            <div style="font-size:16px; font-weight:bold; color:#ef4444;">{{ $slot['hora'] }}</div>
+                            <div style="font-size:11px; color:#fca5a5; margin-top:2px;">{{ $slot['cliente'] }}</div>
+                            <div style="font-size:10px; color:#fca5a5; opacity:0.7;">{{ $slot['servico'] }}</div>
+                            @if(!empty($slot['extras']))
+                            <div style="font-size:9px; color:#fcd34d; opacity:0.9; margin-top:1px;">📝 {{ $slot['extras'] }}</div>
+                            @endif
+                        </button>
+                    @else
+                        <div style="padding:12px 8px; border-radius:12px; text-align:center; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3);">
+                            <div style="font-size:16px; font-weight:bold; color:#ef4444;">{{ $slot['hora'] }}</div>
+                            <div style="font-size:11px; color:#fca5a5; margin-top:2px;">{{ $slot['cliente'] }}</div>
+                            <div style="font-size:10px; color:#fca5a5; opacity:0.7;">{{ $slot['servico'] }}</div>
+                            @if(!empty($slot['extras']))
+                            <div style="font-size:9px; color:#fcd34d; opacity:0.9; margin-top:1px;">📝 {{ $slot['extras'] }}</div>
+                            @endif
+                        </div>
+                    @endif
                 @elseif($slot['indisponivel'])
                     <div style="padding:12px 8px; border-radius:12px; text-align:center; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.35);">
                         <div style="font-size:16px; font-weight:bold; color:#a78bfa;">{{ $slot['hora'] }}</div>
@@ -80,6 +99,33 @@
             <span><span style="color:#6b7280;">●</span> Passado</span>
         </div>
     </x-filament::section>
+
+    {{-- Modal de cancelamento --}}
+    @if($showCancelModal)
+    <div style="position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px;"
+         wire:click.self="fecharCancelModal">
+        <div style="background:#1f2937; border-radius:16px; padding:24px; max-width:400px; width:100%; border:1px solid rgba(255,255,255,0.1);">
+            <h3 style="color:#fff; font-size:18px; font-weight:bold; margin-bottom:8px;">
+                Cancelar agendamento?
+            </h3>
+            <p style="color:#d1d5db; font-size:14px; margin-bottom:6px;">{{ $cancelarResumo }}</p>
+            <p style="color:#9ca3af; font-size:13px; margin-bottom:20px;">
+                O horário será liberado e o cliente avisado por WhatsApp.
+            </p>
+
+            <div style="display:flex; gap:8px;">
+                <button wire:click="confirmarCancelamento"
+                    style="flex:1; background:#ef4444; color:#fff; font-weight:600; padding:12px; border-radius:10px; border:none; cursor:pointer; font-size:14px;">
+                    Sim, cancelar
+                </button>
+                <button wire:click="fecharCancelModal"
+                    style="flex:1; background:#374151; color:#fff; padding:12px; border-radius:10px; border:1px solid #4b5563; cursor:pointer; font-size:14px;">
+                    Voltar
+                </button>
+            </div>
+        </div>
+    </div>
+    @endif
 
     {{-- Modal de agendamento rápido --}}
     @if($showModal)

@@ -35,9 +35,74 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
 
     public ?string $servicoId = null;
 
+    public bool $showCancelModal = false;
+
+    public ?int $cancelarId = null;
+
+    public string $cancelarResumo = '';
+
     public function mount(): void
     {
         $this->dataSelecionada = now()->format('Y-m-d');
+    }
+
+    /** Só admin, ou profissional com a permissão "pode cancelar" */
+    public function getPodeCancelarProperty(): bool
+    {
+        return auth('admin')->user()?->podeCancelar() ?? false;
+    }
+
+    public function abrirCancelamento(int $agendamentoId): void
+    {
+        if (! $this->podeCancelar) {
+            return;
+        }
+
+        $ag = Agendamento::find($agendamentoId);
+        // Concluído não se cancela — o atendimento já aconteceu
+        if (! $ag || ! in_array($ag->status, ['pendente', 'confirmado'], true)) {
+            return;
+        }
+
+        $this->cancelarId = $ag->id;
+        $this->cancelarResumo = $ag->cliente_nome.' — '.$ag->data_hora->format('d/m \à\s H:i');
+        $this->showCancelModal = true;
+    }
+
+    public function fecharCancelModal(): void
+    {
+        $this->showCancelModal = false;
+        $this->cancelarId = null;
+        $this->cancelarResumo = '';
+    }
+
+    public function confirmarCancelamento(): void
+    {
+        // Revalida no servidor: o modal pode ter sido aberto com estado velho
+        if (! $this->podeCancelar || ! $this->cancelarId) {
+            $this->fecharCancelModal();
+
+            return;
+        }
+
+        $ag = Agendamento::find($this->cancelarId);
+        if (! $ag || ! in_array($ag->status, ['pendente', 'confirmado'], true)) {
+            $this->fecharCancelModal();
+
+            return;
+        }
+
+        // O observer cuida de avisar cliente e profissional por WhatsApp
+        $ag->update(['status' => 'cancelado']);
+
+        $cliente = $ag->cliente_nome;
+        $this->fecharCancelModal();
+
+        Notification::make()
+            ->title('Agendamento cancelado')
+            ->body("O horário de {$cliente} foi liberado.")
+            ->success()
+            ->send();
     }
 
     public function selecionarDia(string $data): void
@@ -233,6 +298,12 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
                 'indisponivel' => $bloqueio !== null,
                 'motivo' => $bloqueio['motivo'] ?? null,
                 'passado' => $data->isToday() && $slotInicio->lt($agora),
+                // Clicar no slot ocupado abre o cancelamento — só o que ainda não
+                // aconteceu e só para quem tem a permissão
+                'agendamento_id' => $ag?->id,
+                'cancelavel' => $ag !== null
+                    && in_array($ag->status, ['pendente', 'confirmado'], true)
+                    && $this->podeCancelar,
                 'cliente' => $ag?->cliente_nome,
                 'servico' => $ag ? ($ehInicio ? $ag->nomesServicos() : '⤷ continuação') : null,
                 // Respostas dos campos personalizados só no slot inicial (menos ruído)
