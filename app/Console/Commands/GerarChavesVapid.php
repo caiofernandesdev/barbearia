@@ -26,11 +26,20 @@ class GerarChavesVapid extends Command
             }
         }
 
+        // Dependência ausente é o caso mais comum e tem solução própria —
+        // não faz sentido mandar o usuário investigar o openssl por isso
+        if (! class_exists(VAPID::class)) {
+            $this->error('A biblioteca de push não está instalada.');
+            $this->line('Rode:  composer install --no-dev --optimize-autoloader');
+
+            return self::FAILURE;
+        }
+
         try {
             $chaves = VAPID::createVapidKeys();
         } catch (\Throwable $e) {
             $this->error('Não foi possível gerar as chaves: '.$e->getMessage());
-            $this->line('No Windows costuma ser o OPENSSL_CONF; no Linux, verifique a extensão openssl.');
+            $this->line('Verifique a extensão openssl do PHP (no Windows, também o OPENSSL_CONF).');
 
             return self::FAILURE;
         }
