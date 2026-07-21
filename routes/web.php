@@ -3,10 +3,18 @@
 use App\Http\Controllers\Admin\RelatorioExportController;
 use App\Http\Controllers\AgendamentoController;
 use App\Http\Controllers\WhatsAppWebhookController;
+use App\Models\Plano;
 use Illuminate\Support\Facades\Route;
 
 // ─── Landing page ─────────────────────────────────────────────────────────────
-Route::get('/', fn () => view('pages.landing'))->name('landing');
+// Nome e preço vêm dos planos do super admin — fonte única de verdade.
+// A ligação é pelo slug (starter/pro/enterprise), que não muda quando o plano
+// é renomeado; plano desativado some do site em vez de exibir preço fantasma.
+Route::get('/', function () {
+    $planos = Plano::where('ativo', true)->get()->keyBy('slug');
+
+    return view('pages.landing', compact('planos'));
+})->name('landing');
 
 // ─── Webhook global — sem session, sem CSRF, sem cookie (Evolution API) ──────
 // O {token} é o segredo compartilhado (WHATSAPP_WEBHOOK_TOKEN) validado no controller

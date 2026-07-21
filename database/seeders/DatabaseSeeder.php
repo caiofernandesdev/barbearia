@@ -29,9 +29,9 @@ class DatabaseSeeder extends Seeder
         TipoEstabelecimento::firstOrCreate(['nome' => 'Studio de Tatuagem'], ['icone' => '🎨', 'ativo' => true]);
 
         // ─── Planos ───────────────────────────────────────────────────────────
-        Plano::firstOrCreate(['nome' => 'Básico'], [
+        Plano::firstOrCreate(['nome' => 'Starter'], [
             'descricao' => 'Agendamento online + painel admin básico',
-            'preco_mensal' => 97.00,
+            'preco_mensal' => 79.90,
             'features' => ['mensalistas', 'indisponibilidades'],
             'max_profissionais' => 2,
             'max_usuarios' => 3,
@@ -39,8 +39,8 @@ class DatabaseSeeder extends Seeder
         ]);
 
         $planoPro = Plano::firstOrCreate(['nome' => 'Pro'], [
-            'descricao' => 'Tudo do Básico + WhatsApp + Relatórios + Salário Emocional',
-            'preco_mensal' => 197.00,
+            'descricao' => 'Tudo do Starter + WhatsApp + Relatórios + Salário Emocional',
+            'preco_mensal' => 159.90,
             // Relatórios granulares (rel_*): Pro tem os principais
             'features' => ['mensalistas', 'indisponibilidades', 'relatorios', 'salario_emocional', 'whatsapp', 'agenda_fixa', 'lista_espera',
                 'rel_atendimentos', 'rel_receita', 'rel_clientes_unicos', 'rel_cancelamentos',
@@ -52,7 +52,7 @@ class DatabaseSeeder extends Seeder
 
         Plano::firstOrCreate(['nome' => 'Enterprise'], [
             'descricao' => 'Acesso completo a todos os módulos',
-            'preco_mensal' => 397.00,
+            'preco_mensal' => 239.90,
             // Enterprise: todos os relatórios (inclui evolução mensal)
             'features' => array_merge(
                 ['mensalistas', 'indisponibilidades', 'relatorios', 'repescagem', 'salario_emocional', 'whatsapp', 'campos_agendamento', 'agenda_fixa', 'lista_espera', 'import_export'],

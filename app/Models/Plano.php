@@ -4,10 +4,19 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 
-#[Fillable(['nome', 'descricao', 'preco_mensal', 'features', 'max_profissionais', 'max_usuarios', 'ativo'])]
+#[Fillable(['nome', 'slug', 'descricao', 'preco_mensal', 'features', 'max_profissionais', 'max_usuarios', 'ativo'])]
 class Plano extends Model
 {
+    /** Plano novo nasce com slug derivado do nome, se ninguém informar */
+    protected static function booted(): void
+    {
+        static::creating(function (self $plano) {
+            $plano->slug ??= Str::slug($plano->nome ?? '');
+        });
+    }
+
     /**
      * Relatórios granulares (sub-módulos do módulo 'relatorios').
      * Slug (vai no array features) => rótulo exibido no super admin.
@@ -44,5 +53,18 @@ class Plano extends Model
     public function hasFeature(string $feature): bool
     {
         return in_array($feature, $this->features ?? []);
+    }
+
+    /**
+     * Preço em pt-BR para exibição (landing). Omite os centavos quando
+     * são zero: 97.00 => "97" e 79.90 => "79,90".
+     */
+    public function getPrecoFormatadoAttribute(): string
+    {
+        $valor = (float) $this->preco_mensal;
+
+        return fmod($valor, 1.0) === 0.0
+            ? number_format($valor, 0, ',', '.')
+            : number_format($valor, 2, ',', '.');
     }
 }

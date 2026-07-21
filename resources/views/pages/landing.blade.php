@@ -240,11 +240,20 @@
                 <h2 class="text-3xl sm:text-4xl font-black mb-4">Planos</h2>
                 <p class="text-gray-400 text-base sm:text-lg">Comece grátis. Escale quando quiser.</p>
             </div>
+            @php
+                // Nome e preço vêm do super admin, ligados pelo slug; o texto de
+                // venda fica aqui. Plano ausente/desativado => o card não aparece.
+                $lista       = $planos ?? collect();
+                $pStarter    = $lista['starter'] ?? null;
+                $pPro        = $lista['pro'] ?? null;
+                $pEnterprise = $lista['enterprise'] ?? null;
+            @endphp
             <div class="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
                 {{-- Starter --}}
+                @if($pStarter)
                 <div class="bg-white/5 rounded-2xl p-6 sm:p-8 border border-white/10">
-                    <h3 class="font-bold text-lg mb-1">Starter</h3>
-                    <div class="text-2xl sm:text-3xl font-black mb-1">R$ 79,90<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
+                    <h3 class="font-bold text-lg mb-1">{{ $pStarter->nome }}</h3>
+                    <div class="text-2xl sm:text-3xl font-black mb-1">R$ {{ $pStarter->preco_formatado }}<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
                     <p class="text-gray-500 text-xs sm:text-sm mb-6">Pra começar a organizar</p>
                     <ul class="space-y-2.5 text-xs sm:text-sm text-gray-300 mb-8">
                         <li>✅ Agendamento online</li>
@@ -254,19 +263,21 @@
                         <li class="text-gray-600">✕ WhatsApp</li>
                         <li class="text-gray-600">✕ Relatórios</li>
                     </ul>
-                    <a href="https://wa.me/5514996118316?text=Quero%20o%20plano%20Starter" target="_blank"
+                    <a href="https://wa.me/5514996118316?text={{ urlencode('Quero o plano '.$pStarter->nome) }}" target="_blank"
                        class="block text-center bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold text-sm transition">
                         Começar agora
                     </a>
                 </div>
+                @endif
 
                 {{-- Pro --}}
+                @if($pPro)
                 <div class="bg-brand-500/10 rounded-2xl p-6 sm:p-8 border-2 border-brand-500 relative">
                     <div class="absolute -top-3 left-1/2 -translate-x-1/2 bg-brand-500 text-black text-[10px] sm:text-xs font-bold px-3 sm:px-4 py-1 rounded-full whitespace-nowrap">
                         MAIS POPULAR
                     </div>
-                    <h3 class="font-bold text-lg mb-1">Pro</h3>
-                    <div class="text-2xl sm:text-3xl font-black mb-1">R$ 159,90<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
+                    <h3 class="font-bold text-lg mb-1">{{ $pPro->nome }}</h3>
+                    <div class="text-2xl sm:text-3xl font-black mb-1">R$ {{ $pPro->preco_formatado }}<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
                     <p class="text-gray-500 text-xs sm:text-sm mb-6">Pra crescer com inteligência</p>
                     <ul class="space-y-2.5 text-xs sm:text-sm text-gray-300 mb-8">
                         <li>✅ Tudo do Starter</li>
@@ -276,16 +287,18 @@
                         <li>✅ Painel do profissional</li>
                         <li class="text-gray-600">✕ Repescagem</li>
                     </ul>
-                    <a href="https://wa.me/5514996118316?text=Quero%20o%20plano%20Pro" target="_blank"
+                    <a href="https://wa.me/5514996118316?text={{ urlencode('Quero o plano '.$pPro->nome) }}" target="_blank"
                        class="block text-center bg-brand-500 hover:bg-brand-600 text-black py-3 rounded-xl font-bold text-sm transition">
-                        Quero o Pro →
+                        Quero o {{ $pPro->nome }} →
                     </a>
                 </div>
+                @endif
 
                 {{-- Enterprise --}}
+                @if($pEnterprise)
                 <div class="bg-white/5 rounded-2xl p-6 sm:p-8 border border-white/10 sm:col-span-2 lg:col-span-1">
-                    <h3 class="font-bold text-lg mb-1">Enterprise</h3>
-                    <div class="text-2xl sm:text-3xl font-black mb-1">R$ 239,90<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
+                    <h3 class="font-bold text-lg mb-1">{{ $pEnterprise->nome }}</h3>
+                    <div class="text-2xl sm:text-3xl font-black mb-1">R$ {{ $pEnterprise->preco_formatado }}<span class="text-sm sm:text-base font-normal text-gray-500">/mês</span></div>
                     <p class="text-gray-500 text-xs sm:text-sm mb-6">Tudo liberado, sem limites</p>
                     <ul class="space-y-2.5 text-xs sm:text-sm text-gray-300 mb-8">
                         <li>✅ Tudo do Pro</li>
@@ -295,11 +308,12 @@
                         <li>✅ Suporte prioritário</li>
                         <li>✅ Multi-estabelecimento</li>
                     </ul>
-                    <a href="https://wa.me/5514996118316?text=Quero%20o%20plano%20Enterprise" target="_blank"
+                    <a href="https://wa.me/5514996118316?text={{ urlencode('Quero o plano '.$pEnterprise->nome) }}" target="_blank"
                        class="block text-center bg-white/10 hover:bg-white/20 py-3 rounded-xl font-semibold text-sm transition">
                         Falar com consultor
                     </a>
                 </div>
+                @endif
             </div>
         </div>
     </section>
