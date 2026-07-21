@@ -303,6 +303,8 @@
                     <ul class="space-y-2.5 text-xs sm:text-sm text-gray-300 mb-8">
                         <li>✅ Tudo do Pro</li>
                         <li>✅ Repescagem de clientes</li>
+                        <li>✅ Agenda Fixa</li>
+                        <li>✅ Lista de espera</li>
                         <li>✅ Campos personalizados</li>
                         <li>✅ Import/Export</li>
                         <li>✅ Suporte prioritário</li>
