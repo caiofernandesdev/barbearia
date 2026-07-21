@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Models\PushSubscription;
+use App\Services\PushService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -35,6 +36,30 @@ class PushSubscriptionController extends Controller
         );
 
         return response()->json(['ok' => true]);
+    }
+
+    /** Dispara um push para o próprio usuário — para ele testar sem depender de um agendamento real */
+    public function teste(PushService $push): JsonResponse
+    {
+        $user = auth('admin')->user();
+
+        if (! $user) {
+            return response()->json(['erro' => 'não autenticado'], 401);
+        }
+
+        $aparelhos = PushSubscription::where('user_id', $user->id)->count();
+
+        if ($aparelhos === 0) {
+            return response()->json(['ok' => false, 'motivo' => 'nenhum aparelho ativado'], 422);
+        }
+
+        $push->enviarPara($user, [
+            'title' => 'Teste do Atendix',
+            'body' => 'Se você está vendo isto, os avisos estão funcionando.',
+            'url' => route('filament.admin.pages.agenda-geral'),
+        ]);
+
+        return response()->json(['ok' => true, 'aparelhos' => $aparelhos]);
     }
 
     public function destroy(Request $request): JsonResponse

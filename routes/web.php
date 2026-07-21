@@ -71,4 +71,6 @@ Route::middleware('auth:admin')->prefix('admin-exports')->group(function () {
 Route::middleware('auth:admin')->prefix('admin-push')->group(function () {
     Route::post('/inscrever', [PushSubscriptionController::class, 'store'])->name('admin.push.inscrever');
     Route::post('/desinscrever', [PushSubscriptionController::class, 'destroy'])->name('admin.push.desinscrever');
+    Route::post('/teste', [PushSubscriptionController::class, 'teste'])
+        ->name('admin.push.teste')->middleware('throttle:10,1');
 });
