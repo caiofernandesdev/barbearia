@@ -14,8 +14,12 @@
                     @if($p->observacao) · {{ $p->observacao }} @endif
                 </div>
             </div>
-            <div style="font-size:13px; opacity:.8; white-space:nowrap;">
-                {{ $p->pago_em->format('d/m/Y') }}
+            <div style="display:flex; align-items:center; gap:10px; white-space:nowrap;">
+                @if($p->comprovante)
+                    <a href="{{ route('superadmin.comprovante', $p) }}" target="_blank"
+                       style="font-size:12px; text-decoration:underline; color:#818cf8;">📎 comprovante</a>
+                @endif
+                <span style="font-size:13px; opacity:.8;">{{ $p->pago_em->format('d/m/Y') }}</span>
             </div>
         </div>
     @empty

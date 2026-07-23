@@ -5,9 +5,11 @@ namespace App\Filament\SuperAdmin\Pages;
 use App\Models\Pagamento;
 use App\Models\Tenant;
 use Filament\Actions\Action;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
+use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
@@ -105,6 +107,8 @@ class Financeiro extends Page implements HasTable
                 TextColumn::make('valorMensal')
                     ->label('Mensalidade')
                     ->getStateUsing(fn (Tenant $record) => 'R$ '.number_format($record->valorMensal(), 2, ',', '.'))
+                    // Estrelinha sinaliza mensalidade personalizada (fora do plano)
+                    ->description(fn (Tenant $record) => $record->temMensalidadeCustom() ? '★ personalizada' : null)
                     ->alignEnd(),
 
                 TextColumn::make('proximo_vencimento')
@@ -164,6 +168,16 @@ class Financeiro extends Page implements HasTable
                             ->label('Observação')
                             ->rows(2)
                             ->placeholder('Opcional'),
+
+                        FileUpload::make('comprovante')
+                            ->label('Comprovante')
+                            // Disco privado: comprovante financeiro não fica na web
+                            ->disk('local')
+                            ->directory('comprovantes')
+                            ->visibility('private')
+                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
+                            ->maxSize(10240)
+                            ->helperText('Imagem ou PDF, até 10 MB. Opcional.'),
                     ])
                     ->modalHeading(fn (Tenant $record) => "Pagamento — {$record->nome}")
                     ->modalSubmitActionLabel('Registrar')
@@ -172,11 +186,48 @@ class Financeiro extends Page implements HasTable
                             (float) $data['valor'],
                             $data['forma'],
                             $data['observacao'] ?? null,
+                            $data['comprovante'] ?? null,
                         );
 
                         Notification::make()
                             ->title('Pagamento registrado')
                             ->body('Próximo vencimento: '.$record->fresh()->proximo_vencimento->format('d/m/Y'))
+                            ->success()
+                            ->send();
+                    }),
+
+                Action::make('ajustar_mensalidade')
+                    ->label('Ajustar mensalidade')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('gray')
+                    ->schema([
+                        TextInput::make('valor_mensalidade')
+                            ->label('Mensalidade (R$)')
+                            ->numeric()
+                            ->required()
+                            ->default(fn (Tenant $record) => $record->valorMensal())
+                            ->helperText(fn (Tenant $record) => $record->plano
+                                ? 'Preço do plano '.$record->plano->nome.': R$ '.number_format((float) $record->plano->preco_mensal, 2, ',', '.')
+                                : 'Este tenant não tem plano.'),
+
+                        Toggle::make('usar_plano')
+                            ->label('Voltar ao preço do plano')
+                            ->helperText('Ligado: ignora o valor acima e cobra o preço do plano.')
+                            ->default(false)
+                            ->visible(fn (Tenant $record) => $record->plano !== null),
+                    ])
+                    ->modalHeading(fn (Tenant $record) => "Mensalidade — {$record->nome}")
+                    ->modalSubmitActionLabel('Salvar')
+                    ->action(function (Tenant $record, array $data) {
+                        $record->update([
+                            'valor_mensalidade' => ! empty($data['usar_plano'])
+                                ? null
+                                : (float) $data['valor_mensalidade'],
+                        ]);
+
+                        Notification::make()
+                            ->title('Mensalidade atualizada')
+                            ->body('Agora: R$ '.number_format($record->fresh()->valorMensal(), 2, ',', '.'))
                             ->success()
                             ->send();
                     }),

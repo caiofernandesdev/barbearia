@@ -79,6 +79,13 @@ class TenantsResource extends Resource
                 ->description('Assinatura do estabelecimento com o Atendix. Os pagamentos são registrados na página Financeiro.')
                 ->columns(2)
                 ->schema([
+                    TextInput::make('valor_mensalidade')
+                        ->label('Mensalidade personalizada (R$)')
+                        ->numeric()
+                        ->minValue(0)
+                        ->helperText('Deixe vazio para cobrar o preço do plano. Preencha só para desconto ou acordo específico.')
+                        ->columnSpanFull(),
+
                     DatePicker::make('assinatura_inicio')
                         ->label('Início da assinatura')
                         ->native(false),

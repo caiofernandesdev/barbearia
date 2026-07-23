@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['slug', 'nome', 'tipo', 'tipo_estabelecimento_id', 'plano_id', 'whatsapp_config', 'whatsapp_ativo', 'ativo', 'assinatura_inicio', 'dia_vencimento', 'proximo_vencimento'])]
+#[Fillable(['slug', 'nome', 'tipo', 'tipo_estabelecimento_id', 'plano_id', 'valor_mensalidade', 'whatsapp_config', 'whatsapp_ativo', 'ativo', 'assinatura_inicio', 'dia_vencimento', 'proximo_vencimento'])]
 class Tenant extends Model
 {
     protected $table = 'tenants';
@@ -19,6 +19,7 @@ class Tenant extends Model
             'assinatura_inicio' => 'date',
             'dia_vencimento' => 'integer',
             'proximo_vencimento' => 'date',
+            'valor_mensalidade' => 'decimal:2',
         ];
     }
 
@@ -27,10 +28,23 @@ class Tenant extends Model
         return $this->hasMany(Pagamento::class);
     }
 
-    /** Quanto este tenant paga por mês ao Atendix (preço do plano) */
+    /**
+     * Quanto este tenant paga por mês ao Atendix. A mensalidade personalizada
+     * (valor_mensalidade) sobrepõe o preço do plano quando definida.
+     */
     public function valorMensal(): float
     {
+        if ($this->valor_mensalidade !== null) {
+            return (float) $this->valor_mensalidade;
+        }
+
         return (float) ($this->plano?->preco_mensal ?? 0);
+    }
+
+    /** A mensalidade está personalizada (diferente do preço do plano)? */
+    public function temMensalidadeCustom(): bool
+    {
+        return $this->valor_mensalidade !== null;
     }
 
     /**
@@ -80,7 +94,7 @@ class Tenant extends Model
      * Registra um pagamento e empurra o vencimento para o mês seguinte.
      * A competência default é o mês do vencimento que está sendo quitado.
      */
-    public function registrarPagamento(float $valor, string $forma = 'pix', ?string $observacao = null): Pagamento
+    public function registrarPagamento(float $valor, string $forma = 'pix', ?string $observacao = null, ?string $comprovante = null): Pagamento
     {
         $competencia = ($this->proximo_vencimento ?? now())->format('Y-m');
 
@@ -90,6 +104,7 @@ class Tenant extends Model
             'pago_em' => now()->toDateString(),
             'forma' => $forma,
             'observacao' => $observacao,
+            'comprovante' => $comprovante,
         ]);
 
         // Avança um mês a partir do vencimento (não de hoje), para não

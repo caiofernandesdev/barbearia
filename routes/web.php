@@ -3,6 +3,7 @@
 use App\Http\Controllers\Admin\PushSubscriptionController;
 use App\Http\Controllers\Admin\RelatorioExportController;
 use App\Http\Controllers\AgendamentoController;
+use App\Http\Controllers\SuperAdmin\ComprovanteController;
 use App\Http\Controllers\WhatsAppWebhookController;
 use App\Models\Plano;
 use Illuminate\Support\Facades\Route;
@@ -74,3 +75,7 @@ Route::middleware('auth:admin')->prefix('admin-push')->group(function () {
     Route::post('/teste', [PushSubscriptionController::class, 'teste'])
         ->name('admin.push.teste')->middleware('throttle:10,1');
 });
+
+// ─── Comprovantes de pagamento (disco privado, só super admin) ───────────────
+Route::middleware('auth:super_admin')->get('/super-admin-files/comprovante/{pagamento}', ComprovanteController::class)
+    ->name('superadmin.comprovante');

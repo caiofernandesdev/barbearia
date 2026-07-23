@@ -10,7 +10,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
  * Pagamento de mensalidade de um tenant ao Atendix. Registro do histórico
  * financeiro do SaaS — separado do financeiro do estabelecimento.
  */
-#[Fillable(['tenant_id', 'valor', 'competencia', 'pago_em', 'forma', 'observacao'])]
+#[Fillable(['tenant_id', 'valor', 'competencia', 'pago_em', 'forma', 'observacao', 'comprovante'])]
 class Pagamento extends Model
 {
     protected $table = 'pagamentos';
