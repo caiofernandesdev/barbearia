@@ -12,6 +12,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -73,6 +74,28 @@ class TenantsResource extends Resource
             Toggle::make('ativo')
                 ->label('Ativo')
                 ->default(true),
+
+            Section::make('Cobrança')
+                ->description('Assinatura do estabelecimento com o Atendix. Os pagamentos são registrados na página Financeiro.')
+                ->columns(2)
+                ->schema([
+                    DatePicker::make('assinatura_inicio')
+                        ->label('Início da assinatura')
+                        ->native(false),
+
+                    TextInput::make('dia_vencimento')
+                        ->label('Dia de vencimento')
+                        ->numeric()
+                        ->minValue(1)
+                        ->maxValue(28)
+                        ->default(10)
+                        ->helperText('Dia do mês (1 a 28).'),
+
+                    DatePicker::make('proximo_vencimento')
+                        ->label('Próximo vencimento')
+                        ->native(false)
+                        ->helperText('Avança sozinho a cada pagamento registrado.'),
+                ]),
 
             Section::make('Admin inicial')
                 ->description('Cria o usuário administrador do estabelecimento (somente na criação)')

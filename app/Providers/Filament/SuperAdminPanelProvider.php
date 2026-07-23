@@ -52,6 +52,7 @@ class SuperAdminPanelProvider extends PanelProvider
                 AccountWidget::class,
             ])
             ->navigationGroups([
+                NavigationGroup::make('Financeiro'),
                 NavigationGroup::make('Tenants'),
                 NavigationGroup::make('Planos'),
                 NavigationGroup::make('Sistema'),

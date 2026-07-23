@@ -5,7 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['slug', 'nome', 'tipo', 'tipo_estabelecimento_id', 'plano_id', 'whatsapp_config', 'whatsapp_ativo', 'ativo'])]
+#[Fillable(['slug', 'nome', 'tipo', 'tipo_estabelecimento_id', 'plano_id', 'whatsapp_config', 'whatsapp_ativo', 'ativo', 'assinatura_inicio', 'dia_vencimento', 'proximo_vencimento'])]
 class Tenant extends Model
 {
     protected $table = 'tenants';
@@ -16,7 +16,88 @@ class Tenant extends Model
             'whatsapp_config' => 'array',
             'whatsapp_ativo' => 'boolean',
             'ativo' => 'boolean',
+            'assinatura_inicio' => 'date',
+            'dia_vencimento' => 'integer',
+            'proximo_vencimento' => 'date',
         ];
+    }
+
+    public function pagamentos()
+    {
+        return $this->hasMany(Pagamento::class);
+    }
+
+    /** Quanto este tenant paga por mês ao Atendix (preço do plano) */
+    public function valorMensal(): float
+    {
+        return (float) ($this->plano?->preco_mensal ?? 0);
+    }
+
+    /**
+     * Situação da cobrança, derivada do vencimento — nunca guardada, para não
+     * ficar defasada. 'cortesia' quando não há valor de plano.
+     *
+     * @return 'cortesia'|'em_dia'|'vence_em_breve'|'atrasado'
+     */
+    public function statusCobranca(): string
+    {
+        if ($this->valorMensal() <= 0) {
+            return 'cortesia';
+        }
+
+        $venc = $this->proximo_vencimento;
+        if (! $venc) {
+            return 'em_dia';
+        }
+
+        if ($venc->isPast() && ! $venc->isToday()) {
+            return 'atrasado';
+        }
+
+        if ($venc->lte(now()->addDays(5))) {
+            return 'vence_em_breve';
+        }
+
+        return 'em_dia';
+    }
+
+    public function estaAtrasado(): bool
+    {
+        return $this->statusCobranca() === 'atrasado';
+    }
+
+    /** Dias de atraso (0 se em dia) */
+    public function diasAtraso(): int
+    {
+        if (! $this->estaAtrasado() || ! $this->proximo_vencimento) {
+            return 0;
+        }
+
+        return $this->proximo_vencimento->diffInDays(now());
+    }
+
+    /**
+     * Registra um pagamento e empurra o vencimento para o mês seguinte.
+     * A competência default é o mês do vencimento que está sendo quitado.
+     */
+    public function registrarPagamento(float $valor, string $forma = 'pix', ?string $observacao = null): Pagamento
+    {
+        $competencia = ($this->proximo_vencimento ?? now())->format('Y-m');
+
+        $pagamento = $this->pagamentos()->create([
+            'valor' => $valor,
+            'competencia' => $competencia,
+            'pago_em' => now()->toDateString(),
+            'forma' => $forma,
+            'observacao' => $observacao,
+        ]);
+
+        // Avança um mês a partir do vencimento (não de hoje), para não
+        // "perder" dias quando o pagamento entra adiantado ou atrasado.
+        $base = $this->proximo_vencimento ?? now();
+        $this->update(['proximo_vencimento' => $base->copy()->addMonth()->toDateString()]);
+
+        return $pagamento;
     }
 
     /** Módulo WhatsApp ligado para este estabelecimento? Controla envio e status. */
@@ -73,6 +154,7 @@ class Tenant extends Model
             MensalistaHorarioFixo::withoutGlobalScopes()->where('tenant_id', $tenant->id)->delete();
             Agendamento::withoutGlobalScopes()->where('tenant_id', $tenant->id)->delete();
             Indisponibilidade::withoutGlobalScopes()->where('tenant_id', $tenant->id)->delete();
+            Pagamento::where('tenant_id', $tenant->id)->delete();
         });
     }
 
