@@ -1,32 +1,111 @@
 <div>
+    {{-- Estilos próprios (não são utilitários Tailwind): adaptam-se ao tema
+         claro e escuro do Filament, que alterna a classe .dark no <html>. --}}
+    <style>
+        .agx-muted { color:#64748b; }
+        .dark .agx-muted { color:#94a3b8; }
+
+        /* ── seletor de dias ── */
+        .agx-daychip {
+            min-width:70px; padding:10px 8px; border-radius:12px; text-align:center;
+            cursor:pointer; flex-shrink:0; transition:all .15s;
+            border:2px solid #e2e8f0; background:#f8fafc; color:#334155;
+        }
+        .dark .agx-daychip { border-color:rgba(255,255,255,.12); background:rgba(255,255,255,.05); color:#e2e8f0; }
+        .agx-daychip:hover { border-color:#f59e0b; }
+        .agx-daychip--sel, .agx-daychip--sel:hover { background:#f59e0b; border-color:#f59e0b; color:#111827; }
+        .agx-dow, .agx-mon { font-size:11px; text-transform:uppercase; opacity:.7; }
+        .agx-num { font-size:22px; font-weight:bold; line-height:1.2; }
+        .agx-daybadge { margin-top:4px; font-size:10px; border-radius:8px; padding:1px 6px; background:rgba(245,158,11,.18); color:#b45309; }
+        .dark .agx-daybadge { color:#fbbf24; }
+        .agx-daychip--sel .agx-daybadge { background:rgba(0,0,0,.18); color:#111827; }
+
+        /* ── slots ── */
+        .agx-slot { width:100%; padding:12px 8px; border-radius:12px; text-align:center; border:1px solid transparent; transition:all .15s; }
+        .agx-hora { font-size:16px; font-weight:bold; }
+        .agx-sub  { font-size:11px; margin-top:2px; }
+        .agx-sub2 { font-size:10px; opacity:.85; }
+        .agx-extra{ font-size:9px; margin-top:1px; }
+
+        .agx-avail { cursor:pointer; background:#ecfdf5; border-color:#a7f3d0; }
+        .agx-avail:hover { background:#d1fae5; }
+        .agx-avail .agx-hora { color:#059669; }
+        .agx-avail .agx-sub  { color:#10b981; }
+        .dark .agx-avail { background:rgba(16,185,129,.10); border-color:rgba(16,185,129,.25); }
+        .dark .agx-avail:hover { background:rgba(16,185,129,.22); }
+        .dark .agx-avail .agx-hora { color:#34d399; }
+        .dark .agx-avail .agx-sub  { color:#6ee7b7; }
+
+        .agx-busy { background:#fef2f2; border-color:#fecaca; }
+        .agx-busy--btn { cursor:pointer; }
+        .agx-busy--btn:hover { background:#fee2e2; }
+        .agx-busy .agx-hora { color:#dc2626; }
+        .agx-busy .agx-sub  { color:#ef4444; }
+        .agx-busy .agx-sub2 { color:#dc2626; }
+        .agx-busy .agx-extra{ color:#b45309; }
+        .dark .agx-busy { background:rgba(239,68,68,.14); border-color:rgba(239,68,68,.30); }
+        .dark .agx-busy--btn:hover { background:rgba(239,68,68,.24); }
+        .dark .agx-busy .agx-hora { color:#f87171; }
+        .dark .agx-busy .agx-sub, .dark .agx-busy .agx-sub2 { color:#fca5a5; }
+        .dark .agx-busy .agx-extra{ color:#fcd34d; }
+
+        .agx-indis { background:#f5f3ff; border-color:#ddd6fe; }
+        .agx-indis .agx-hora { color:#7c3aed; }
+        .agx-indis .agx-sub, .agx-indis .agx-sub2 { color:#8b5cf6; }
+        .dark .agx-indis { background:rgba(139,92,246,.15); border-color:rgba(139,92,246,.35); }
+        .dark .agx-indis .agx-hora { color:#a78bfa; }
+        .dark .agx-indis .agx-sub, .dark .agx-indis .agx-sub2 { color:#c4b5fd; }
+
+        .agx-past { background:#f8fafc; border-color:#e2e8f0; }
+        .agx-past .agx-hora { color:#94a3b8; }
+        .dark .agx-past { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.07); }
+        .dark .agx-past .agx-hora { color:#64748b; }
+
+        button.agx-slot { display:block; }
+
+        /* ── legenda ── */
+        .agx-legend { display:flex; gap:16px; justify-content:center; margin-top:16px; font-size:12px; flex-wrap:wrap; }
+
+        /* ── modais (card claro/escuro sobre o backdrop) ── */
+        .agx-backdrop { position:fixed; inset:0; background:rgba(0,0,0,.6); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px; }
+        .agx-modal { background:#fff; border-radius:16px; padding:24px; max-width:400px; width:100%; border:1px solid #e5e7eb; box-shadow:0 20px 50px -12px rgba(0,0,0,.35); }
+        .dark .agx-modal { background:#1f2937; border-color:rgba(255,255,255,.1); }
+        .agx-modal h3 { color:#111827; font-size:18px; font-weight:bold; margin-bottom:8px; }
+        .dark .agx-modal h3 { color:#fff; }
+        .agx-modal-text { color:#374151; font-size:14px; margin-bottom:6px; }
+        .dark .agx-modal-text { color:#d1d5db; }
+        .agx-modal-hint { color:#6b7280; font-size:13px; margin-bottom:20px; }
+        .dark .agx-modal-hint { color:#9ca3af; }
+        .agx-label { color:#374151; font-size:13px; display:block; margin-bottom:4px; }
+        .dark .agx-label { color:#d1d5db; }
+        .agx-input { width:100%; background:#fff; color:#111827; border:1px solid #d1d5db; border-radius:10px; padding:10px 14px; font-size:14px; outline:none; }
+        .dark .agx-input { background:#374151; color:#fff; border-color:#4b5563; }
+        .agx-input:focus { border-color:#f59e0b; }
+        .agx-btn-primary { flex:1; color:#fff; font-weight:600; padding:12px; border-radius:10px; border:none; cursor:pointer; font-size:14px; }
+        .agx-btn-secondary { flex:1; padding:12px; border-radius:10px; cursor:pointer; font-size:14px; background:#f1f5f9; color:#334155; border:1px solid #e2e8f0; }
+        .dark .agx-btn-secondary { background:#374151; color:#fff; border-color:#4b5563; }
+        .agx-err { color:#ef4444; font-size:12px; }
+    </style>
+
     <x-filament::section>
         <x-slot name="heading">{{ $heading }}</x-slot>
 
         {{-- Seletor de dias --}}
         <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:12px; -webkit-overflow-scrolling:touch;">
             @foreach($dias as $dia)
-                <button
-                    wire:click="selecionarDia('{{ $dia['data'] }}')"
-                    style="
-                        min-width:70px; padding:10px 8px; border-radius:12px; text-align:center; cursor:pointer; flex-shrink:0; transition:all 0.15s;
-                        border:2px solid {{ $dia['selecionado'] ? '#f59e0b' : 'rgba(255,255,255,0.1)' }};
-                        background:{{ $dia['selecionado'] ? '#f59e0b' : 'rgba(255,255,255,0.05)' }};
-                        color:{{ $dia['selecionado'] ? '#000' : '#fff' }};
-                    "
-                >
-                    <div style="font-size:11px; text-transform:uppercase; opacity:0.7;">{{ $dia['diaSemana'] }}</div>
-                    <div style="font-size:22px; font-weight:bold; line-height:1.2;">{{ $dia['diaNum'] }}</div>
-                    <div style="font-size:11px; text-transform:uppercase; opacity:0.7;">{{ $dia['mes'] }}</div>
+                <button wire:click="selecionarDia('{{ $dia['data'] }}')"
+                    class="agx-daychip {{ $dia['selecionado'] ? 'agx-daychip--sel' : '' }}">
+                    <div class="agx-dow">{{ $dia['diaSemana'] }}</div>
+                    <div class="agx-num">{{ $dia['diaNum'] }}</div>
+                    <div class="agx-mon">{{ $dia['mes'] }}</div>
                     @if($dia['totalAgs'] > 0)
-                        <div style="margin-top:4px; font-size:10px; border-radius:8px; padding:1px 6px;
-                            background:{{ $dia['selecionado'] ? 'rgba(0,0,0,0.2)' : 'rgba(245,158,11,0.2)' }};
-                            color:{{ $dia['selecionado'] ? '#000' : '#f59e0b' }};">{{ $dia['totalAgs'] }}</div>
+                        <div class="agx-daybadge">{{ $dia['totalAgs'] }}</div>
                     @endif
                 </button>
             @endforeach
         </div>
 
-        <div style="font-size:13px; color:#9ca3af; text-align:center; margin:12px 0;">
+        <div class="agx-muted" style="font-size:13px; text-align:center; margin:12px 0;">
             {{ \Carbon\Carbon::parse($dataSelecionada)->locale('pt_BR')->isoFormat('dddd, D [de] MMMM') }}
         </div>
 
@@ -35,93 +114,69 @@
             @forelse($slots as $slot)
                 @if($slot['ocupado'])
                     @if($slot['cancelavel'])
-                        {{-- Clicável: abre a confirmação de cancelamento --}}
-                        <button
-                            wire:click="abrirCancelamento({{ $slot['agendamento_id'] }})"
+                        <button wire:click="abrirCancelamento({{ $slot['agendamento_id'] }})"
                             title="Cancelar o agendamento de {{ $slot['cliente'] }}"
-                            style="width:100%; padding:12px 8px; border-radius:12px; text-align:center; cursor:pointer; transition:all 0.15s;
-                                background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3);"
-                            onmouseover="this.style.background='rgba(239,68,68,0.28)'"
-                            onmouseout="this.style.background='rgba(239,68,68,0.15)'"
-                        >
-                            <div style="font-size:16px; font-weight:bold; color:#ef4444;">{{ $slot['hora'] }}</div>
-                            <div style="font-size:11px; color:#fca5a5; margin-top:2px;">{{ $slot['cliente'] }}</div>
-                            <div style="font-size:10px; color:#fca5a5; opacity:0.7;">{{ $slot['servico'] }}</div>
+                            class="agx-slot agx-busy agx-busy--btn">
+                            <div class="agx-hora">{{ $slot['hora'] }}</div>
+                            <div class="agx-sub">{{ $slot['cliente'] }}</div>
+                            <div class="agx-sub2">{{ $slot['servico'] }}</div>
                             @if(!empty($slot['extras']))
-                            <div style="font-size:9px; color:#fcd34d; opacity:0.9; margin-top:1px;">📝 {{ $slot['extras'] }}</div>
+                                <div class="agx-extra">📝 {{ $slot['extras'] }}</div>
                             @endif
                         </button>
                     @else
-                        <div style="padding:12px 8px; border-radius:12px; text-align:center; background:rgba(239,68,68,0.15); border:1px solid rgba(239,68,68,0.3);">
-                            <div style="font-size:16px; font-weight:bold; color:#ef4444;">{{ $slot['hora'] }}</div>
-                            <div style="font-size:11px; color:#fca5a5; margin-top:2px;">{{ $slot['cliente'] }}</div>
-                            <div style="font-size:10px; color:#fca5a5; opacity:0.7;">{{ $slot['servico'] }}</div>
+                        <div class="agx-slot agx-busy">
+                            <div class="agx-hora">{{ $slot['hora'] }}</div>
+                            <div class="agx-sub">{{ $slot['cliente'] }}</div>
+                            <div class="agx-sub2">{{ $slot['servico'] }}</div>
                             @if(!empty($slot['extras']))
-                            <div style="font-size:9px; color:#fcd34d; opacity:0.9; margin-top:1px;">📝 {{ $slot['extras'] }}</div>
+                                <div class="agx-extra">📝 {{ $slot['extras'] }}</div>
                             @endif
                         </div>
                     @endif
                 @elseif($slot['indisponivel'])
-                    <div style="padding:12px 8px; border-radius:12px; text-align:center; background:rgba(139,92,246,0.15); border:1px solid rgba(139,92,246,0.35);">
-                        <div style="font-size:16px; font-weight:bold; color:#a78bfa;">{{ $slot['hora'] }}</div>
-                        <div style="font-size:10px; color:#c4b5fd; margin-top:2px;">🔒 Indisponível</div>
+                    <div class="agx-slot agx-indis">
+                        <div class="agx-hora">{{ $slot['hora'] }}</div>
+                        <div class="agx-sub">🔒 Indisponível</div>
                         @if(!empty($slot['motivo']))
-                        <div style="font-size:10px; color:#c4b5fd; opacity:0.7;">{{ $slot['motivo'] }}</div>
+                            <div class="agx-sub2">{{ $slot['motivo'] }}</div>
                         @endif
                     </div>
                 @elseif($slot['passado'])
-                    <div style="padding:12px 8px; border-radius:12px; text-align:center; background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.05); opacity:0.3;">
-                        <div style="font-size:16px; font-weight:bold; color:#6b7280;">{{ $slot['hora'] }}</div>
+                    <div class="agx-slot agx-past">
+                        <div class="agx-hora">{{ $slot['hora'] }}</div>
                     </div>
                 @else
-                    <button
-                        wire:click="abrirAgendamento('{{ $slot['hora'] }}')"
-                        style="padding:12px 8px; border-radius:12px; text-align:center; cursor:pointer; transition:all 0.15s;
-                            background:rgba(16,185,129,0.1); border:1px solid rgba(16,185,129,0.2);"
-                        onmouseover="this.style.background='rgba(16,185,129,0.25)'"
-                        onmouseout="this.style.background='rgba(16,185,129,0.1)'"
-                    >
-                        <div style="font-size:16px; font-weight:bold; color:#10b981;">{{ $slot['hora'] }}</div>
-                        <div style="font-size:10px; color:#6ee7b7; margin-top:2px;">Disponível</div>
+                    <button wire:click="abrirAgendamento('{{ $slot['hora'] }}')" class="agx-slot agx-avail">
+                        <div class="agx-hora">{{ $slot['hora'] }}</div>
+                        <div class="agx-sub">Disponível</div>
                     </button>
                 @endif
             @empty
-                <div style="grid-column:span 3; text-align:center; padding:24px; color:#9ca3af;">
+                <div class="agx-muted" style="grid-column:span 3; text-align:center; padding:24px;">
                     Nenhum horário neste dia.
                 </div>
             @endforelse
         </div>
 
-        <div style="display:flex; gap:16px; justify-content:center; margin-top:16px; font-size:12px; color:#9ca3af;">
+        <div class="agx-legend agx-muted">
             <span><span style="color:#10b981;">●</span> Disponível</span>
             <span><span style="color:#ef4444;">●</span> Ocupado</span>
-            <span><span style="color:#a78bfa;">●</span> Indisponível</span>
-            <span><span style="color:#6b7280;">●</span> Passado</span>
+            <span><span style="color:#8b5cf6;">●</span> Indisponível</span>
+            <span><span style="color:#94a3b8;">●</span> Passado</span>
         </div>
     </x-filament::section>
 
     {{-- Modal de cancelamento --}}
     @if($showCancelModal)
-    <div style="position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px;"
-         wire:click.self="fecharCancelModal">
-        <div style="background:#1f2937; border-radius:16px; padding:24px; max-width:400px; width:100%; border:1px solid rgba(255,255,255,0.1);">
-            <h3 style="color:#fff; font-size:18px; font-weight:bold; margin-bottom:8px;">
-                Cancelar agendamento?
-            </h3>
-            <p style="color:#d1d5db; font-size:14px; margin-bottom:6px;">{{ $cancelarResumo }}</p>
-            <p style="color:#9ca3af; font-size:13px; margin-bottom:20px;">
-                O horário será liberado e o cliente avisado por WhatsApp.
-            </p>
-
+    <div class="agx-backdrop" wire:click.self="fecharCancelModal">
+        <div class="agx-modal">
+            <h3>Cancelar agendamento?</h3>
+            <p class="agx-modal-text">{{ $cancelarResumo }}</p>
+            <p class="agx-modal-hint">O horário será liberado e o cliente avisado por WhatsApp.</p>
             <div style="display:flex; gap:8px;">
-                <button wire:click="confirmarCancelamento"
-                    style="flex:1; background:#ef4444; color:#fff; font-weight:600; padding:12px; border-radius:10px; border:none; cursor:pointer; font-size:14px;">
-                    Sim, cancelar
-                </button>
-                <button wire:click="fecharCancelModal"
-                    style="flex:1; background:#374151; color:#fff; padding:12px; border-radius:10px; border:1px solid #4b5563; cursor:pointer; font-size:14px;">
-                    Voltar
-                </button>
+                <button wire:click="confirmarCancelamento" class="agx-btn-primary" style="background:#ef4444;">Sim, cancelar</button>
+                <button wire:click="fecharCancelModal" class="agx-btn-secondary">Voltar</button>
             </div>
         </div>
     </div>
@@ -129,53 +184,41 @@
 
     {{-- Modal de agendamento rápido --}}
     @if($showModal)
-    <div style="position:fixed; inset:0; background:rgba(0,0,0,0.6); z-index:50; display:flex; align-items:center; justify-content:center; padding:16px;"
-         wire:click.self="fecharModal">
-        <div style="background:#1f2937; border-radius:16px; padding:24px; max-width:400px; width:100%; border:1px solid rgba(255,255,255,0.1);">
-            <h3 style="color:#fff; font-size:18px; font-weight:bold; margin-bottom:4px;">
-                Agendar — {{ $horaSelecionada }}
-            </h3>
-            <p style="color:#9ca3af; font-size:13px; margin-bottom:20px;">
+    <div class="agx-backdrop" wire:click.self="fecharModal">
+        <div class="agx-modal">
+            <h3 style="margin-bottom:4px;">Agendar — {{ $horaSelecionada }}</h3>
+            <p class="agx-modal-hint">
                 {{ \Carbon\Carbon::parse($dataSelecionada)->locale('pt_BR')->isoFormat('dddd, D [de] MMMM') }}
             </p>
 
             <div style="display:flex; flex-direction:column; gap:12px;">
                 <div>
-                    <label style="color:#d1d5db; font-size:13px; display:block; margin-bottom:4px;">Nome do cliente *</label>
-                    <input wire:model="clienteNome" type="text" placeholder="Nome completo"
-                        style="width:100%; background:#374151; color:#fff; border:1px solid #4b5563; border-radius:10px; padding:10px 14px; font-size:14px; outline:none;">
-                    @error('clienteNome') <span style="color:#ef4444; font-size:12px;">{{ $message }}</span> @enderror
+                    <label class="agx-label">Nome do cliente *</label>
+                    <input wire:model="clienteNome" type="text" placeholder="Nome completo" class="agx-input">
+                    @error('clienteNome') <span class="agx-err">{{ $message }}</span> @enderror
                 </div>
 
                 <div>
-                    <label style="color:#d1d5db; font-size:13px; display:block; margin-bottom:4px;">Telefone *</label>
-                    <input wire:model="clienteTelefone" type="tel" placeholder="(11) 99999-9999"
-                        style="width:100%; background:#374151; color:#fff; border:1px solid #4b5563; border-radius:10px; padding:10px 14px; font-size:14px; outline:none;">
-                    @error('clienteTelefone') <span style="color:#ef4444; font-size:12px;">{{ $message }}</span> @enderror
+                    <label class="agx-label">Telefone *</label>
+                    <input wire:model="clienteTelefone" type="tel" placeholder="(11) 99999-9999" class="agx-input">
+                    @error('clienteTelefone') <span class="agx-err">{{ $message }}</span> @enderror
                 </div>
 
                 <div>
-                    <label style="color:#d1d5db; font-size:13px; display:block; margin-bottom:4px;">Serviço *</label>
-                    <select wire:model="servicoId"
-                        style="width:100%; background:#374151; color:#fff; border:1px solid #4b5563; border-radius:10px; padding:10px 14px; font-size:14px; outline:none;">
+                    <label class="agx-label">Serviço *</label>
+                    <select wire:model="servicoId" class="agx-input">
                         <option value="">Selecione...</option>
                         @foreach($servicos as $id => $nome)
                             <option value="{{ $id }}">{{ $nome }}</option>
                         @endforeach
                     </select>
-                    @error('servicoId') <span style="color:#ef4444; font-size:12px;">{{ $message }}</span> @enderror
+                    @error('servicoId') <span class="agx-err">{{ $message }}</span> @enderror
                 </div>
             </div>
 
             <div style="display:flex; gap:8px; margin-top:20px;">
-                <button wire:click="salvarAgendamento"
-                    style="flex:1; background:#10b981; color:#fff; font-weight:600; padding:12px; border-radius:10px; border:none; cursor:pointer; font-size:14px;">
-                    ✅ Confirmar
-                </button>
-                <button wire:click="fecharModal"
-                    style="flex:1; background:#374151; color:#fff; padding:12px; border-radius:10px; border:1px solid #4b5563; cursor:pointer; font-size:14px;">
-                    Cancelar
-                </button>
+                <button wire:click="salvarAgendamento" class="agx-btn-primary" style="background:#10b981;">✅ Confirmar</button>
+                <button wire:click="fecharModal" class="agx-btn-secondary">Cancelar</button>
             </div>
         </div>
     </div>
