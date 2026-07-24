@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
@@ -45,6 +46,68 @@ class Tenant extends Model
     public function temMensalidadeCustom(): bool
     {
         return $this->valor_mensalidade !== null;
+    }
+
+    /**
+     * Linha do tempo das mensalidades, do início da assinatura até o mês
+     * corrente (ou o vencimento em aberto, o que for mais à frente).
+     *
+     * Um mês está pago quando existe um pagamento com aquela competência.
+     * Só o primeiro mês em aberto é "pagável" — os seguintes ainda não são
+     * a vez, para o pagamento seguir a ordem (igual assinatura de verdade).
+     * Mais recente no topo.
+     *
+     * @return array<int, array{competencia:string,rotulo:string,vencimento:Carbon,valor:float,pago:bool,pagavel:bool,estado:string,pagamento:?Pagamento}>
+     */
+    public function mesesCobranca(): array
+    {
+        $valor = $this->valorMensal();
+        if ($valor <= 0 || ! $this->assinatura_inicio) {
+            return [];
+        }
+
+        $dia = min(max((int) ($this->dia_vencimento ?: 10), 1), 28);
+        $cursor = $this->assinatura_inicio->copy()->startOfMonth();
+        $limite = now()->max($this->proximo_vencimento ?? now())->copy()->startOfMonth();
+
+        $pagos = $this->pagamentos()->get()->keyBy('competencia');
+
+        $meses = [];
+        $jaAchouPendente = false;
+
+        while ($cursor->lte($limite)) {
+            $competencia = $cursor->format('Y-m');
+            $vencimento = $cursor->copy()->day($dia);
+            $pagamento = $pagos->get($competencia);
+            $pago = $pagamento !== null;
+
+            $pagavel = false;
+            if ($pago) {
+                $estado = 'pago';
+            } elseif (! $jaAchouPendente) {
+                // O primeiro mês em aberto é o da vez
+                $jaAchouPendente = true;
+                $pagavel = true;
+                $estado = ($vencimento->isPast() && ! $vencimento->isToday()) ? 'atrasado' : 'pendente';
+            } else {
+                $estado = 'em_aberto'; // mês futuro, ainda não chegou a vez
+            }
+
+            $meses[] = [
+                'competencia' => $competencia,
+                'rotulo' => ucfirst($cursor->locale('pt_BR')->isoFormat('MMMM [de] YYYY')),
+                'vencimento' => $vencimento,
+                'valor' => $pago ? (float) $pagamento->valor : $valor,
+                'pago' => $pago,
+                'pagavel' => $pagavel,
+                'estado' => $estado,
+                'pagamento' => $pagamento,
+            ];
+
+            $cursor->addMonth();
+        }
+
+        return array_reverse($meses);
     }
 
     /**

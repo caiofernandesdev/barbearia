@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Filament\SuperAdmin\Pages\Financeiro;
+use App\Filament\SuperAdmin\Pages\Mensalidades;
 use App\Models\Pagamento;
 use App\Models\Plano;
 use App\Models\Tenant;
@@ -195,6 +196,66 @@ class FinanceiroSaasTest extends TestCase
             ->assertNotFound();
     }
 
+    // ─── Timeline de meses ────────────────────────────────────────────────────
+
+    public function test_meses_lista_do_inicio_ate_o_vencimento(): void
+    {
+        // Início em maio, vencimento em julho → maio, junho, julho
+        $t = $this->tenant([
+            'assinatura_inicio' => '2026-05-01',
+            'dia_vencimento' => 10,
+            'proximo_vencimento' => '2026-07-10',
+        ]);
+
+        $meses = collect($t->mesesCobranca());
+        // Mais recente no topo
+        $this->assertSame(['2026-07', '2026-06', '2026-05'], $meses->pluck('competencia')->all());
+    }
+
+    public function test_so_o_primeiro_mes_em_aberto_e_pagavel(): void
+    {
+        $t = $this->tenant([
+            'assinatura_inicio' => '2026-05-01',
+            'dia_vencimento' => 10,
+            'proximo_vencimento' => '2026-06-10',
+        ]);
+        // Maio já foi pago
+        $t->pagamentos()->create(['valor' => 159.90, 'competencia' => '2026-05', 'pago_em' => '2026-05-09', 'forma' => 'pix']);
+
+        $meses = collect($t->mesesCobranca())->keyBy('competencia');
+
+        $this->assertTrue($meses['2026-05']['pago']);
+        $this->assertFalse($meses['2026-05']['pagavel']);
+        // Junho é a vez (vencimento passado em 15/07 → atrasado)
+        $this->assertTrue($meses['2026-06']['pagavel']);
+        $this->assertSame('atrasado', $meses['2026-06']['estado']);
+        // Julho existe mas ainda não é a vez
+        $this->assertFalse($meses['2026-07']['pagavel']);
+        $this->assertSame('em_aberto', $meses['2026-07']['estado']);
+    }
+
+    public function test_pagar_o_mes_marca_como_pago_na_timeline(): void
+    {
+        $t = $this->tenant([
+            'assinatura_inicio' => '2026-07-01',
+            'dia_vencimento' => 10,
+            'proximo_vencimento' => '2026-07-10',
+        ]);
+
+        $t->registrarPagamento(159.90, 'pix', null, null);
+
+        $meses = collect($t->fresh()->mesesCobranca())->keyBy('competencia');
+        $this->assertTrue($meses['2026-07']['pago']);
+        // A vez passa para agosto
+        $this->assertTrue($meses['2026-08']['pagavel']);
+    }
+
+    public function test_sem_valor_nao_gera_meses(): void
+    {
+        $t = $this->tenant(['plano_id' => $this->plano(0)->id, 'assinatura_inicio' => '2026-05-01']);
+        $this->assertSame([], $t->mesesCobranca());
+    }
+
     // ─── Página do super-admin ────────────────────────────────────────────────
 
     public function test_pagina_financeiro_carrega_para_super_admin(): void
@@ -209,23 +270,63 @@ class FinanceiroSaasTest extends TestCase
         Livewire::test(Financeiro::class)->assertOk();
     }
 
-    public function test_registrar_pagamento_pela_pagina(): void
+    public function test_pagina_mensalidades_carrega_com_o_tenant(): void
     {
-        $t = $this->tenant(['proximo_vencimento' => '2026-07-10']);
+        $t = $this->tenant(['assinatura_inicio' => '2026-06-01', 'proximo_vencimento' => '2026-07-10']);
+        $this->actingAsSuper();
+
+        Livewire::withQueryParams(['tenant' => $t->id])
+            ->test(Mensalidades::class)
+            ->assertOk()
+            ->assertSee('Mensalidades');
+    }
+
+    public function test_realizar_pagamento_pela_pagina_mensalidades(): void
+    {
+        $t = $this->tenant([
+            'assinatura_inicio' => '2026-07-01',
+            'dia_vencimento' => 10,
+            'proximo_vencimento' => '2026-07-10',
+        ]);
+        $this->actingAsSuper();
+
+        Livewire::withQueryParams(['tenant' => $t->id])
+            ->test(Mensalidades::class)
+            ->mountAction('registrarPagamento', arguments: ['competencia' => '2026-07'])
+            ->setActionData(['valor' => 159.90, 'forma' => 'pix', 'observacao' => 'teste'])
+            ->callMountedAction()
+            ->assertHasNoActionErrors();
+
+        $this->assertDatabaseHas('pagamentos', ['tenant_id' => $t->id, 'competencia' => '2026-07']);
+        $this->assertSame('2026-08-10', $t->fresh()->proximo_vencimento->toDateString());
+    }
+
+    public function test_nao_paga_mes_fora_da_vez(): void
+    {
+        $t = $this->tenant([
+            'assinatura_inicio' => '2026-07-01',
+            'dia_vencimento' => 10,
+            'proximo_vencimento' => '2026-07-10',
+        ]);
+        $this->actingAsSuper();
+
+        // Tenta pagar agosto direto, pulando julho
+        Livewire::withQueryParams(['tenant' => $t->id])
+            ->test(Mensalidades::class)
+            ->mountAction('registrarPagamento', arguments: ['competencia' => '2026-08'])
+            ->setActionData(['valor' => 159.90, 'forma' => 'pix'])
+            ->callMountedAction();
+
+        $this->assertDatabaseMissing('pagamentos', ['tenant_id' => $t->id, 'competencia' => '2026-08']);
+    }
+
+    private function actingAsSuper(): void
+    {
         $super = User::forceCreate([
             'name' => 'Super', 'email' => 'sa-'.uniqid().'@x.com',
             'password' => Hash::make('secret123'), 'role' => 'super_admin', 'tenant_id' => null,
         ]);
         $this->actingAs($super, 'super_admin');
-
-        Livewire::test(Financeiro::class)
-            ->callTableAction('registrar_pagamento', $t, data: [
-                'valor' => 159.90, 'forma' => 'pix', 'observacao' => null,
-            ])
-            ->assertHasNoTableActionErrors();
-
-        $this->assertSame(1, Pagamento::where('tenant_id', $t->id)->count());
-        $this->assertSame('2026-08-10', $t->fresh()->proximo_vencimento->toDateString());
     }
 
     public function test_ajustar_mensalidade_pela_pagina(): void

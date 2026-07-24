@@ -5,9 +5,6 @@ namespace App\Filament\SuperAdmin\Pages;
 use App\Models\Pagamento;
 use App\Models\Tenant;
 use Filament\Actions\Action;
-use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
@@ -140,61 +137,12 @@ class Financeiro extends Page implements HasTable
                     ->color(fn (Tenant $record) => $record->ativo ? 'success' : 'gray'),
             ])
             ->recordActions([
-                Action::make('registrar_pagamento')
-                    ->label('Registrar pagamento')
-                    ->icon('heroicon-o-banknotes')
-                    ->color('success')
-                    ->visible(fn (Tenant $record) => $record->valorMensal() > 0)
-                    ->schema([
-                        TextInput::make('valor')
-                            ->label('Valor recebido (R$)')
-                            ->numeric()
-                            ->required()
-                            ->default(fn (Tenant $record) => $record->valorMensal()),
-
-                        Select::make('forma')
-                            ->label('Forma')
-                            ->options([
-                                'pix' => 'PIX',
-                                'dinheiro' => 'Dinheiro',
-                                'cartao' => 'Cartão',
-                                'transferencia' => 'Transferência',
-                                'outro' => 'Outro',
-                            ])
-                            ->default('pix')
-                            ->required(),
-
-                        Textarea::make('observacao')
-                            ->label('Observação')
-                            ->rows(2)
-                            ->placeholder('Opcional'),
-
-                        FileUpload::make('comprovante')
-                            ->label('Comprovante')
-                            // Disco privado: comprovante financeiro não fica na web
-                            ->disk('local')
-                            ->directory('comprovantes')
-                            ->visibility('private')
-                            ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp', 'application/pdf'])
-                            ->maxSize(10240)
-                            ->helperText('Imagem ou PDF, até 10 MB. Opcional.'),
-                    ])
-                    ->modalHeading(fn (Tenant $record) => "Pagamento — {$record->nome}")
-                    ->modalSubmitActionLabel('Registrar')
-                    ->action(function (Tenant $record, array $data) {
-                        $record->registrarPagamento(
-                            (float) $data['valor'],
-                            $data['forma'],
-                            $data['observacao'] ?? null,
-                            $data['comprovante'] ?? null,
-                        );
-
-                        Notification::make()
-                            ->title('Pagamento registrado')
-                            ->body('Próximo vencimento: '.$record->fresh()->proximo_vencimento->format('d/m/Y'))
-                            ->success()
-                            ->send();
-                    }),
+                Action::make('mensalidades')
+                    ->label('Mensalidades')
+                    ->icon('heroicon-o-calendar-days')
+                    ->color('primary')
+                    // panel explícito: getUrl() senão cai no painel default (admin)
+                    ->url(fn (Tenant $record) => Mensalidades::getUrl(['tenant' => $record->id], panel: 'super-admin')),
 
                 Action::make('ajustar_mensalidade')
                     ->label('Ajustar mensalidade')
@@ -231,17 +179,6 @@ class Financeiro extends Page implements HasTable
                             ->success()
                             ->send();
                     }),
-
-                Action::make('historico')
-                    ->label('Histórico')
-                    ->icon('heroicon-o-clock')
-                    ->color('gray')
-                    ->modalHeading(fn (Tenant $record) => "Pagamentos — {$record->nome}")
-                    ->modalContent(fn (Tenant $record) => view('filament.super-admin.pages.pagamentos-historico', [
-                        'pagamentos' => $record->pagamentos()->latest('pago_em')->get(),
-                    ]))
-                    ->modalSubmitAction(false)
-                    ->modalCancelActionLabel('Fechar'),
             ])
             ->striped()
             ->paginated([25, 50, 100]);
