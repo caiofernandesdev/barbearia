@@ -47,7 +47,8 @@ class ServicoForm
             TextInput::make('ordem')
                 ->label('Ordem de exibição')
                 ->numeric()
-                ->default(0),
+                ->minValue(0)
+                ->helperText('Menor número aparece primeiro. Deixe em branco para o serviço ir para o fim.'),
 
             Toggle::make('destaque')
                 ->label('Destaque')

@@ -19,7 +19,19 @@ class Servico extends Model
             'preco' => 'decimal:2',
             'ativo' => 'boolean',
             'destaque' => 'boolean',
+            'ordem' => 'integer',
         ];
+    }
+
+    protected static function booted(): void
+    {
+        // Serviço novo sem ordem vai para o FIM (max + 1), não para o começo.
+        // Antes ficava em 0 e, como 0 < 1, aparecia antes dos ordenados à mão.
+        static::creating(function (Servico $servico) {
+            if (empty($servico->ordem)) {
+                $servico->ordem = ((int) static::max('ordem')) + 1;
+            }
+        });
     }
 
     public function agendamentos()
