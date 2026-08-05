@@ -86,7 +86,7 @@ class ProfissionaisTable
     protected static function configurarGrade(Table $table): Table
     {
         return $table
-            ->contentGrid(['sm' => 2, 'lg' => 3, 'xl' => 4])
+            ->contentGrid(['default' => 1, 'sm' => 2, 'lg' => 3, 'xl' => 4])
             ->columns([
                 Stack::make([
                     ImageColumn::make('foto')

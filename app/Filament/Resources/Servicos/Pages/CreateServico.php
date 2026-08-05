@@ -17,6 +17,7 @@ class CreateServico extends CreateRecord
     protected function mutateFormDataBeforeCreate(array $data): array
     {
         $data['tenant_id'] = auth('admin')->user()?->tenant_id;
+
         return $data;
     }
 }

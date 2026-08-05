@@ -10,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Actions\DeleteAction;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -18,52 +19,10 @@ class ListasEsperaTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
-            ->columns([
-                TextColumn::make('data')
-                    ->label('Dia desejado')
-                    ->date('d/m/Y')
-                    ->sortable(),
+        $livewire = $table->getLivewire();
+        $emGrade = method_exists($livewire, 'emGrade') && $livewire->emGrade();
 
-                TextColumn::make('hora_preferida')
-                    ->label('Horário')
-                    ->badge()
-                    ->color('warning'),
-
-                TextColumn::make('cliente_nome')
-                    ->label('Cliente')
-                    ->description(fn ($record) => $record->cliente_telefone)
-                    ->searchable(),
-
-                TextColumn::make('profissional.nome')
-                    ->label('Profissional'),
-
-                TextColumn::make('servico.nome')
-                    ->label('Serviço')
-                    ->placeholder('—'),
-
-                TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->color(fn (string $state) => match ($state) {
-                        'aguardando' => 'warning',
-                        'encaixado' => 'success',
-                        'cancelado' => 'gray',
-                        default => 'gray',
-                    })
-                    ->formatStateUsing(fn (string $state) => match ($state) {
-                        'aguardando' => 'Aguardando',
-                        'encaixado' => 'Encaixado',
-                        'cancelado' => 'Cancelado',
-                        default => $state,
-                    }),
-
-                TextColumn::make('created_at')
-                    ->label('Entrou em')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
+        $table
             ->defaultSort('data')
             ->filters([
                 SelectFilter::make('status')
@@ -120,6 +79,104 @@ class ListasEsperaTable
                     }),
 
                 DeleteAction::make()->label('Remover'),
+            ]);
+
+        return $emGrade
+            ? self::configurarGrade($table)
+            : self::configurarLista($table);
+    }
+
+    /** Badge do status — reaproveitado nos dois layouts. */
+    private static function colunaStatus(): TextColumn
+    {
+        return TextColumn::make('status')
+            ->label('Status')
+            ->badge()
+            ->color(fn (string $state) => match ($state) {
+                'aguardando' => 'warning',
+                'encaixado' => 'success',
+                'cancelado' => 'gray',
+                default => 'gray',
+            })
+            ->formatStateUsing(fn (string $state) => match ($state) {
+                'aguardando' => 'Aguardando',
+                'encaixado' => 'Encaixado',
+                'cancelado' => 'Cancelado',
+                default => $state,
+            });
+    }
+
+    /** Layout em linhas — colunas secundárias somem no mobile. */
+    protected static function configurarLista(Table $table): Table
+    {
+        return $table
+            ->contentGrid(null)
+            ->columns([
+                TextColumn::make('data')
+                    ->label('Dia desejado')
+                    ->date('d/m/Y')
+                    ->sortable(),
+
+                TextColumn::make('hora_preferida')
+                    ->label('Horário')
+                    ->badge()
+                    ->color('warning'),
+
+                TextColumn::make('cliente_nome')
+                    ->label('Cliente')
+                    ->description(fn ($record) => $record->cliente_telefone)
+                    ->searchable(),
+
+                TextColumn::make('profissional.nome')
+                    ->label('Profissional')
+                    ->visibleFrom('md'),
+
+                TextColumn::make('servico.nome')
+                    ->label('Serviço')
+                    ->placeholder('—')
+                    ->visibleFrom('md'),
+
+                self::colunaStatus(),
+
+                TextColumn::make('created_at')
+                    ->label('Entrou em')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ]);
+    }
+
+    /** Layout em cards (grade responsiva) — cada pedido vira um card. */
+    protected static function configurarGrade(Table $table): Table
+    {
+        return $table
+            ->contentGrid(['default' => 1, 'sm' => 2, 'lg' => 3])
+            ->columns([
+                Stack::make([
+                    TextColumn::make('cliente_nome')
+                        ->searchable()
+                        ->weight('bold')
+                        ->size('lg')
+                        ->description(fn ($record) => $record->cliente_telefone),
+
+                    TextColumn::make('data')
+                        ->date('d/m/Y')
+                        ->prefix('📅 ')
+                        ->suffix(fn ($record) => ' às '.$record->hora_preferida)
+                        ->color('gray'),
+
+                    TextColumn::make('profissional.nome')
+                        ->icon('heroicon-m-user')
+                        ->color('gray'),
+
+                    TextColumn::make('servico.nome')
+                        ->placeholder('sem serviço definido')
+                        ->icon('heroicon-m-scissors')
+                        ->color('gray'),
+
+                    self::colunaStatus(),
+                ])
+                    ->space(2),
             ]);
     }
 

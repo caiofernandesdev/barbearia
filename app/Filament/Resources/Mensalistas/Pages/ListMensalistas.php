@@ -4,6 +4,7 @@ namespace App\Filament\Resources\Mensalistas\Pages;
 
 use App\Exports\MensalistasExport;
 use App\Exports\MensalistasModeloExport;
+use App\Filament\Concerns\TogglesTableLayout;
 use App\Filament\Resources\Mensalistas\MensalistaResource;
 use App\Imports\MensalistasImport;
 use Filament\Actions\Action;
@@ -18,11 +19,15 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ListMensalistas extends ListRecords
 {
+    use TogglesTableLayout;
+
     protected static string $resource = MensalistaResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
+            $this->layoutToggleAction(),
+
             Action::make('exportar')
                 ->label('Exportar Excel')
                 ->icon('heroicon-o-arrow-down-tray')

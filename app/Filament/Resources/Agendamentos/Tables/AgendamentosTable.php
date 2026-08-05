@@ -15,6 +15,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -26,63 +27,10 @@ class AgendamentosTable
 {
     public static function configure(Table $table): Table
     {
-        return $table
-            ->columns([
-                TextColumn::make('cliente_nome')
-                    ->label('Cliente')
-                    ->searchable()
-                    ->sortable(),
+        $livewire = $table->getLivewire();
+        $emGrade = method_exists($livewire, 'emGrade') && $livewire->emGrade();
 
-                TextColumn::make('cliente_telefone')
-                    ->label('Telefone')
-                    ->searchable(),
-
-                TextColumn::make('profissional.nome')
-                    ->label('Profissional')
-                    ->sortable(),
-
-                TextColumn::make('servico.nome')
-                    ->label('Serviço')
-                    ->getStateUsing(fn ($record) => $record->nomesServicos())
-                    ->description(fn ($record) => 'R$ '.number_format((float) ($record->valor_total ?? $record->servico?->preco ?? 0), 2, ',', '.'))
-                    ->sortable(),
-
-                TextColumn::make('data_hora')
-                    ->label('Data e Hora')
-                    ->dateTime('d/m/Y H:i')
-                    ->sortable(),
-
-                TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'pendente' => 'warning',
-                        'confirmado' => 'success',
-                        'concluido' => 'info',
-                        'cancelado' => 'danger',
-                        default => 'gray',
-                    }),
-
-                IconColumn::make('mensalista')
-                    ->label('Mensalista')
-                    ->boolean(),
-
-                IconColumn::make('is_avulso_mensalista_fixo')
-                    ->label('⚠ Avulso Fixo')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-exclamation-triangle')
-                    ->falseIcon('heroicon-o-minus')
-                    ->trueColor('warning')
-                    ->falseColor('gray')
-                    ->tooltip('Mensalista Fixo que agendou fora do horário fixo'),
-
-                AgendamentoTabela::colunaDetalhes(),
-
-                TextColumn::make('created_at')
-                    ->label('Criado em')
-                    ->date('d/m/Y')
-                    ->toggleable(isToggledHiddenByDefault: true),
-            ])
+        $table
             ->defaultSort('data_hora', 'desc')
             ->filters([
                 Filter::make('data')
@@ -197,6 +145,117 @@ class AgendamentosTable
                     }),
 
                 DeleteBulkAction::make(),
+            ]);
+
+        return $emGrade
+            ? self::configurarGrade($table)
+            : self::configurarLista($table);
+    }
+
+    /** Badge do status — reaproveitado nos dois layouts. */
+    private static function colunaStatus(): TextColumn
+    {
+        return TextColumn::make('status')
+            ->label('Status')
+            ->badge()
+            ->color(fn (string $state): string => match ($state) {
+                'pendente' => 'warning',
+                'confirmado' => 'success',
+                'concluido' => 'info',
+                'cancelado' => 'danger',
+                default => 'gray',
+            });
+    }
+
+    /** Layout em linhas — colunas secundárias somem no mobile. */
+    protected static function configurarLista(Table $table): Table
+    {
+        return $table
+            ->contentGrid(null)
+            ->columns([
+                TextColumn::make('cliente_nome')
+                    ->label('Cliente')
+                    ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('cliente_telefone')
+                    ->label('Telefone')
+                    ->searchable()
+                    ->visibleFrom('lg'),
+
+                TextColumn::make('profissional.nome')
+                    ->label('Profissional')
+                    ->sortable()
+                    ->visibleFrom('md'),
+
+                TextColumn::make('servico.nome')
+                    ->label('Serviço')
+                    ->getStateUsing(fn ($record) => $record->nomesServicos())
+                    ->description(fn ($record) => 'R$ '.number_format((float) ($record->valor_total ?? $record->servico?->preco ?? 0), 2, ',', '.'))
+                    ->sortable()
+                    ->visibleFrom('sm'),
+
+                TextColumn::make('data_hora')
+                    ->label('Data e Hora')
+                    ->dateTime('d/m/Y H:i')
+                    ->sortable(),
+
+                self::colunaStatus(),
+
+                IconColumn::make('mensalista')
+                    ->label('Mensalista')
+                    ->boolean()
+                    ->visibleFrom('lg'),
+
+                IconColumn::make('is_avulso_mensalista_fixo')
+                    ->label('⚠ Avulso Fixo')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-exclamation-triangle')
+                    ->falseIcon('heroicon-o-minus')
+                    ->trueColor('warning')
+                    ->falseColor('gray')
+                    ->tooltip('Mensalista Fixo que agendou fora do horário fixo')
+                    ->visibleFrom('lg'),
+
+                AgendamentoTabela::colunaDetalhes(),
+
+                TextColumn::make('created_at')
+                    ->label('Criado em')
+                    ->date('d/m/Y')
+                    ->toggleable(isToggledHiddenByDefault: true),
+            ]);
+    }
+
+    /** Layout em cards (grade responsiva) — ótimo no celular. */
+    protected static function configurarGrade(Table $table): Table
+    {
+        return $table
+            ->contentGrid(['default' => 1, 'sm' => 2, 'lg' => 3])
+            ->columns([
+                Stack::make([
+                    TextColumn::make('cliente_nome')
+                        ->searchable()
+                        ->weight('bold')
+                        ->size('lg'),
+
+                    TextColumn::make('data_hora')
+                        ->dateTime('d/m/Y H:i')
+                        ->icon('heroicon-m-calendar-days')
+                        ->color('gray'),
+
+                    TextColumn::make('servico.nome')
+                        ->getStateUsing(fn ($record) => $record->nomesServicos())
+                        ->description(fn ($record) => 'R$ '.number_format((float) ($record->valor_total ?? $record->servico?->preco ?? 0), 2, ',', '.'))
+                        ->icon('heroicon-m-scissors')
+                        ->color('gray'),
+
+                    TextColumn::make('profissional.nome')
+                        ->icon('heroicon-m-user')
+                        ->color('gray'),
+
+                    self::colunaStatus(),
+                ])
+                    ->space(2),
             ]);
     }
 }
