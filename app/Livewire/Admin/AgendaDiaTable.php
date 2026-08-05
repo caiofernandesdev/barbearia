@@ -112,6 +112,10 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
     {
         return Action::make('agendar')
             ->modalHeading(fn (array $arguments) => 'Agendar — '.($arguments['hora'] ?? ''))
+            // Slot já passou: avisa mas deixa marcar (registro de balcão/atraso)
+            ->modalDescription(fn (array $arguments) => ($arguments['passado'] ?? false)
+                ? '⚠️ Esse horário já passou. Deseja marcar mesmo assim? Preencha e confirme.'
+                : null)
             ->modalSubmitActionLabel('Confirmar agendamento')
             ->schema([
                 Select::make('cliente_id')
@@ -228,6 +232,117 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
 
         Notification::make()->title('Agendamento criado!')
             ->body($data['cliente_nome'].' às '.$hora)->success()->send();
+    }
+
+    /**
+     * Inverter agendamentos — troca o horário de dois clientes entre si.
+     * Ex.: dois clientes combinaram de trocar de horário. Selecione os dois
+     * agendamentos e o sistema troca as datas (o observer avisa os clientes).
+     */
+    public function inverterAction(): Action
+    {
+        return Action::make('inverter')
+            ->modalHeading('Inverter agendamentos')
+            ->modalDescription('Troca o horário de dois clientes entre si. Os dois são avisados por WhatsApp da nova data.')
+            ->modalSubmitActionLabel('Trocar horários')
+            ->modalIcon('heroicon-o-arrows-right-left')
+            ->schema([
+                Select::make('agendamento_a')
+                    ->label('Agendamento 1')
+                    ->required()
+                    ->searchable()
+                    ->options(fn () => $this->opcoesAgendamentos())
+                    ->helperText('Dia/hora — cliente.'),
+
+                Select::make('agendamento_b')
+                    ->label('Agendamento 2')
+                    ->required()
+                    ->searchable()
+                    ->different('agendamento_a')
+                    ->options(fn () => $this->opcoesAgendamentos()),
+            ])
+            ->action(fn (array $data) => $this->inverterAgendamentos((int) $data['agendamento_a'], (int) $data['agendamento_b']));
+    }
+
+    /** Agendamentos ativos (hoje em diante) para escolher na troca. */
+    private function opcoesAgendamentos(): array
+    {
+        return Agendamento::query()
+            ->when($this->profissionalId, fn ($q) => $q->where('profissional_id', $this->profissionalId))
+            ->whereIn('status', ['pendente', 'confirmado'])
+            ->where('data_hora', '>=', now()->startOfDay())
+            ->orderBy('data_hora')
+            ->limit(100)
+            ->get()
+            ->mapWithKeys(fn ($a) => [
+                $a->id => $a->data_hora->format('d/m H:i').' — '.$a->cliente_nome,
+            ])->all();
+    }
+
+    private function inverterAgendamentos(int $idA, int $idB): void
+    {
+        if ($idA === $idB) {
+            Notification::make()->title('Selecione dois agendamentos diferentes')->danger()->send();
+
+            return;
+        }
+
+        $a = Agendamento::find($idA);
+        $b = Agendamento::find($idB);
+
+        // Só troca agendamentos ativos (não faz sentido em cancelado/concluído)
+        foreach ([$a, $b] as $ag) {
+            if (! $ag || ! in_array($ag->status, ['pendente', 'confirmado'], true)) {
+                Notification::make()->title('Agendamento inválido')
+                    ->body('Um dos agendamentos não existe mais ou já foi finalizado.')->danger()->send();
+
+                return;
+            }
+        }
+
+        $tempoA = $a->data_hora->copy();
+        $tempoB = $b->data_hora->copy();
+
+        // Durações diferentes podem gerar sobreposição com vizinhos: valida os
+        // novos horários ignorando os dois que estão trocando entre si.
+        if ($this->conflitoNaTroca($a, $tempoB, [$a->id, $b->id])
+            || $this->conflitoNaTroca($b, $tempoA, [$a->id, $b->id])) {
+            Notification::make()->title('A troca geraria conflito de horário')
+                ->body('Os serviços têm durações diferentes e um deles bateria em outro atendimento.')
+                ->danger()->send();
+
+            return;
+        }
+
+        // Cada save dispara o observer → cliente e barbeiro recebem "reagendado"
+        $a->update(['data_hora' => $tempoB]);
+        $b->update(['data_hora' => $tempoA]);
+
+        Notification::make()->title('Horários trocados!')
+            ->body($a->cliente_nome.' ⇄ '.$b->cliente_nome.'. Os dois clientes foram avisados.')
+            ->success()->send();
+    }
+
+    /** Há conflito ao mover $ag para $novoInicio, ignorando os ids em troca? */
+    private function conflitoNaTroca(Agendamento $ag, Carbon $novoInicio, array $ignorarIds): bool
+    {
+        $dur = (int) ($ag->duracao_total_minutos ?? 30);
+        $fim = $novoInicio->copy()->addMinutes(max(1, $dur));
+
+        return Agendamento::withoutGlobalScopes()
+            ->where('profissional_id', $ag->profissional_id)
+            ->where('tenant_id', $ag->tenant_id)
+            ->whereIn('status', ['pendente', 'confirmado'])
+            ->whereDate('data_hora', $novoInicio->toDateString())
+            ->whereNotIn('id', $ignorarIds)
+            ->with('servico')
+            ->get()
+            ->contains(function ($outro) use ($novoInicio, $fim) {
+                $oi = Carbon::parse($outro->data_hora);
+                $of = $oi->copy()->addMinutes((int) ($outro->duracao_total_minutos ?? $outro->servico?->duracao_minutos ?? 30));
+
+                return $novoInicio->lt($of) && $fim->gt($oi);
+            });
     }
 
     public function getDias(): array

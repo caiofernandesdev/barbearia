@@ -58,8 +58,22 @@
 
         .agx-past { background:#f8fafc; border-color:#e2e8f0; }
         .agx-past .agx-hora { color:#94a3b8; }
+        .agx-past .agx-sub { color:#94a3b8; font-size:10px; }
         .dark .agx-past { background:rgba(255,255,255,.04); border-color:rgba(255,255,255,.07); }
         .dark .agx-past .agx-hora { color:#64748b; }
+        .agx-past--btn { cursor:pointer; border-style:dashed; }
+        .agx-past--btn:hover { background:#eef2f7; border-color:#cbd5e1; }
+        .dark .agx-past--btn:hover { background:rgba(255,255,255,.09); }
+
+        /* ── botão inverter agendamentos ── */
+        .agx-swapbtn {
+            display:inline-flex; align-items:center; gap:6px; font-size:13px; font-weight:600;
+            padding:8px 14px; border-radius:10px; cursor:pointer;
+            background:#f1f5f9; color:#334155; border:1px solid #e2e8f0; transition:all .15s;
+        }
+        .agx-swapbtn:hover { background:#e2e8f0; border-color:#cbd5e1; }
+        .dark .agx-swapbtn { background:rgba(255,255,255,.06); color:#e2e8f0; border-color:rgba(255,255,255,.12); }
+        .dark .agx-swapbtn:hover { background:rgba(255,255,255,.12); }
 
         button.agx-slot { display:block; }
 
@@ -89,6 +103,15 @@
 
     <x-filament::section>
         <x-slot name="heading">{{ $heading }}</x-slot>
+
+        {{-- Trocar horário entre dois clientes --}}
+        @if($this->podeCancelar)
+            <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
+                <button type="button" wire:click="mountAction('inverter')" class="agx-swapbtn">
+                    🔄 Inverter agendamentos
+                </button>
+            </div>
+        @endif
 
         {{-- Seletor de dias --}}
         <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:12px; -webkit-overflow-scrolling:touch;">
@@ -143,9 +166,12 @@
                         @endif
                     </div>
                 @elseif($slot['passado'])
-                    <div class="agx-slot agx-past">
+                    <button wire:click="mountAction('agendar', { hora: '{{ $slot['hora'] }}', passado: true })"
+                        title="Horário já passou — clique para marcar mesmo assim"
+                        class="agx-slot agx-past agx-past--btn">
                         <div class="agx-hora">{{ $slot['hora'] }}</div>
-                    </div>
+                        <div class="agx-sub">marcar assim mesmo</div>
+                    </button>
                 @else
                     <button wire:click="mountAction('agendar', { hora: '{{ $slot['hora'] }}' })" class="agx-slot agx-avail">
                         <div class="agx-hora">{{ $slot['hora'] }}</div>
@@ -163,7 +189,7 @@
             <span><span style="color:#10b981;">●</span> Disponível</span>
             <span><span style="color:#ef4444;">●</span> Ocupado</span>
             <span><span style="color:#8b5cf6;">●</span> Indisponível</span>
-            <span><span style="color:#94a3b8;">●</span> Passado</span>
+            <span><span style="color:#94a3b8;">●</span> Passado (clicável)</span>
         </div>
     </x-filament::section>
 
