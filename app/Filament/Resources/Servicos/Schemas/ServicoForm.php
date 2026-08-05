@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Servicos\Schemas;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class ServicoForm
@@ -49,6 +50,23 @@ class ServicoForm
                 ->numeric()
                 ->minValue(0)
                 ->helperText('Menor número aparece primeiro. Deixe em branco para o serviço ir para o fim.'),
+
+            Section::make('Preço por dia da semana')
+                ->description('Opcional. Preencha só os dias com valor diferente — os demais usam o preço acima.')
+                ->collapsed()
+                ->columns(2)
+                ->schema(
+                    collect([
+                        1 => 'Segunda', 2 => 'Terça', 3 => 'Quarta', 4 => 'Quinta',
+                        5 => 'Sexta', 6 => 'Sábado', 0 => 'Domingo',
+                    ])->map(fn (string $label, int $dia) => TextInput::make("precos_por_dia.{$dia}")
+                        ->label($label)
+                        ->numeric()
+                        ->prefix('R$')
+                        ->minValue(0)
+                        ->placeholder('usa o preço base')
+                    )->values()->all()
+                ),
 
             Toggle::make('destaque')
                 ->label('Destaque')

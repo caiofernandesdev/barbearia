@@ -216,7 +216,8 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
             'profissional_id' => $this->profissionalId,
             // servico_id = primeiro (retrocompat); todos vão no pivot
             'servico_id' => $servicos->first()->id,
-            'valor_total' => $servicos->sum('preco'),
+            // Preço do dia do slot (serviço pode cobrar diferente por dia)
+            'valor_total' => $servicos->sum(fn ($s) => $s->precoNoDia($inicio->dayOfWeek)),
             'duracao_total_minutos' => $duracao,
             'data_hora' => $inicio->format('Y-m-d H:i:s'),
             'status' => 'pendente',

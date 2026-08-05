@@ -616,6 +616,13 @@ function servicosSelecionadosLista() {
         .filter(Boolean);
 }
 
+// Preço de um serviço num dia da semana (0=Dom..6=Sáb). Dia sem valor usa o base.
+function precoServicoNoDia(s, dia) {
+    const pd = s.precos_por_dia || {};
+    const v = (pd[dia] !== undefined) ? pd[dia] : pd[String(dia)];
+    return (v !== undefined && v !== null && v !== '') ? parseFloat(v) : parseFloat(s.preco);
+}
+
 function atualizarTotalServicos() {
     const el = document.getElementById('serv-total');
     if (!el) return;
@@ -676,6 +683,13 @@ function selecionarDataNoCard(dataStr, rolar = true) {
     dadosCliente.data      = dataStr;
     dadosCliente.hora      = null;
     dadosCliente.data_hora = null;
+
+    // Preço pode variar por dia da semana: recalcula o total para a data escolhida.
+    const selData = servicosSelecionadosLista();
+    if (selData.length) {
+        const diaSemana = new Date(dataStr + 'T12:00:00').getDay();
+        dadosCliente.servico_preco = selData.reduce((t, s) => t + precoServicoNoDia(s, diaSemana), 0);
+    }
 
     const display = document.getElementById('data-hora-display');
     if (display) display.textContent = formatarDataSelecionada();

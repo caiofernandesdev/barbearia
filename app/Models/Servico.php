@@ -6,7 +6,7 @@ use App\Traits\BelongsToTenant;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['nome', 'foto', 'preco', 'duracao_minutos', 'ativo', 'destaque', 'ordem', 'tenant_id'])]
+#[Fillable(['nome', 'foto', 'preco', 'precos_por_dia', 'duracao_minutos', 'ativo', 'destaque', 'ordem', 'tenant_id'])]
 class Servico extends Model
 {
     use BelongsToTenant;
@@ -17,10 +17,31 @@ class Servico extends Model
     {
         return [
             'preco' => 'decimal:2',
+            'precos_por_dia' => 'array',
             'ativo' => 'boolean',
             'destaque' => 'boolean',
             'ordem' => 'integer',
         ];
+    }
+
+    /**
+     * Preço deste serviço num dia da semana (0=Dom … 6=Sáb). Dia sem valor
+     * configurado usa o preço base.
+     */
+    public function precoNoDia(int $diaSemana): float
+    {
+        $porDia = $this->precos_por_dia ?? [];
+        $valor = $porDia[$diaSemana] ?? $porDia[(string) $diaSemana] ?? null;
+
+        return $valor !== null && $valor !== ''
+            ? (float) $valor
+            : (float) $this->preco;
+    }
+
+    /** Este serviço cobra diferente em algum dia da semana? */
+    public function temPrecoVariavel(): bool
+    {
+        return collect($this->precos_por_dia ?? [])->filter(fn ($v) => $v !== null && $v !== '')->isNotEmpty();
     }
 
     protected static function booted(): void

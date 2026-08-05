@@ -340,13 +340,16 @@ class AgendamentoController extends Controller
             $dadosExtras = json_decode($dadosExtras, true);
         }
 
+        // Preço do dia do agendamento (serviço pode cobrar diferente por dia)
+        $diaSemana = Carbon::parse($request->data_hora)->dayOfWeek;
+
         $agendamento = new Agendamento([
             'cliente_nome' => $request->cliente_nome,
             'cliente_telefone' => $telefone,
             'profissional_id' => $request->profissional_id,
             // servico_id = primeiro serviço (retrocompat); todos vão no pivot abaixo
             'servico_id' => $servicoIds[0],
-            'valor_total' => $servicosSelecionados->sum('preco'),
+            'valor_total' => $servicosSelecionados->sum(fn ($s) => $s->precoNoDia($diaSemana)),
             'duracao_total_minutos' => (int) $servicosSelecionados->sum('duracao_minutos'),
             'data_hora' => Carbon::parse($request->data_hora),
             'status' => 'pendente',
@@ -491,8 +494,9 @@ class AgendamentoController extends Controller
         // Telefone vai para a sessão — evita expor o número na URL do redirect
         session(['agendamentos_telefone' => $telefone]);
 
+        // Flash próprio: cancelamento não deve aparecer em verde de "sucesso"
         return redirect()->route('agendamento.meus-agendamentos', ['tenant' => $request->route('tenant')])
-            ->with('sucesso', 'Agendamento cancelado com sucesso.');
+            ->with('cancelado', 'Seu agendamento foi cancelado.');
     }
 
     // ─── Helpers privados ─────────────────────────────────────────────────────
