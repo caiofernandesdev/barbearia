@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Filament\Widgets\RepescagemStatsWidget;
 use App\Jobs\EnviarWhatsAppJob;
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
@@ -44,6 +45,18 @@ class RepescagemAvulsos extends Page implements HasActions, HasSchemas, HasTable
     }
 
     public int $diasSemAgendar = 30;
+
+    protected function getHeaderWidgets(): array
+    {
+        return [
+            RepescagemStatsWidget::class,
+        ];
+    }
+
+    public function getHeaderWidgetsColumns(): int|array
+    {
+        return 3;
+    }
 
     public function getTableRecordKey(Model|array $record): string
     {
