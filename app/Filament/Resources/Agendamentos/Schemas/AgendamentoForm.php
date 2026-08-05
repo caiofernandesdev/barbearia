@@ -22,20 +22,27 @@ class AgendamentoForm
                 ->maxLength(100),
 
             TextInput::make('cliente_telefone')
-                ->label('Telefone')
-                ->required()
-                ->tel()
-                ->maxLength(20),
+                ->label('Telefone (opcional)')
+                // Sem ->tel(): a validação de formato do Filament rejeita número
+                // colado/autopreenchido no iOS (caractere invisível). Campo livre;
+                // guardamos só os dígitos (ou null quando vazio) ao salvar.
+                ->extraInputAttributes(['inputmode' => 'tel'])
+                ->dehydrateStateUsing(fn ($state) => preg_replace('/\D/', '', (string) $state) ?: null)
+                ->maxLength(30),
 
             Select::make('profissional_id')
                 ->label('Profissional')
                 ->required()
                 ->options(Profissional::where('ativo', true)->pluck('nome', 'id')),
 
-            Select::make('servico_id')
-                ->label('Serviço')
+            Select::make('servico_ids')
+                ->label('Serviços')
+                ->multiple()
                 ->required()
-                ->options(Servico::where('ativo', true)->orderBy('ordem')->pluck('nome', 'id')),
+                ->searchable()
+                ->options(Servico::where('ativo', true)->orderBy('ordem')->get()
+                    ->mapWithKeys(fn ($s) => [$s->id => $s->nome.' — R$ '.number_format((float) $s->preco, 2, ',', '.')])->all())
+                ->helperText('Pode escolher mais de um. Valor e duração somam automaticamente.'),
 
             DateTimePicker::make('data_hora')
                 ->label('Data e Hora')
