@@ -20,6 +20,13 @@
     </div>
     @endif
 
+    @if(session('cancelado'))
+    {{-- Cancelamento em tom vermelho/neutro — não é "sucesso" verde --}}
+    <div class="bg-red-500 bg-opacity-15 border border-red-500 text-red-300 rounded-xl px-4 py-3 text-sm mb-4 flex items-center gap-2">
+        <span>🚫</span> {{ session('cancelado') }}
+    </div>
+    @endif
+
     @forelse($agendamentos as $ag)
     <div class="bg-gray-800 rounded-2xl p-4 mb-3">
         <div class="flex items-start justify-between mb-3">

@@ -45,6 +45,9 @@ class ConfiguracaoBarbeariaForm
                         ->options([
                             'escuro' => '🌙 Escuro (preto)',
                             'claro' => '☀️ Claro (branco)',
+                            'tecnologico' => '⚡ Tecnológico (azul)',
+                            'feminino' => '🌸 Feminino (rosa)',
+                            'neutro' => '⚪ Neutro (cinza)',
                         ])
                         ->default('escuro')
                         ->required()

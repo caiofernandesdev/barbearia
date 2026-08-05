@@ -85,6 +85,11 @@ class AdminPanelProvider extends PanelProvider
             ->renderHook(
                 PanelsRenderHook::BODY_END,
                 fn (): View => view('filament.push'),
+            )
+            // Ajustes de contraste no tema claro (badges de status)
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn (): View => view('filament.admin-styles'),
             );
     }
 }
