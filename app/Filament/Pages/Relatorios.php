@@ -40,7 +40,7 @@ class Relatorios extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        if (! auth()->user()?->isAdmin()) {
+        if (! auth()->user()?->temPermissao('relatorios')) {
             return false;
         }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;

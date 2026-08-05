@@ -10,8 +10,8 @@ use App\Filament\Resources\Indisponibilidades\Tables\IndisponibilidadesTable;
 use App\Models\Indisponibilidade;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Tables\Table;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Table;
 
 class IndisponibilidadeResource extends Resource
 {
@@ -34,8 +34,11 @@ class IndisponibilidadeResource extends Resource
 
     public static function canAccess(): bool
     {
-        if (! auth()->user()?->isAdmin()) return false;
+        if (! auth()->user()?->temPermissao('indisponibilidades')) {
+            return false;
+        }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
         return $tenant?->hasFeature('indisponibilidades') ?? false;
     }
 
@@ -52,9 +55,9 @@ class IndisponibilidadeResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index'  => ListIndisponibilidades::route('/'),
+            'index' => ListIndisponibilidades::route('/'),
             'create' => CreateIndisponibilidade::route('/create'),
-            'edit'   => EditIndisponibilidade::route('/{record}/edit'),
+            'edit' => EditIndisponibilidade::route('/{record}/edit'),
         ];
     }
 }

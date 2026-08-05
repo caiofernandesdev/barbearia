@@ -35,7 +35,7 @@ class UsuarioResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->temPermissao('usuarios') ?? false;
     }
 
     // Esconde "Novo usuário" quando o plano atingiu o limite de logins

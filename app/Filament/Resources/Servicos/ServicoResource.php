@@ -10,8 +10,8 @@ use App\Filament\Resources\Servicos\Tables\ServicosTable;
 use App\Models\Servico;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Tables\Table;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Table;
 
 class ServicoResource extends Resource
 {
@@ -36,7 +36,7 @@ class ServicoResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->temPermissao('servicos') ?? false;
     }
 
     public static function form(Schema $schema): Schema

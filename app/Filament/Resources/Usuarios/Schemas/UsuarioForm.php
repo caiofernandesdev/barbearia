@@ -3,9 +3,12 @@
 namespace App\Filament\Resources\Usuarios\Schemas;
 
 use App\Models\Profissional;
+use App\Models\User;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
 class UsuarioForm
@@ -58,6 +61,20 @@ class UsuarioForm
                 ->default(false)
                 ->visible(fn ($get) => $get('role') === 'barbeiro')
                 ->helperText('Se ligado, este profissional pode cancelar agendamentos no painel dele.'),
+
+            Section::make('Permissões de acesso')
+                ->description('Marque o que este usuário pode ver e usar no painel. Se não mexer, vale o padrão do perfil (o dono vê tudo; o profissional vê o próprio painel).')
+                ->schema([
+                    CheckboxList::make('permissoes')
+                        ->hiddenLabel()
+                        ->options(User::PERMISSOES)
+                        ->columns(2)
+                        ->bulkToggleable()
+                        // Usuário sem permissões definidas mostra o padrão do perfil
+                        ->formatStateUsing(fn ($state, ?User $record) => $state
+                            ?? User::padraoPermissoes($record?->role ?? 'barbeiro'))
+                        ->helperText('“Usuários” fica sempre disponível para o Dono/Admin (evita se trancar para fora).'),
+                ]),
         ]);
     }
 }

@@ -29,7 +29,7 @@ class AgendaGeral extends Page
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->temPermissao('agenda') ?? false;
     }
 
     public ?int $profissionalId = null;

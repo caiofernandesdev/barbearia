@@ -69,7 +69,7 @@ class RepescagemAvulsos extends Page implements HasActions, HasSchemas, HasTable
 
     public static function canAccess(): bool
     {
-        if (! auth()->user()?->isAdmin()) {
+        if (! auth()->user()?->temPermissao('repescagem')) {
             return false;
         }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;

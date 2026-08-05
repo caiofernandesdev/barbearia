@@ -29,7 +29,7 @@ class ListaEsperaResource extends Resource
 
     public static function canAccess(): bool
     {
-        if (! auth()->user()?->isAdmin()) {
+        if (! auth()->user()?->temPermissao('lista_espera')) {
             return false;
         }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;

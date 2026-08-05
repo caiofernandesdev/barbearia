@@ -6,6 +6,8 @@ use App\Filament\Resources\CamposPersonalizados\Pages\CreateCampoPersonalizado;
 use App\Filament\Resources\CamposPersonalizados\Pages\EditCampoPersonalizado;
 use App\Filament\Resources\CamposPersonalizados\Pages\ListCamposPersonalizados;
 use App\Models\CampoPersonalizado;
+use Filament\Actions\DeleteAction;
+use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TagsInput;
 use Filament\Forms\Components\TextInput;
@@ -15,15 +17,20 @@ use Filament\Schemas\Schema;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\Str;
 
 class CampoPersonalizadoResource extends Resource
 {
     protected static ?string $model = CampoPersonalizado::class;
+
     protected static ?string $slug = 'campos-agendamento';
 
     protected static ?string $navigationLabel = 'Campos do Agendamento';
+
     protected static ?string $modelLabel = 'Campo';
+
     protected static ?string $pluralModelLabel = 'Campos do Agendamento';
+
     protected static ?int $navigationSort = 3;
 
     public static function getNavigationIcon(): string|\BackedEnum|null
@@ -38,8 +45,11 @@ class CampoPersonalizadoResource extends Resource
 
     public static function canAccess(): bool
     {
-        if (! auth()->user()?->isAdmin()) return false;
+        if (! auth()->user()?->temPermissao('campos_agendamento')) {
+            return false;
+        }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
         return $tenant?->hasFeature('campos_agendamento') ?? false;
     }
 
@@ -52,7 +62,7 @@ class CampoPersonalizadoResource extends Resource
                 ->maxLength(100)
                 ->placeholder('Ex: Convênio, Porte do animal...')
                 ->live(onBlur: true)
-                ->afterStateUpdated(fn ($set, $state) => $set('slug', \Illuminate\Support\Str::slug($state))),
+                ->afterStateUpdated(fn ($set, $state) => $set('slug', Str::slug($state))),
 
             TextInput::make('slug')
                 ->label('Identificador')
@@ -65,7 +75,7 @@ class CampoPersonalizadoResource extends Resource
                 ->label('Tipo de campo')
                 ->options([
                     'select' => 'Lista de opções (dropdown)',
-                    'text'   => 'Texto livre',
+                    'text' => 'Texto livre',
                     'toggle' => 'Sim / Não',
                 ])
                 ->default('select')
@@ -108,15 +118,15 @@ class CampoPersonalizadoResource extends Resource
                     ->badge()
                     ->formatStateUsing(fn ($state) => match ($state) {
                         'select' => 'Lista',
-                        'text'   => 'Texto',
+                        'text' => 'Texto',
                         'toggle' => 'Sim/Não',
-                        default  => $state,
+                        default => $state,
                     })
                     ->color(fn ($state) => match ($state) {
                         'select' => 'info',
-                        'text'   => 'warning',
+                        'text' => 'warning',
                         'toggle' => 'success',
-                        default  => 'gray',
+                        default => 'gray',
                     }),
 
                 TextColumn::make('opcoes')
@@ -140,17 +150,17 @@ class CampoPersonalizadoResource extends Resource
             ->defaultSort('ordem')
             ->reorderable('ordem')
             ->actions([
-                \Filament\Actions\EditAction::make(),
-                \Filament\Actions\DeleteAction::make(),
+                EditAction::make(),
+                DeleteAction::make(),
             ]);
     }
 
     public static function getPages(): array
     {
         return [
-            'index'  => ListCamposPersonalizados::route('/'),
+            'index' => ListCamposPersonalizados::route('/'),
             'create' => CreateCampoPersonalizado::route('/create'),
-            'edit'   => EditCampoPersonalizado::route('/{record}/edit'),
+            'edit' => EditCampoPersonalizado::route('/{record}/edit'),
         ];
     }
 }

@@ -35,7 +35,7 @@ class MensalistaResource extends Resource
 
     public static function canAccess(): bool
     {
-        if (! auth()->user()?->isAdmin()) {
+        if (! auth()->user()?->temPermissao('clientes')) {
             return false;
         }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;

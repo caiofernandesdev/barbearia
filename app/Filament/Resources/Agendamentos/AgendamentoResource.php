@@ -10,8 +10,8 @@ use App\Filament\Resources\Agendamentos\Tables\AgendamentosTable;
 use App\Models\Agendamento;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Tables\Table;
 use Filament\Support\Icons\Heroicon;
+use Filament\Tables\Table;
 
 class AgendamentoResource extends Resource
 {
@@ -36,7 +36,7 @@ class AgendamentoResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->temPermissao('agendamentos') ?? false;
     }
 
     public static function form(Schema $schema): Schema

@@ -36,7 +36,7 @@ class ProfissionalResource extends Resource
 
     public static function canAccess(): bool
     {
-        return auth()->user()?->isAdmin() ?? false;
+        return auth()->user()?->temPermissao('profissionais') ?? false;
     }
 
     // Esconde "Novo profissional" quando o plano atingiu o limite

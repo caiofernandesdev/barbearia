@@ -39,8 +39,7 @@ class AgendaFixa extends Page
 
     public static function canAccess(): bool
     {
-        $u = auth()->user();
-        if (! $u || ! ($u->isAdmin() || $u->isBarbeiro())) {
+        if (! auth()->user()?->temPermissao('agenda_fixa')) {
             return false;
         }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;

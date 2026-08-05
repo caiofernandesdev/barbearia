@@ -41,7 +41,7 @@ class SalarioEmocional extends Page implements HasTable
 
     public static function canAccess(): bool
     {
-        if (! auth()->check()) {
+        if (! auth()->user()?->temPermissao('salario_emocional')) {
             return false;
         }
         $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
