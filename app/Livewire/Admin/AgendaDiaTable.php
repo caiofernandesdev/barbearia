@@ -142,8 +142,11 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
 
                 TextInput::make('cliente_telefone')
                     ->label('Telefone (opcional)')
-                    ->tel()
-                    ->maxLength(20),
+                    // Sem ->tel(): a validação de formato do Filament rejeita
+                    // número colado/autopreenchido no iOS (caractere invisível).
+                    // O campo é livre e limpamos para só dígitos ao salvar.
+                    ->extraInputAttributes(['inputmode' => 'tel'])
+                    ->maxLength(30),
 
                 Select::make('servico_ids')
                     ->label('Serviços')

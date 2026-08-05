@@ -102,6 +102,16 @@ class AgendaPainelCriacaoTest extends TestCase
         $this->assertNull($ag->cliente_telefone, 'sem telefone deve gravar null');
     }
 
+    public function test_telefone_formatado_e_aceito_e_salvo_so_com_digitos(): void
+    {
+        // Número com máscara/espacos (como vem do autopreenchimento do celular)
+        $this->marcar('2026-07-13', '10:00', ['cliente_telefone' => '(14) 99681-1271']);
+
+        $ag = Agendamento::withoutGlobalScopes()->first();
+        $this->assertNotNull($ag, 'não pode barrar por formato');
+        $this->assertSame('14996811271', $ag->cliente_telefone);
+    }
+
     public function test_varios_servicos_somam_duracao_e_valor(): void
     {
         $corte = Servico::forceCreate(['nome' => 'Corte', 'preco' => 30, 'duracao_minutos' => 30, 'tenant_id' => $this->tenant->id]);
