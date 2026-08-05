@@ -24,8 +24,13 @@ class AgendamentoObserver
         }
     }
 
-    private function enviar(string $telefone, string $mensagem, ?int $tenantId): void
+    private function enviar(?string $telefone, string $mensagem, ?int $tenantId): void
     {
+        // Cliente sem telefone (atendimento de balcão) — nada a enviar
+        if ($telefone === null || trim($telefone) === '') {
+            return;
+        }
+
         EnviarWhatsAppJob::dispatch($telefone, $mensagem, $tenantId);
     }
 

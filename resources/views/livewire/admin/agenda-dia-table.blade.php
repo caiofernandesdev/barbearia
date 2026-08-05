@@ -147,7 +147,7 @@
                         <div class="agx-hora">{{ $slot['hora'] }}</div>
                     </div>
                 @else
-                    <button wire:click="abrirAgendamento('{{ $slot['hora'] }}')" class="agx-slot agx-avail">
+                    <button wire:click="mountAction('agendar', { hora: '{{ $slot['hora'] }}' })" class="agx-slot agx-avail">
                         <div class="agx-hora">{{ $slot['hora'] }}</div>
                         <div class="agx-sub">Disponível</div>
                     </button>
@@ -182,45 +182,6 @@
     </div>
     @endif
 
-    {{-- Modal de agendamento rápido --}}
-    @if($showModal)
-    <div class="agx-backdrop" wire:click.self="fecharModal">
-        <div class="agx-modal">
-            <h3 style="margin-bottom:4px;">Agendar — {{ $horaSelecionada }}</h3>
-            <p class="agx-modal-hint">
-                {{ \Carbon\Carbon::parse($dataSelecionada)->locale('pt_BR')->isoFormat('dddd, D [de] MMMM') }}
-            </p>
-
-            <div style="display:flex; flex-direction:column; gap:12px;">
-                <div>
-                    <label class="agx-label">Nome do cliente *</label>
-                    <input wire:model="clienteNome" type="text" placeholder="Nome completo" class="agx-input">
-                    @error('clienteNome') <span class="agx-err">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="agx-label">Telefone *</label>
-                    <input wire:model="clienteTelefone" type="tel" placeholder="(11) 99999-9999" class="agx-input">
-                    @error('clienteTelefone') <span class="agx-err">{{ $message }}</span> @enderror
-                </div>
-
-                <div>
-                    <label class="agx-label">Serviço *</label>
-                    <select wire:model="servicoId" class="agx-input">
-                        <option value="">Selecione...</option>
-                        @foreach($servicos as $id => $nome)
-                            <option value="{{ $id }}">{{ $nome }}</option>
-                        @endforeach
-                    </select>
-                    @error('servicoId') <span class="agx-err">{{ $message }}</span> @enderror
-                </div>
-            </div>
-
-            <div style="display:flex; gap:8px; margin-top:20px;">
-                <button wire:click="salvarAgendamento" class="agx-btn-primary" style="background:#10b981;">✅ Confirmar</button>
-                <button wire:click="fecharModal" class="agx-btn-secondary">Cancelar</button>
-            </div>
-        </div>
-    </div>
-    @endif
+    {{-- Caixa de agendamento rápido (Filament Action: busca cliente, multi-serviço) --}}
+    <x-filament-actions::modals />
 </div>

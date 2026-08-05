@@ -5,11 +5,15 @@ namespace App\Livewire\Admin;
 use App\Models\Agendamento;
 use App\Models\ConfiguracaoBarbearia;
 use App\Models\Indisponibilidade;
+use App\Models\Mensalista;
 use App\Models\Profissional;
 use App\Models\Servico;
 use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
+use Filament\Forms\Components\Select;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
@@ -24,16 +28,6 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
     public string $heading = 'Minha Agenda';
 
     public string $dataSelecionada = '';
-
-    public string $horaSelecionada = '';
-
-    public bool $showModal = false;
-
-    public ?string $clienteNome = '';
-
-    public ?string $clienteTelefone = '';
-
-    public ?string $servicoId = null;
 
     public bool $showCancelModal = false;
 
@@ -110,95 +104,126 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         $this->dataSelecionada = $data;
     }
 
-    public function abrirAgendamento(string $hora): void
+    /**
+     * Caixa de agendamento rápido — Filament Action com busca de cliente,
+     * múltiplos serviços e telefone opcional.
+     */
+    public function agendarAction(): Action
     {
-        $this->horaSelecionada = $hora;
-        $this->clienteNome = '';
-        $this->clienteTelefone = '';
-        $this->servicoId = null;
-        $this->showModal = true;
+        return Action::make('agendar')
+            ->modalHeading(fn (array $arguments) => 'Agendar — '.($arguments['hora'] ?? ''))
+            ->modalSubmitActionLabel('Confirmar agendamento')
+            ->schema([
+                Select::make('cliente_id')
+                    ->label('Buscar cliente cadastrado')
+                    ->placeholder('Digite o nome ou telefone')
+                    ->searchable()
+                    ->getSearchResultsUsing(fn (string $search) => Mensalista::query()
+                        ->where(fn ($q) => $q->where('nome', 'like', "%{$search}%")->orWhere('telefone', 'like', "%{$search}%"))
+                        ->orderBy('nome')->limit(20)->get()
+                        ->mapWithKeys(fn ($m) => [$m->id => $m->nome.($m->telefone ? ' · '.$m->telefone : '')])->all())
+                    ->getOptionLabelUsing(fn ($value) => Mensalista::find($value)?->nome)
+                    ->live()
+                    ->afterStateUpdated(function ($state, callable $set) {
+                        $cliente = $state ? Mensalista::find($state) : null;
+                        if ($cliente) {
+                            $set('cliente_nome', $cliente->nome);
+                            $set('cliente_telefone', $cliente->telefone);
+                        }
+                    })
+                    // Só serve para preencher os campos abaixo; não vai para o $data
+                    ->dehydrated(false)
+                    ->helperText('Opcional — preenche nome e telefone automaticamente.'),
+
+                TextInput::make('cliente_nome')
+                    ->label('Nome do cliente')
+                    ->required()
+                    ->maxLength(100),
+
+                TextInput::make('cliente_telefone')
+                    ->label('Telefone (opcional)')
+                    ->tel()
+                    ->maxLength(20),
+
+                Select::make('servico_ids')
+                    ->label('Serviços')
+                    ->multiple()
+                    ->searchable()
+                    ->required()
+                    ->options(Servico::where('ativo', true)->orderBy('ordem')->get()
+                        ->mapWithKeys(fn ($s) => [$s->id => $s->nome.' — R$ '.number_format((float) $s->preco, 2, ',', '.')])->all())
+                    ->helperText('Pode escolher mais de um.'),
+            ])
+            ->action(fn (array $data, array $arguments) => $this->criarAgendamentoRapido($arguments['hora'] ?? '', $data));
     }
 
-    public function fecharModal(): void
+    /**
+     * Cria o agendamento a partir da caixa. Aceita vários serviços (soma
+     * duração e valor) e telefone vazio. Mantém as travas de conflito e
+     * indisponibilidade.
+     */
+    private function criarAgendamentoRapido(string $hora, array $data): void
     {
-        $this->showModal = false;
-    }
+        if ($hora === '') {
+            return;
+        }
 
-    public function salvarAgendamento(): void
-    {
-        $this->validate([
-            'clienteNome' => 'required|max:100',
-            'clienteTelefone' => 'required|max:20',
-            'servicoId' => 'required|exists:servicos,id',
-        ], [
-            'clienteNome.required' => 'Informe o nome do cliente.',
-            'clienteTelefone.required' => 'Informe o telefone.',
-            'servicoId.required' => 'Selecione um serviço.',
-        ]);
-
-        $telefone = preg_replace('/\D/', '', $this->clienteTelefone);
-        $dataHora = $this->dataSelecionada.' '.$this->horaSelecionada.':00';
-
-        // No painel interno o dono/profissional pode marcar várias sessões para o
-        // mesmo cliente (mensalista, sessões futuras). A única trava é o conflito de
-        // horário: o slot não pode se sobrepor a outro atendimento (considera a duração).
-        $inicio = Carbon::parse($dataHora);
-        $duracao = Servico::find($this->servicoId)?->duracao_minutos ?? 30;
         $tenantId = auth('admin')->user()?->tenant_id;
+        $inicio = Carbon::parse($this->dataSelecionada.' '.$hora.':00');
 
-        if (Agendamento::temConflito((int) $this->profissionalId, $inicio, $duracao, $tenantId)) {
-            Notification::make()
-                ->title('Horário indisponível')
-                ->body("O horário {$this->horaSelecionada} conflita com outro atendimento desse profissional.")
-                ->danger()
-                ->send();
+        $servicos = Servico::whereIn('id', $data['servico_ids'] ?? [])->where('ativo', true)->get();
+        if ($servicos->isEmpty()) {
+            Notification::make()->title('Selecione ao menos um serviço')->danger()->send();
 
             return;
         }
 
-        // Não deixa marcar por cima de uma indisponibilidade (própria ou do estabelecimento)
+        $duracao = (int) $servicos->sum('duracao_minutos');
         $slotFim = $inicio->copy()->addMinutes($duracao);
+
+        // Trava 1: não pode sobrepor outro atendimento (considera a duração total)
+        if (Agendamento::temConflito((int) $this->profissionalId, $inicio, $duracao, $tenantId)) {
+            Notification::make()->title('Horário indisponível')
+                ->body("O horário {$hora} conflita com outro atendimento desse profissional.")->danger()->send();
+
+            return;
+        }
+
+        // Trava 2: não pode marcar por cima de indisponibilidade
         $bloqueado = Indisponibilidade::where('inicio', '<', $slotFim)
             ->where('fim', '>', $inicio)
             ->where(function ($q) {
-                $q->whereNull('profissional_id')
-                    ->orWhere('profissional_id', $this->profissionalId);
+                $q->whereNull('profissional_id')->orWhere('profissional_id', $this->profissionalId);
             })
             ->exists();
 
         if ($bloqueado) {
-            Notification::make()
-                ->title('Horário indisponível')
-                ->body("O horário {$this->horaSelecionada} está marcado como indisponível.")
-                ->danger()
-                ->send();
+            Notification::make()->title('Horário indisponível')
+                ->body("O horário {$hora} está marcado como indisponível.")->danger()->send();
 
             return;
         }
 
-        Agendamento::create([
-            'cliente_nome' => $this->clienteNome,
+        // Telefone é opcional: sem número vira null (atendimento de balcão)
+        $telefone = preg_replace('/\D/', '', $data['cliente_telefone'] ?? '') ?: null;
+
+        $agendamento = Agendamento::create([
+            'cliente_nome' => $data['cliente_nome'],
             'cliente_telefone' => $telefone,
             'profissional_id' => $this->profissionalId,
-            'servico_id' => $this->servicoId,
-            'data_hora' => $dataHora,
+            // servico_id = primeiro (retrocompat); todos vão no pivot
+            'servico_id' => $servicos->first()->id,
+            'valor_total' => $servicos->sum('preco'),
+            'duracao_total_minutos' => $duracao,
+            'data_hora' => $inicio->format('Y-m-d H:i:s'),
             'status' => 'pendente',
             'mensalista' => false,
-            'tenant_id' => auth('admin')->user()?->tenant_id,
+            'tenant_id' => $tenantId,
         ]);
+        $agendamento->servicos()->attach($servicos->pluck('id')->all());
 
-        $this->showModal = false;
-
-        Notification::make()
-            ->title('Agendamento criado!')
-            ->body($this->clienteNome.' às '.$this->horaSelecionada)
-            ->success()
-            ->send();
-    }
-
-    public function getServicosProperty(): array
-    {
-        return Servico::where('ativo', true)->orderBy('ordem')->pluck('nome', 'id')->toArray();
+        Notification::make()->title('Agendamento criado!')
+            ->body($data['cliente_nome'].' às '.$hora)->success()->send();
     }
 
     public function getDias(): array
@@ -323,7 +348,6 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         return view('livewire.admin.agenda-dia-table', [
             'dias' => $this->getDias(),
             'slots' => $this->getSlots(),
-            'servicos' => $this->servicos,
         ]);
     }
 }

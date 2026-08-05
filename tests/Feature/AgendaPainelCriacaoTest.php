@@ -13,6 +13,7 @@ use Carbon\Carbon;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Queue;
+use Livewire\Features\SupportTesting\Testable;
 use Livewire\Livewire;
 use Tests\TestCase;
 
@@ -60,16 +61,18 @@ class AgendaPainelCriacaoTest extends TestCase
         parent::tearDown();
     }
 
-    private function marcar(string $data, string $hora): void
+    private function marcar(string $data, string $hora, array $override = []): Testable
     {
-        Livewire::actingAs($this->admin, 'admin')
+        return Livewire::actingAs($this->admin, 'admin')
             ->test(AgendaDiaTable::class, ['profissionalId' => $this->prof->id])
             ->set('dataSelecionada', $data)
-            ->set('horaSelecionada', $hora)
-            ->set('clienteNome', 'Maria')
-            ->set('clienteTelefone', '11987654321')
-            ->set('servicoId', $this->servico->id)
-            ->call('salvarAgendamento');
+            ->mountAction('agendar', arguments: ['hora' => $hora])
+            ->setActionData(array_merge([
+                'cliente_nome' => 'Maria',
+                'cliente_telefone' => '11987654321',
+                'servico_ids' => [$this->servico->id],
+            ], $override))
+            ->callMountedAction();
     }
 
     public function test_mesmo_cliente_pode_ter_agendamentos_em_terças_diferentes(): void
@@ -85,15 +88,30 @@ class AgendaPainelCriacaoTest extends TestCase
     {
         $this->marcar('2026-07-13', '10:00'); // ocupa 10:00–11:00
         // Outro cliente às 10:30 (dentro do intervalo) — deve barrar
-        Livewire::actingAs($this->admin, 'admin')
-            ->test(AgendaDiaTable::class, ['profissionalId' => $this->prof->id])
-            ->set('dataSelecionada', '2026-07-13')
-            ->set('horaSelecionada', '10:30')
-            ->set('clienteNome', 'Outra')
-            ->set('clienteTelefone', '11900000000')
-            ->set('servicoId', $this->servico->id)
-            ->call('salvarAgendamento');
+        $this->marcar('2026-07-13', '10:30', ['cliente_nome' => 'Outra', 'cliente_telefone' => '11900000000']);
 
         $this->assertSame(1, Agendamento::withoutGlobalScopes()->count());
+    }
+
+    public function test_telefone_e_opcional(): void
+    {
+        $this->marcar('2026-07-13', '10:00', ['cliente_telefone' => '']);
+
+        $ag = Agendamento::withoutGlobalScopes()->first();
+        $this->assertNotNull($ag);
+        $this->assertNull($ag->cliente_telefone, 'sem telefone deve gravar null');
+    }
+
+    public function test_varios_servicos_somam_duracao_e_valor(): void
+    {
+        $corte = Servico::forceCreate(['nome' => 'Corte', 'preco' => 30, 'duracao_minutos' => 30, 'tenant_id' => $this->tenant->id]);
+        $barba = Servico::forceCreate(['nome' => 'Barba', 'preco' => 20, 'duracao_minutos' => 15, 'tenant_id' => $this->tenant->id]);
+
+        $this->marcar('2026-07-13', '10:00', ['servico_ids' => [$corte->id, $barba->id]]);
+
+        $ag = Agendamento::withoutGlobalScopes()->first();
+        $this->assertSame(45, $ag->duracao_total_minutos);
+        $this->assertEquals(50.0, (float) $ag->valor_total);
+        $this->assertSame(2, $ag->servicos()->count());
     }
 }
