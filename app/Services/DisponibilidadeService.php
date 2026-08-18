@@ -86,6 +86,14 @@ class DisponibilidadeService
         $horariosTrabalho = $profissional->horariosDoDia($data->dayOfWeek);
 
         if (! empty($horariosTrabalho)) {
+            // Os horários configurados do profissional mandam: se ele definiu um
+            // horário depois do encerramento padrão do estabelecimento, ele quis
+            // atender ali — estende o limite para não descartar esses horários.
+            $ultimoFim = collect($horariosTrabalho)
+                ->map(fn ($h) => Carbon::parse($dataStr.' '.$h)->addMinutes($duracao))
+                ->max();
+            $limiteLista = ($ultimoFim && $ultimoFim->gt($expedienteFim)) ? $ultimoFim : $expedienteFim;
+
             return $this->calcularPorLista(
                 $horariosTrabalho,
                 $agendamentos,
@@ -93,7 +101,7 @@ class DisponibilidadeService
                 $indisponibilidades,
                 $data,
                 $duracao,
-                $expedienteFim,
+                $limiteLista,
                 $intervaloMinutos
             );
         }

@@ -421,6 +421,25 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         $slots = [];
         $cursor = Carbon::parse($data->format('Y-m-d').' '.$abertura);
         $fim = Carbon::parse($data->format('Y-m-d').' '.$encerramento);
+
+        // A agenda cobre o expediente do estabelecimento, MAS se estende para
+        // incluir os horários específicos que o profissional configurou — senão
+        // horários fora da janela padrão não apareceriam aqui.
+        $prof = $pid ? Profissional::find($pid) : null;
+        $horariosProf = $prof ? $prof->horariosDoDia($data->dayOfWeek) : [];
+        if (! empty($horariosProf)) {
+            $marcos = collect($horariosProf)
+                ->map(fn ($h) => Carbon::parse($data->format('Y-m-d').' '.$h))
+                ->sort()->values();
+            if ($marcos->first()->lt($cursor)) {
+                $cursor = $marcos->first()->copy();
+            }
+            $ultimoFim = $marcos->last()->copy()->addMinutes($intervalo);
+            if ($ultimoFim->gt($fim)) {
+                $fim = $ultimoFim->copy();
+            }
+        }
+
         $agora = now();
 
         while ($cursor->lt($fim)) {

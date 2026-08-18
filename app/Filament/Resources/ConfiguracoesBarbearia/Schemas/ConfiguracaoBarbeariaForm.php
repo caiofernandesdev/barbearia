@@ -92,6 +92,7 @@ class ConfiguracaoBarbeariaForm
                     Select::make('intervalo_minutos')
                         ->label('Intervalo entre slots')
                         ->options([
+                            10 => '10 minutos',
                             15 => '15 minutos',
                             20 => '20 minutos',
                             30 => '30 minutos',
