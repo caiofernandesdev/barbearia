@@ -29,6 +29,9 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
 
     public string $dataSelecionada = '';
 
+    /** 'slots' (grade) ou 'agenda' (timeline por horário) */
+    public string $modoAgenda = 'slots';
+
     public bool $showCancelModal = false;
 
     public ?int $cancelarId = null;
@@ -44,6 +47,17 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
     public function getPodeCancelarProperty(): bool
     {
         return auth('admin')->user()?->podeCancelar() ?? false;
+    }
+
+    /** Pode criar indisponibilidade pela agenda (permissão + feature do plano) */
+    public function getPodeIndisponibilidadeProperty(): bool
+    {
+        if (! auth('admin')->user()?->temPermissao('indisponibilidades')) {
+            return false;
+        }
+        $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
+
+        return $tenant?->hasFeature('indisponibilidades') ?? false;
     }
 
     public function abrirCancelamento(int $agendamentoId): void
@@ -264,6 +278,73 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
             ->action(fn (array $data) => $this->inverterAgendamentos((int) $data['agendamento_a'], (int) $data['agendamento_b']));
     }
 
+    /**
+     * Bloquear horário (indisponibilidade) direto da agenda, já pegando o dia
+     * selecionado. Praticidade: evita ir até o recurso de Indisponibilidades.
+     */
+    public function indisponibilidadeAction(): Action
+    {
+        return Action::make('indisponibilidade')
+            ->modalHeading(fn () => 'Bloquear horário — '.Carbon::parse($this->dataSelecionada)->locale('pt_BR')->isoFormat('ddd, D [de] MMM'))
+            ->modalDescription('Marca um período como indisponível na agenda deste dia.')
+            ->modalSubmitActionLabel('Bloquear')
+            ->modalIcon('heroicon-o-lock-closed')
+            ->schema([
+                Select::make('profissional_id')
+                    ->label('Profissional')
+                    ->options(fn () => Profissional::where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->all())
+                    ->default($this->profissionalId)
+                    ->placeholder('Todo o estabelecimento')
+                    ->helperText('Em branco = bloqueia a agenda de todos.'),
+
+                TextInput::make('hora_inicio')
+                    ->label('Início')
+                    ->type('time')
+                    ->required()
+                    ->default('09:00'),
+
+                TextInput::make('hora_fim')
+                    ->label('Fim')
+                    ->type('time')
+                    ->required()
+                    ->default('10:00'),
+
+                TextInput::make('motivo')
+                    ->label('Motivo')
+                    ->placeholder('Ex.: almoço, compromisso, feriado...')
+                    ->maxLength(255),
+            ])
+            ->action(fn (array $data) => $this->criarIndisponibilidade($data));
+    }
+
+    private function criarIndisponibilidade(array $data): void
+    {
+        if (! $this->podeIndisponibilidade) {
+            return;
+        }
+
+        $inicio = Carbon::parse($this->dataSelecionada.' '.$data['hora_inicio']);
+        $fim = Carbon::parse($this->dataSelecionada.' '.$data['hora_fim']);
+
+        if ($fim->lte($inicio)) {
+            Notification::make()->title('O fim deve ser depois do início')->danger()->send();
+
+            return;
+        }
+
+        Indisponibilidade::create([
+            'profissional_id' => $data['profissional_id'] ?: null,
+            'inicio' => $inicio,
+            'fim' => $fim,
+            'motivo' => $data['motivo'] ?: null,
+            'tenant_id' => auth('admin')->user()?->tenant_id,
+        ]);
+
+        Notification::make()->title('Horário bloqueado!')
+            ->body($inicio->format('H:i').' – '.$fim->format('H:i'))
+            ->success()->send();
+    }
+
     /** Agendamentos ativos (hoje em diante) para escolher na troca. */
     private function opcoesAgendamentos(): array
     {
@@ -351,8 +432,11 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         $prof = $this->profissionalId ? Profissional::find($this->profissionalId) : null;
         $diasTrabalho = $prof?->dias_trabalho ?? [1, 2, 3, 4, 5, 6];
 
-        for ($i = 0; $i < 14; $i++) {
-            $dia = now()->addDays($i);
+        // Carrossel do painel: 7 dias anteriores (para rever/registrar atrasados)
+        // até 21 dias à frente. Começa no passado; o JS rola até o dia selecionado.
+        $hoje = now()->startOfDay();
+        for ($i = -7; $i <= 21; $i++) {
+            $dia = $hoje->copy()->addDays($i);
             if (! in_array($dia->dayOfWeek, $diasTrabalho)) {
                 continue;
             }
@@ -368,6 +452,7 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
                 'diaNum' => $dia->format('d'),
                 'mes' => $dia->locale('pt_BR')->isoFormat('MMM'),
                 'selecionado' => $dia->format('Y-m-d') === $this->dataSelecionada,
+                'passado' => $i < 0,
                 'totalAgs' => $totalAgs,
             ];
         }
@@ -481,11 +566,119 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         return $slots;
     }
 
+    private function hhmmParaMin(string $hhmm): int
+    {
+        [$h, $m] = array_pad(explode(':', $hhmm), 2, '0');
+
+        return (int) $h * 60 + (int) $m;
+    }
+
+    /**
+     * Vista de agenda (timeline): cada agendamento vira um bloco posicionado
+     * pela hora de início, com altura proporcional à duração. Inclui as marcas
+     * de hora e a linha do "agora". Posições em pixels (pxPorMin).
+     */
+    public function getTimeline(): array
+    {
+        $config = ConfiguracaoBarbearia::getInstance();
+        $data = Carbon::parse($this->dataSelecionada);
+        $dataStr = $data->format('Y-m-d');
+        $pid = $this->profissionalId;
+        $intervalo = (int) ($config->intervalo_minutos ?? 60);
+        $pxPorMin = 2.2; // ~132px por hora — respiro confortável no mobile
+
+        $ags = Agendamento::whereDate('data_hora', $dataStr)
+            ->when($pid, fn ($q) => $q->where('profissional_id', $pid))
+            ->whereIn('status', ['pendente', 'confirmado', 'concluido'])
+            ->with(['servico', 'servicos'])
+            ->orderBy('data_hora')
+            ->get();
+
+        // Janela do dia: cobre a config, os horários do profissional e os agendamentos
+        $aberturaMin = $this->hhmmParaMin($config->horario_abertura ?? '08:00');
+        $encerraMin = $this->hhmmParaMin($config->horario_encerramento ?? '19:00');
+
+        $prof = $pid ? Profissional::find($pid) : null;
+        foreach (($prof ? $prof->horariosDoDia($data->dayOfWeek) : []) as $h) {
+            $m = $this->hhmmParaMin($h);
+            $aberturaMin = min($aberturaMin, $m);
+            $encerraMin = max($encerraMin, $m + $intervalo);
+        }
+        foreach ($ags as $a) {
+            $ini = Carbon::parse($a->data_hora);
+            $iniMin = $ini->hour * 60 + $ini->minute;
+            $dur = (int) ($a->duracao_total_minutos ?? $a->servico?->duracao_minutos ?? $intervalo);
+            $aberturaMin = min($aberturaMin, $iniMin);
+            $encerraMin = max($encerraMin, $iniMin + $dur);
+        }
+
+        $inicioMin = intdiv($aberturaMin, 60) * 60;          // arredonda p/ hora cheia
+        $fimMin = (int) (ceil($encerraMin / 60) * 60);
+
+        $blocos = [];
+        foreach ($ags as $a) {
+            $ini = Carbon::parse($a->data_hora);
+            $iniMin = $ini->hour * 60 + $ini->minute;
+            $dur = (int) ($a->duracao_total_minutos ?? $a->servico?->duracao_minutos ?? $intervalo);
+            $blocos[] = [
+                'id' => $a->id,
+                'top' => round(($iniMin - $inicioMin) * $pxPorMin, 1),
+                'height' => max(40.0, round($dur * $pxPorMin, 1)),
+                'inicio' => $ini->format('H:i'),
+                'fim' => $ini->copy()->addMinutes($dur)->format('H:i'),
+                'cliente' => $a->cliente_nome,
+                'servico' => $a->nomesServicos(),
+                'status' => $a->status,
+                'cancelavel' => in_array($a->status, ['pendente', 'confirmado'], true) && $this->podeCancelar,
+            ];
+        }
+
+        $horas = [];
+        for ($m = $inicioMin; $m <= $fimMin; $m += 60) {
+            $horas[] = [
+                'label' => sprintf('%02d:00', intdiv($m, 60)),
+                'top' => round(($m - $inicioMin) * $pxPorMin, 1),
+            ];
+        }
+
+        // Listras intermediárias a cada intervalo de agendamento (ex.: 10 em 10min),
+        // fora as que caem na hora cheia (essas já têm a linha + rótulo).
+        $subLinhas = [];
+        for ($m = $inicioMin; $m <= $fimMin; $m += max(5, $intervalo)) {
+            if ($m % 60 !== 0) {
+                $subLinhas[] = round(($m - $inicioMin) * $pxPorMin, 1);
+            }
+        }
+
+        $agoraTop = null;
+        $agoraLabel = null;
+        if ($data->isToday()) {
+            $agora = now();
+            $agoraMin = $agora->hour * 60 + $agora->minute;
+            if ($agoraMin >= $inicioMin && $agoraMin <= $fimMin) {
+                $agoraTop = round(($agoraMin - $inicioMin) * $pxPorMin, 1);
+                $agoraLabel = $agora->format('H:i');
+            }
+        }
+
+        return [
+            'inicioMin' => $inicioMin,
+            'pxPorMin' => $pxPorMin,
+            'alturaTotal' => round(($fimMin - $inicioMin) * $pxPorMin, 1),
+            'horas' => $horas,
+            'subLinhas' => $subLinhas,
+            'blocos' => $blocos,
+            'agoraTop' => $agoraTop,
+            'agoraLabel' => $agoraLabel,
+        ];
+    }
+
     public function render()
     {
         return view('livewire.admin.agenda-dia-table', [
             'dias' => $this->getDias(),
-            'slots' => $this->getSlots(),
+            'slots' => $this->modoAgenda === 'slots' ? $this->getSlots() : [],
+            'timeline' => $this->modoAgenda === 'agenda' ? $this->getTimeline() : null,
         ]);
     }
 }

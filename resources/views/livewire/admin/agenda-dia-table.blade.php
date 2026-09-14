@@ -14,6 +14,8 @@
         .dark .agx-daychip { border-color:rgba(255,255,255,.12); background:rgba(255,255,255,.05); color:#e2e8f0; }
         .agx-daychip:hover { border-color:#f59e0b; }
         .agx-daychip--sel, .agx-daychip--sel:hover { background:#f59e0b; border-color:#f59e0b; color:#111827; }
+        .agx-daychip--past { opacity:.5; }
+        .agx-daychip--past:hover { opacity:1; }
         .agx-dow, .agx-mon { font-size:11px; text-transform:uppercase; opacity:.7; }
         .agx-num { font-size:22px; font-weight:bold; line-height:1.2; }
         .agx-daybadge { margin-top:4px; font-size:10px; border-radius:8px; padding:1px 6px; background:rgba(245,158,11,.18); color:#b45309; }
@@ -99,25 +101,67 @@
         .agx-btn-secondary { flex:1; padding:12px; border-radius:10px; cursor:pointer; font-size:14px; background:#f1f5f9; color:#334155; border:1px solid #e2e8f0; }
         .dark .agx-btn-secondary { background:#374151; color:#fff; border-color:#4b5563; }
         .agx-err { color:#ef4444; font-size:12px; }
+
+        /* ── toggle Slots ⇄ Agenda ── */
+        .agx-modo { display:inline-flex; background:#f1f5f9; border-radius:10px; padding:3px; gap:2px; }
+        .dark .agx-modo { background:rgba(255,255,255,.06); }
+        .agx-modo-btn { font-size:13px; font-weight:600; padding:6px 12px; border-radius:8px; border:none; background:transparent; color:#64748b; cursor:pointer; transition:all .15s; }
+        .agx-modo-btn--on { background:#fff; color:#111827; box-shadow:0 1px 2px rgba(0,0,0,.12); }
+        .dark .agx-modo-btn { color:#94a3b8; }
+        .dark .agx-modo-btn--on { background:#374151; color:#fff; }
+
+        /* ── timeline (vista de agenda) ── */
+        .agx-tl-body { position:relative; margin-left:56px; border-left:1px solid #e5e7eb; }
+        .dark .agx-tl-body { border-color:rgba(255,255,255,.10); }
+        .agx-tl-hour { position:absolute; left:0; right:0; border-top:1px solid #e5e7eb; pointer-events:none; }
+        .dark .agx-tl-hour { border-color:rgba(255,255,255,.10); }
+        .agx-tl-subhour { position:absolute; left:0; right:0; border-top:1px solid #f2f4f7; pointer-events:none; }
+        .dark .agx-tl-subhour { border-color:rgba(255,255,255,.04); }
+        .agx-tl-hourlabel { position:absolute; left:-56px; width:48px; text-align:right; font-size:11px; color:#94a3b8; transform:translateY(-7px); pointer-events:none; }
+        .agx-tl-now { position:absolute; left:0; right:0; border-top:2px solid #ef4444; z-index:6; pointer-events:none; }
+        .agx-tl-nowlabel { position:absolute; left:-56px; background:#ef4444; color:#fff; font-size:10px; font-weight:700; padding:1px 5px; border-radius:6px; transform:translateY(-50%); z-index:6; pointer-events:none; }
+        .agx-tl-block { position:absolute; left:5px; right:5px; border-radius:8px; padding:5px 8px; overflow:hidden; cursor:pointer; border-left:3px solid; z-index:3; }
+        .agx-tl-block .t { font-size:11px; opacity:.9; }
+        .agx-tl-block .c { font-weight:600; font-size:12px; line-height:1.3; margin-top:2px; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+        .agx-b-confirmado { background:#dbeafe; border-color:#3b82f6; color:#1e3a8a; }
+        .agx-b-pendente   { background:#fef3c7; border-color:#f59e0b; color:#78350f; }
+        .agx-b-concluido  { background:#eef2f7; border-color:#94a3b8; color:#334155; }
+        .dark .agx-b-confirmado { background:rgba(59,130,246,.22); color:#bfdbfe; }
+        .dark .agx-b-pendente   { background:rgba(245,158,11,.20); color:#fde68a; }
+        .dark .agx-b-concluido  { background:rgba(148,163,184,.18); color:#cbd5e1; }
     </style>
 
     <x-filament::section>
         <x-slot name="heading">{{ $heading }}</x-slot>
 
-        {{-- Trocar horário entre dois clientes --}}
-        @if($this->podeCancelar)
-            <div style="display:flex; justify-content:flex-end; margin-bottom:12px;">
-                <button type="button" wire:click="mountAction('inverter')" class="agx-swapbtn">
-                    🔄 Inverter agendamentos
-                </button>
+        {{-- Toggle Slots ⇄ Agenda + inverter --}}
+        <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
+            <div class="agx-modo">
+                <button type="button" wire:click="$set('modoAgenda','slots')"
+                    class="agx-modo-btn {{ $modoAgenda === 'slots' ? 'agx-modo-btn--on' : '' }}">▦ Slots</button>
+                <button type="button" wire:click="$set('modoAgenda','agenda')"
+                    class="agx-modo-btn {{ $modoAgenda === 'agenda' ? 'agx-modo-btn--on' : '' }}">📅 Agenda</button>
             </div>
-        @endif
+            <div style="display:flex; gap:8px; flex-wrap:wrap;">
+                @if($this->podeIndisponibilidade)
+                    <button type="button" wire:click="mountAction('indisponibilidade')" class="agx-swapbtn">
+                        🔒 Indisponibilidade
+                    </button>
+                @endif
+                @if($this->podeCancelar)
+                    <button type="button" wire:click="mountAction('inverter')" class="agx-swapbtn">
+                        🔄 Inverter
+                    </button>
+                @endif
+            </div>
+        </div>
 
-        {{-- Seletor de dias --}}
-        <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:12px; -webkit-overflow-scrolling:touch;">
+        {{-- Seletor de dias (carrossel: passado ↔ futuro; rola até o selecionado) --}}
+        <div style="display:flex; gap:8px; overflow-x:auto; padding-bottom:12px; -webkit-overflow-scrolling:touch;"
+            x-data x-init="$nextTick(() => $el.querySelector('.agx-daychip--sel')?.scrollIntoView({inline:'center', block:'nearest'}))">
             @foreach($dias as $dia)
                 <button wire:click="selecionarDia('{{ $dia['data'] }}')"
-                    class="agx-daychip {{ $dia['selecionado'] ? 'agx-daychip--sel' : '' }}">
+                    class="agx-daychip {{ $dia['selecionado'] ? 'agx-daychip--sel' : '' }} {{ $dia['passado'] && ! $dia['selecionado'] ? 'agx-daychip--past' : '' }}">
                     <div class="agx-dow">{{ $dia['diaSemana'] }}</div>
                     <div class="agx-num">{{ $dia['diaNum'] }}</div>
                     <div class="agx-mon">{{ $dia['mes'] }}</div>
@@ -132,7 +176,8 @@
             {{ \Carbon\Carbon::parse($dataSelecionada)->locale('pt_BR')->isoFormat('dddd, D [de] MMMM') }}
         </div>
 
-        {{-- Grid de horários --}}
+        {{-- Grid de horários (modo slots) --}}
+        @if($modoAgenda === 'slots')
         <div style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
             @forelse($slots as $slot)
                 @if($slot['ocupado'])
@@ -191,6 +236,47 @@
             <span><span style="color:#8b5cf6;">●</span> Indisponível</span>
             <span><span style="color:#94a3b8;">●</span> Passado (clicável)</span>
         </div>
+
+        {{-- Vista de agenda (timeline por horário) --}}
+        @else
+        <div style="position:relative; overflow-x:hidden;">
+            <div class="agx-tl-body" style="height:{{ $timeline['alturaTotal'] }}px"
+                data-inicio="{{ $timeline['inicioMin'] }}" data-px="{{ $timeline['pxPorMin'] }}"
+                onclick="agxTimelineClick(event, this)">
+
+                @foreach($timeline['subLinhas'] as $top)
+                    <div class="agx-tl-subhour" style="top:{{ $top }}px"></div>
+                @endforeach
+
+                @foreach($timeline['horas'] as $h)
+                    <div class="agx-tl-hour" style="top:{{ $h['top'] }}px"></div>
+                    <div class="agx-tl-hourlabel" style="top:{{ $h['top'] }}px">{{ $h['label'] }}</div>
+                @endforeach
+
+                @if(!is_null($timeline['agoraTop']))
+                    <div class="agx-tl-now" style="top:{{ $timeline['agoraTop'] }}px"></div>
+                    <div class="agx-tl-nowlabel" style="top:{{ $timeline['agoraTop'] }}px">{{ $timeline['agoraLabel'] }}</div>
+                @endif
+
+                @foreach($timeline['blocos'] as $b)
+                    <div class="agx-tl-block agx-b-{{ $b['status'] }}"
+                        style="top:{{ $b['top'] }}px; height:{{ $b['height'] }}px"
+                        @if($b['cancelavel'])
+                            wire:click.stop="abrirCancelamento({{ $b['id'] }})"
+                            title="Cancelar o agendamento de {{ $b['cliente'] }}"
+                        @else
+                            onclick="event.stopPropagation()"
+                        @endif>
+                        <div class="t">{{ $b['inicio'] }} - {{ $b['fim'] }}</div>
+                        <div class="c">{{ $b['servico'] }} · {{ $b['cliente'] }}</div>
+                    </div>
+                @endforeach
+            </div>
+        </div>
+        <p class="agx-muted" style="text-align:center; font-size:12px; margin-top:12px;">
+            Toque num espaço livre para agendar naquele horário.
+        </p>
+        @endif
     </x-filament::section>
 
     {{-- Modal de cancelamento --}}
@@ -211,3 +297,22 @@
     {{-- Caixa de agendamento rápido (Filament Action: busca cliente, multi-serviço) --}}
     <x-filament-actions::modals />
 </div>
+
+<script>
+    // Toque num espaço livre da timeline → abre a caixa de agendar naquele horário.
+    // As marcas de hora têm pointer-events:none; os blocos usam stop/stopPropagation.
+    window.agxTimelineClick = function (ev, el) {
+        if (ev.target !== el) return;
+        const inicioMin = parseInt(el.dataset.inicio, 10);
+        const px = parseFloat(el.dataset.px);
+        if (!px) return;
+        let min = inicioMin + Math.round((ev.offsetY / px) / 5) * 5; // arredonda p/ 5 min
+        if (min < 0) min = 0;
+        const hh = String(Math.floor(min / 60)).padStart(2, '0');
+        const mm = String(min % 60).padStart(2, '0');
+        const root = el.closest('[wire\\:id]');
+        if (root && window.Livewire) {
+            window.Livewire.find(root.getAttribute('wire:id')).mountAction('agendar', { hora: hh + ':' + mm });
+        }
+    };
+</script>
