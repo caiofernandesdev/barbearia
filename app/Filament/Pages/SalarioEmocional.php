@@ -24,7 +24,10 @@ class SalarioEmocional extends Page implements HasTable
 
     protected string $view = 'filament.pages.salario-emocional';
 
-    protected static ?string $navigationLabel = 'Salário Emocional';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.salario_emocional');
+    }
 
     protected static ?string $title = 'Salário Emocional';
 
@@ -34,7 +37,7 @@ class SalarioEmocional extends Page implements HasTable
 
     public static function getNavigationGroup(): string
     {
-        return 'Financeiro';
+        return __('painel.group.financeiro');
     }
 
     public array $data = [];

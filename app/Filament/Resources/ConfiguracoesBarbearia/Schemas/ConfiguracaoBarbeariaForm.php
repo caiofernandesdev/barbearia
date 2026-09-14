@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\ConfiguracoesBarbearia\Schemas;
 
+use App\Support\Locale;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
@@ -39,6 +40,13 @@ class ConfiguracaoBarbeariaForm
                         ->imagePreviewHeight('80')
                         ->nullable()
                         ->helperText('Exibida no chatbot de agendamento e no cabeçalho do sistema.'),
+
+                    Select::make('idioma')
+                        ->label('Idioma')
+                        ->options(Locale::opcoes())
+                        ->default(Locale::PADRAO)
+                        ->required()
+                        ->helperText('Idioma da página de agendamento e do painel. Aplica ao recarregar.'),
 
                     Select::make('tema_agendamento')
                         ->label('Tema da página de agendamento')
@@ -103,6 +111,16 @@ class ConfiguracaoBarbeariaForm
                         ])
                         ->default(60)
                         ->required(),
+
+                    TextInput::make('dias_antecedencia_agendamento')
+                        ->label('Dias liberados para agendamento')
+                        ->numeric()
+                        ->default(14)
+                        ->minValue(1)
+                        ->maxValue(90)
+                        ->required()
+                        ->suffix('dias')
+                        ->helperText('Quantos dias no futuro o cliente pode agendar na página pública.'),
                 ]),
 
             Section::make('Regras de Mensalistas')

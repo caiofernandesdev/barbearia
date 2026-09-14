@@ -18,11 +18,20 @@ class MensalistaResource extends Resource
 
     protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-user-group';
 
-    protected static ?string $navigationLabel = 'Clientes';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.clientes');
+    }
 
-    protected static ?string $modelLabel = 'Cliente';
+    public static function getModelLabel(): string
+    {
+        return __('painel.model.cliente');
+    }
 
-    protected static ?string $pluralModelLabel = 'Clientes';
+    public static function getPluralModelLabel(): string
+    {
+        return __('painel.model.clientes');
+    }
 
     protected static ?int $navigationSort = 1;
 
@@ -30,7 +39,7 @@ class MensalistaResource extends Resource
 
     public static function getNavigationGroup(): string
     {
-        return 'Clientes';
+        return __('painel.group.clientes');
     }
 
     public static function canAccess(): bool

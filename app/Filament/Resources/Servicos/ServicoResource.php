@@ -19,11 +19,20 @@ class ServicoResource extends Resource
 
     protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedScissors;
 
-    protected static ?string $navigationLabel = 'Serviços';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.servicos');
+    }
 
-    protected static ?string $modelLabel = 'Serviço';
+    public static function getModelLabel(): string
+    {
+        return __('painel.model.servico');
+    }
 
-    protected static ?string $pluralModelLabel = 'Serviços';
+    public static function getPluralModelLabel(): string
+    {
+        return __('painel.model.servicos');
+    }
 
     protected static ?string $recordTitleAttribute = 'nome';
 
@@ -31,7 +40,7 @@ class ServicoResource extends Resource
 
     public static function getNavigationGroup(): string
     {
-        return 'Cadastros';
+        return __('painel.group.cadastros');
     }
 
     public static function canAccess(): bool

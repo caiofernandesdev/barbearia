@@ -18,11 +18,20 @@ class UsuarioResource extends Resource
 
     protected static \BackedEnum|string|null $navigationIcon = 'heroicon-o-users';
 
-    protected static ?string $navigationLabel = 'Usuários';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.usuarios');
+    }
 
-    protected static ?string $modelLabel = 'Usuário';
+    public static function getModelLabel(): string
+    {
+        return __('painel.model.usuario');
+    }
 
-    protected static ?string $pluralModelLabel = 'Usuários';
+    public static function getPluralModelLabel(): string
+    {
+        return __('painel.model.usuarios');
+    }
 
     protected static ?string $recordTitleAttribute = 'name';
 
@@ -30,7 +39,7 @@ class UsuarioResource extends Resource
 
     public static function getNavigationGroup(): string
     {
-        return 'Sistema';
+        return __('painel.group.sistema');
     }
 
     public static function canAccess(): bool

@@ -33,7 +33,10 @@ class RepescagemAvulsos extends Page implements HasActions, HasSchemas, HasTable
 
     protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedUserGroup;
 
-    protected static ?string $navigationLabel = 'Repescagem';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.repescagem');
+    }
 
     protected static ?string $title = 'Repescagem de Avulsos';
 
@@ -41,7 +44,7 @@ class RepescagemAvulsos extends Page implements HasActions, HasSchemas, HasTable
 
     public static function getNavigationGroup(): string
     {
-        return 'Clientes';
+        return __('painel.group.clientes');
     }
 
     public int $diasSemAgendar = 30;

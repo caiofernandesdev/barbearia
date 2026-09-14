@@ -3,6 +3,7 @@
 namespace App\Http\Middleware;
 
 use App\Models\Tenant;
+use App\Support\Locale;
 use Closure;
 use Illuminate\Http\Request;
 use Symfony\Component\HttpFoundation\Response;
@@ -13,7 +14,7 @@ class SetTenantMiddleware
     {
         $slug = $request->route('tenant');
 
-        if (!$slug) {
+        if (! $slug) {
             abort(404);
         }
 
@@ -24,6 +25,9 @@ class SetTenantMiddleware
 
         // Também guarda na request para os controllers acessarem facilmente
         $request->attributes->set('tenant', $tenant);
+
+        // Aplica o idioma que o estabelecimento configurou
+        Locale::aplicarDoTenant();
 
         return $next($request);
     }

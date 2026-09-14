@@ -24,7 +24,10 @@ class AgendaFixa extends Page
 {
     protected string $view = 'filament.pages.agenda-fixa';
 
-    protected static ?string $navigationLabel = 'Agenda Fixa';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.agenda_fixa');
+    }
 
     protected static ?string $title = 'Agenda Fixa';
 
@@ -34,7 +37,7 @@ class AgendaFixa extends Page
 
     public static function getNavigationGroup(): string
     {
-        return 'Clientes';
+        return __('painel.group.clientes');
     }
 
     public static function canAccess(): bool

@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Agendar Horário | ' . $nomeBarbearia)
+@section('title', __('booking.title') . ' | ' . $nomeBarbearia)
 
 @push('styles')
 <style>
@@ -21,7 +21,7 @@
         @endif
         <div>
             <div class="text-white font-semibold text-sm">{{ $nomeBarbearia }}</div>
-            <div class="text-green-400 text-xs">● Online</div>
+            <div class="text-green-400 text-xs">● {{ __('booking.online') }}</div>
         </div>
     </div>
 
@@ -34,8 +34,7 @@
                 <div class="w-8 h-8 rounded-full bg-amber-500 flex-shrink-0 flex items-center justify-center text-white text-xs font-bold">{{ mb_strtoupper(mb_substr($nomeBarbearia, 0, 1)) }}</div>
             @endif
             <div class="bg-gray-700 text-white rounded-2xl rounded-tl-none px-4 py-3 max-w-xs text-sm leading-relaxed">
-                Olá! 👋 Seja bem-vindo à <strong>{{ $nomeBarbearia }}</strong>!<br>
-                Vamos agendar seu horário. Qual é o seu <strong>nome</strong>?
+                {!! __('booking.greeting', ['name' => e($nomeBarbearia)]) !!}
             </div>
         </div>
     </div>
@@ -46,18 +45,18 @@
 <div id="modal-agendamento-ativo" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 px-4">
     <div class="bg-gray-800 rounded-2xl p-6 max-w-sm w-full text-white">
         <div class="text-amber-400 text-4xl text-center mb-3">⚠️</div>
-        <h2 class="text-center font-semibold text-lg mb-2">Agendamento Ativo</h2>
-        <p class="text-gray-300 text-sm text-center mb-1">Você já tem um agendamento marcado:</p>
+        <h2 class="text-center font-semibold text-lg mb-2">{{ __('booking.active_title') }}</h2>
+        <p class="text-gray-300 text-sm text-center mb-1">{{ __('booking.active_text') }}</p>
         <div id="info-agendamento-ativo" class="bg-gray-700 rounded-xl p-3 my-3 text-sm text-center"></div>
-        <p class="text-gray-400 text-xs text-center mb-4">Cancele-o antes de fazer um novo agendamento.</p>
+        <p class="text-gray-400 text-xs text-center mb-4">{{ __('booking.active_hint') }}</p>
         <div class="flex gap-2">
             {{-- POST evita expor o telefone na URL --}}
             <form id="form-ver-agendamentos" method="POST" action="{{ route('agendamento.meus-agendamentos', ['tenant' => $tenantSlug]) }}" class="flex-1">
                 @csrf
                 <input type="hidden" id="input-telefone-modal" name="telefone" value="">
-                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white text-center py-2 rounded-xl text-sm font-medium transition">Ver meus agendamentos</button>
+                <button type="submit" class="w-full bg-amber-500 hover:bg-amber-600 text-white text-center py-2 rounded-xl text-sm font-medium transition">{{ __('booking.see_my_bookings') }}</button>
             </form>
-            <button onclick="fecharModalAtivo()" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-xl text-sm font-medium transition">Fechar</button>
+            <button onclick="fecharModalAtivo()" class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-xl text-sm font-medium transition">{{ __('booking.close') }}</button>
         </div>
     </div>
 </div>
@@ -66,17 +65,17 @@
 <div id="modal-mensalista-fixo" class="hidden fixed inset-0 bg-black bg-opacity-60 flex items-center justify-center z-50 px-4">
     <div class="bg-gray-800 rounded-2xl p-6 max-w-sm w-full text-white">
         <div class="text-amber-400 text-3xl text-center mb-2">📅</div>
-        <h2 class="text-center font-semibold text-lg mb-1">Seus horários fixos</h2>
-        <p class="text-gray-400 text-xs text-center mb-3">Próximas sessões já agendadas para você:</p>
+        <h2 class="text-center font-semibold text-lg mb-1">{{ __('booking.fixed_title') }}</h2>
+        <p class="text-gray-400 text-xs text-center mb-3">{{ __('booking.fixed_text') }}</p>
         <div id="lista-horarios-fixos" class="space-y-2 max-h-52 overflow-y-auto mb-4"></div>
         <div class="flex gap-2">
             <button onclick="agendarAvulsoMensalistaFixo()"
                 class="flex-1 bg-gray-600 hover:bg-gray-500 text-white py-2 rounded-xl text-sm transition">
-                Agendar outro horário
+                {{ __('booking.book_another') }}
             </button>
             <button onclick="fecharModalFixo()"
                 class="flex-1 bg-amber-500 hover:bg-amber-600 text-white py-2 rounded-xl text-sm font-medium transition">
-                Fechar
+                {{ __('booking.close') }}
             </button>
         </div>
     </div>
@@ -89,6 +88,18 @@ const tenantSlug = @json($tenantSlug);
 const nomeBarbeariaInicial = "{{ mb_strtoupper(mb_substr($nomeBarbearia, 0, 1)) }}";
 const logoUrl = @json($logoUrl);
 const temListaEspera = @json($temListaEspera ?? false);
+const diasAntecedencia = @json($diasAntecedencia ?? 14);
+
+// Traduções (idioma escolhido pelo estabelecimento) e locale p/ datas no JS
+const T = @json(__('booking'));
+const LOCALE_JS = @json(str_replace('_', '-', app()->getLocale()));
+
+// Interpola :tokens numa string traduzida. Ex.: tt('ask_phone', {name: 'Ana'})
+function tt(chave, params = {}) {
+    let s = T[chave] ?? '';
+    for (const k in params) s = s.split(':' + k).join(params[k]);
+    return s;
+}
 
 const csrfToken = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 
@@ -153,23 +164,20 @@ function criarCard(html) {
 
 function formatarDataHora(str) {
     const d = new Date(str.replace(' ', 'T'));
-    return d.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    return d.toLocaleString(LOCALE_JS, { dateStyle: 'short', timeStyle: 'short' });
 }
 
 function formatarDataSelecionada() {
-    if (!dadosCliente.data) return 'Selecione um dia e horário';
+    if (!dadosCliente.data) return T.pick_day_time;
     const d = new Date(dadosCliente.data + 'T12:00:00');
-    const nomeDias  = ['dom', 'seg', 'ter', 'qua', 'qui', 'sex', 'sáb'];
-    const nomeMeses = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho',
-                       'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
-    const base = `${nomeDias[d.getDay()]}, ${d.getDate()} de ${nomeMeses[d.getMonth()]} de ${d.getFullYear()}`;
+    const base = `${T.days_short[d.getDay()]}, ${d.getDate()} ${T.date_connector} ${T.months_full[d.getMonth()]} ${T.date_connector} ${d.getFullYear()}`;
     return dadosCliente.hora ? `${base} ${dadosCliente.hora}` : `${base} --`;
 }
 
 // Botão de voltar padronizado
 function btnVoltar(estadoAnterior) {
     return `<button onclick="voltarPara('${estadoAnterior}')"
-        class="w-full text-gray-500 hover:text-amber-400 text-xs py-2 transition text-center">← Voltar</button>`;
+        class="w-full text-gray-500 hover:text-amber-400 text-xs py-2 transition text-center">${T.back}</button>`;
 }
 
 function voltarPara(novoEstado) {
@@ -207,11 +215,11 @@ function renderInput() {
     if (estado === 'nome') {
         criarCard(`
             <div class="space-y-2">
-                <input id="inp-nome" type="text" placeholder="Seu nome e sobrenome" maxlength="100"
+                <input id="inp-nome" type="text" placeholder="${T.name_placeholder}" maxlength="100"
                     class="w-full bg-gray-700 text-white rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-500">
                 <button onclick="enviarNome()"
                     class="w-full bg-gray-600 hover:bg-amber-500 text-white rounded-2xl py-3 text-sm font-semibold transition">
-                    Enviar
+                    ${T.send}
                 </button>
             </div>
         `);
@@ -225,11 +233,11 @@ function renderInput() {
     } else if (estado === 'telefone') {
         criarCard(`
             <div class="space-y-2">
-                <input id="inp-tel" type="tel" placeholder="(00) 00000-0000" maxlength="20"
+                <input id="inp-tel" type="tel" placeholder="${T.phone_placeholder}" maxlength="20"
                     class="w-full bg-gray-700 text-white rounded-2xl px-4 py-3 text-sm outline-none focus:ring-2 focus:ring-amber-500 placeholder-gray-500">
                 <button onclick="enviarTelefone()"
                     class="w-full bg-gray-600 hover:bg-amber-500 text-white rounded-2xl py-3 text-sm font-semibold transition">
-                    Enviar
+                    ${T.send}
                 </button>
                 ${btnVoltar('nome')}
             </div>
@@ -303,11 +311,11 @@ function renderInput() {
                         class="absolute right-0 top-1/2 -translate-y-1/2 z-10 w-8 h-8 bg-gray-600 hover:bg-amber-500 rounded-full flex items-center justify-center text-white text-xl font-bold transition">›</button>
                 </div>
                 <div id="serv-total" class="text-center text-white text-sm font-medium py-2 border border-gray-600 rounded-xl">
-                    Toque nos serviços para selecionar
+                    ${T.tap_services}
                 </div>
                 <button onclick="confirmarServicos()"
                     class="w-full bg-amber-500 hover:bg-amber-600 text-white rounded-2xl py-3 text-sm font-semibold transition">
-                    Continuar ➜
+                    ${T.continue}
                 </button>
                 ${btnVoltar('profissional')}
             </div>
@@ -317,15 +325,17 @@ function renderInput() {
     // ── Data + Hora — card combinado ──────────────────────────────────────────
     } else if (estado === 'data') {
         const hoje = new Date();
-        const nomeDias  = ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'];
-        const nomeMeses = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
+        const nomeDias  = T.days_short_caps;
+        const nomeMeses = T.months_short_caps;
 
         // Gera até 14 dias disponíveis conforme os dias de trabalho do barbeiro selecionado.
         // Começa em HOJE (offset 0) — a API filtra os horários já passados com buffer de 30min
         const diasTrabalho = dadosCliente.profissional_dias_trabalho ?? [1, 2, 3, 4, 5, 6];
         const dateCards = [];
         let offset = 0;
-        while (dateCards.length < 14 && offset <= 60) {
+        // Janela de dias liberada pelo estabelecimento (config); +40 de folga p/ pular
+        // dias que o profissional não trabalha sem cortar a contagem.
+        while (dateCards.length < diasAntecedencia && offset <= diasAntecedencia + 40) {
             const d = new Date(hoje);
             d.setDate(hoje.getDate() + offset);
             if (diasTrabalho.includes(d.getDay())) {
@@ -333,7 +343,7 @@ function renderInput() {
                     + String(d.getMonth() + 1).padStart(2, '0') + '-'
                     + String(d.getDate()).padStart(2, '0');
                 const sel = dadosCliente.data === dataStr;
-                const rotuloDia = offset === 0 ? 'HOJE' : nomeDias[d.getDay()];
+                const rotuloDia = offset === 0 ? T.today : nomeDias[d.getDay()];
                 dateCards.push(`
                     <button onclick="selecionarDataNoCard('${dataStr}')" data-data="${dataStr}"
                         class="data-card flex-shrink-0 snap-start flex flex-col items-center py-3 px-3 rounded-2xl border-2 transition min-w-[4.5rem]
@@ -349,23 +359,23 @@ function renderInput() {
 
         criarCard(`
             <div class="bg-gray-800 rounded-2xl p-4 space-y-4">
-                <p class="text-gray-400 text-xs tracking-widest font-semibold">SELECIONE O DIA E HORÁRIO:</p>
+                <p class="text-gray-400 text-xs tracking-widest font-semibold">${T.pick_day_time_caps}</p>
 
                 <div class="carousel-track flex gap-2 overflow-x-auto snap-x snap-mandatory" id="track-datas-card">
                     ${dateCards.join('')}
                 </div>
-                <p class="text-gray-500 text-xs text-center">→ ARRASTE PARA O LADO PARA VER MAIS</p>
+                <p class="text-gray-500 text-xs text-center">${T.swipe_more}</p>
 
                 <div id="slots-container"></div>
 
                 <div id="data-hora-display"
                     class="text-center text-white text-sm font-medium py-2 border border-gray-600 rounded-xl">
-                    Selecione um dia e horário
+                    ${T.pick_day_time}
                 </div>
 
                 <button onclick="confirmarDataHora()"
                     class="w-full bg-gray-600 hover:bg-amber-500 text-white rounded-2xl py-3 text-sm font-semibold transition">
-                    Enviar
+                    ${T.send}
                 </button>
                 ${btnVoltar('servico')}
             </div>
@@ -382,19 +392,19 @@ function renderInput() {
             html += `<label class="block text-gray-300 text-sm mb-1">${sanitizeText(c.nome)}${c.obrigatorio ? ' <span class="text-red-400">*</span>' : ''}</label>`;
             if (c.tipo === 'select' && c.opcoes) {
                 html += `<select data-campo="${c.slug}" class="w-full bg-gray-700 text-white rounded-xl px-4 py-3 text-sm border border-gray-600 focus:border-amber-500 focus:outline-none">`;
-                html += `<option value="">Selecione...</option>`;
+                html += `<option value="">${T.select}</option>`;
                 c.opcoes.forEach(op => { html += `<option value="${sanitizeText(op)}">${sanitizeText(op)}</option>`; });
                 html += `</select>`;
             } else if (c.tipo === 'toggle') {
                 html += `<select data-campo="${c.slug}" class="w-full bg-gray-700 text-white rounded-xl px-4 py-3 text-sm border border-gray-600 focus:border-amber-500 focus:outline-none">`;
-                html += `<option value="">Selecione...</option><option value="Sim">Sim</option><option value="Não">Não</option>`;
+                html += `<option value="">${T.select}</option><option value="${T.yes}">${T.yes}</option><option value="${T.no}">${T.no}</option>`;
                 html += `</select>`;
             } else {
                 html += `<input data-campo="${c.slug}" type="text" class="w-full bg-gray-700 text-white rounded-xl px-4 py-3 text-sm border border-gray-600 focus:border-amber-500 focus:outline-none" placeholder="${sanitizeText(c.nome)}">`;
             }
             html += `</div>`;
         });
-        html += `<button onclick="enviarCamposExtras()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-2xl text-sm transition mt-2">Continuar ➜</button>`;
+        html += `<button onclick="enviarCamposExtras()" class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-2xl text-sm transition mt-2">${T.continue}</button>`;
         html += btnVoltar('data');
         html += '</div>';
         criarCard(html);
@@ -423,7 +433,7 @@ function renderInput() {
                     <input type="hidden" name="dados_extras" value="">
                     <button type="submit"
                         class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-2xl text-sm transition">
-                        ✅ Confirmar Agendamento
+                        ${T.confirm_booking}
                     </button>
                 </form>
                 ${btnVoltar('data')}
@@ -448,14 +458,14 @@ function enviarNome() {
     addMensagemCliente(nome);
     dadosCliente.nome = nome;
     estado = 'telefone';
-    addMensagemBot('Ótimo, <strong>' + sanitizeText(nome) + '</strong>! 😊<br>Agora me diga seu <strong>telefone</strong> (com DDD):');
+    addMensagemBot(tt('ask_phone', { name: sanitizeText(nome) }));
     renderInput();
 }
 
 function enviarTelefone() {
     const tel = document.getElementById('inp-tel')?.value.trim();
     if (!tel || tel.replace(/\D/g, '').length < 10) {
-        addMensagemBot('⚠️ Telefone inválido. Informe com DDD, ex: (11) 99999-9999');
+        addMensagemBot(T.invalid_phone);
         return;
     }
     addMensagemCliente(tel);
@@ -482,18 +492,14 @@ function enviarTelefone() {
         // ── Mensalista com limite semanal ─────────────────────────────────────
         if (data.tipo_cliente === 'mensalista') {
             if (data.limite_atingido) {
-                addMensagemBot(
-                    `⚠️ Você já utilizou <strong>${data.cortes_esta_semana}</strong> de ` +
-                    `<strong>${data.limite_semana}</strong> corte(s) desta semana.<br>` +
-                    `Tente novamente na próxima semana.`
-                );
+                addMensagemBot(tt('limit_reached', { used: data.cortes_esta_semana, limit: data.limite_semana }));
                 criarCard(`
                     <form method="POST" action="{{ route('agendamento.meus-agendamentos', ['tenant' => $tenantSlug]) }}">
                         @csrf
                         <input type="hidden" name="telefone" value="${sanitizeText(tel)}">
                         <button type="submit"
                             class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-2xl text-sm transition">
-                            📋 Ver meus agendamentos
+                            📋 ${T.see_my_bookings}
                         </button>
                     </form>
                 `);
@@ -514,13 +520,13 @@ function enviarTelefone() {
             carregarProfissionais();
         }
     })
-    .catch(() => addMensagemBot('⚠️ Erro de conexão. Verifique sua internet e tente novamente.'));
+    .catch(() => addMensagemBot(T.connection_error));
 }
 
 function mostrarModalAtivo(ag, tel) {
-    const dataFormatada = new Date(ag.data_hora).toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'short' });
+    const dataFormatada = new Date(ag.data_hora).toLocaleString(LOCALE_JS, { dateStyle: 'short', timeStyle: 'short' });
     document.getElementById('info-agendamento-ativo').innerHTML =
-        `<strong>${sanitizeText(ag.servico?.nome || 'Serviço')}</strong> com <strong>${sanitizeText(ag.profissional?.nome || 'Profissional')}</strong><br>📅 ${dataFormatada}`;
+        `<strong>${sanitizeText(ag.servico?.nome || T.service_fallback)}</strong> ${T.with} <strong>${sanitizeText(ag.profissional?.nome || T.professional_fallback)}</strong><br>📅 ${dataFormatada}`;
     document.getElementById('input-telefone-modal').value = tel;
     document.getElementById('modal-agendamento-ativo').classList.remove('hidden');
 }
@@ -529,7 +535,7 @@ function mostrarModalMensalistaFixo(data) {
     const lista = document.getElementById('lista-horarios-fixos');
     lista.innerHTML = data.proximos_horarios_fixos.map(h => `
         <div class="bg-gray-700 rounded-xl px-3 py-2 text-sm">
-            <div class="text-white font-semibold">${h.dia_nome} ${h.data} às ${h.hora}</div>
+            <div class="text-white font-semibold">${h.dia_nome} ${h.data} ${T.at_time} ${h.hora}</div>
             <div class="text-gray-400 text-xs">${h.servico} · ${h.profissional}</div>
         </div>
     `).join('');
@@ -549,7 +555,7 @@ function fecharModalFixo() {
 // Mensalista fixo optou por agendar um horário avulso
 function agendarAvulsoMensalistaFixo() {
     document.getElementById('modal-mensalista-fixo').classList.add('hidden');
-    addMensagemBot('Ok! Vamos agendar um horário avulso para você. ✂️');
+    addMensagemBot(T.book_walkin);
     carregarProfissionais();
 }
 
@@ -559,10 +565,10 @@ function carregarProfissionais() {
     .then(data => {
         profissionais = data;
         estado = 'profissional';
-        addMensagemBot('Perfeito! ✨ Com qual <strong>profissional</strong> você prefere ser atendido?');
+        addMensagemBot(T.ask_professional);
         renderInput();
     })
-    .catch(() => addMensagemBot('⚠️ Erro ao carregar profissionais. Recarregue a página.'));
+    .catch(() => addMensagemBot(T.load_professionals_error));
 }
 
 function escolherProfissional(id, nome) {
@@ -585,10 +591,10 @@ function escolherProfissional(id, nome) {
     .then(data => {
         servicos = data;
         estado = 'servico';
-        addMensagemBot('Ótima escolha! ✂️ Quais <strong>serviços</strong> você deseja? Pode marcar mais de um!');
+        addMensagemBot(T.ask_services);
         renderInput();
     })
-    .catch(() => addMensagemBot('⚠️ Erro ao carregar serviços. Tente novamente.'));
+    .catch(() => addMensagemBot(T.load_services_error));
 }
 
 // ── Multi-seleção de serviços ────────────────────────────────────────────────
@@ -628,18 +634,19 @@ function atualizarTotalServicos() {
     if (!el) return;
     const sel = servicosSelecionadosLista();
     if (!sel.length) {
-        el.textContent = 'Toque nos serviços para selecionar';
+        el.textContent = T.tap_services;
         return;
     }
     const preco = sel.reduce((t, s) => t + parseFloat(s.preco), 0);
     const dur   = sel.reduce((t, s) => t + s.duracao_minutos, 0);
-    el.innerHTML = `${sel.length} serviço${sel.length > 1 ? 's' : ''} — <strong class="text-amber-400">R$ ${preco.toFixed(2).replace('.', ',')}</strong> · ⏱ ${dur} min`;
+    const precoFmt = `<strong class="text-amber-400">R$ ${preco.toFixed(2).replace('.', ',')}</strong>`;
+    el.innerHTML = tt('services_summary', { count: sel.length, price: precoFmt, min: dur });
 }
 
 function confirmarServicos() {
     const sel = servicosSelecionadosLista();
     if (!sel.length) {
-        addMensagemBot('⚠️ Escolha pelo menos um serviço para continuar.');
+        addMensagemBot(T.pick_one_service);
         return;
     }
 
@@ -655,7 +662,7 @@ function confirmarServicos() {
 
     addMensagemCliente(dadosCliente.servico_nome + ' — R$ ' + preco.toFixed(2).replace('.', ','));
     estado = 'data';
-    addMensagemBot('Combinado! 📅 Escolha o <strong>dia e horário</strong> do seu atendimento:');
+    addMensagemBot(T.pick_day_time_bot);
     renderInput();
 }
 
@@ -696,7 +703,7 @@ function selecionarDataNoCard(dataStr, rolar = true) {
 
     const container = document.getElementById('slots-container');
     if (!container) return;
-    container.innerHTML = '<div class="text-center py-3 text-gray-400 text-sm animate-pulse">Carregando horários...</div>';
+    container.innerHTML = `<div class="text-center py-3 text-gray-400 text-sm animate-pulse">${T.loading_times}</div>`;
 
     const params = new URLSearchParams({
         profissional_id: dadosCliente.profissional_id,
@@ -709,12 +716,12 @@ function selecionarDataNoCard(dataStr, rolar = true) {
     .then(r => r.json())
     .then(slots => {
         if (!Array.isArray(slots) || !slots.length) {
-            let html = '<p class="text-center text-gray-400 text-sm py-2">Nenhum horário disponível nesse dia.</p>';
+            let html = `<p class="text-center text-gray-400 text-sm py-2">${T.no_times}</p>`;
             // Oferece a lista de espera quando o estabelecimento tem o módulo
             if (temListaEspera) {
                 html += `<button type="button" onclick="mostrarListaEspera('${dataStr}')"
                     class="w-full mt-1 bg-gray-700 hover:bg-amber-500 text-white rounded-2xl py-3 text-sm font-semibold transition border border-amber-500/40">
-                    ✋ Entrar na lista de espera desse dia
+                    ${T.waitlist_enter_day}
                 </button>`;
             }
             container.innerHTML = html;
@@ -730,7 +737,7 @@ function selecionarDataNoCard(dataStr, rolar = true) {
         if (rolar) container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     })
     .catch(() => {
-        container.innerHTML = '<p class="text-center text-red-400 text-sm py-2">Erro ao carregar. Tente novamente.</p>';
+        container.innerHTML = `<p class="text-center text-red-400 text-sm py-2">${T.load_error}</p>`;
     });
 }
 
@@ -739,8 +746,8 @@ function mostrarListaEspera(dataStr) {
     const container = document.getElementById('slots-container');
     if (!container) return;
     horaEsperaSelecionada = null;
-    const dataFmt = new Date(dataStr + 'T00:00').toLocaleDateString('pt-BR');
-    container.innerHTML = `<div class="text-center py-3 text-gray-400 text-sm animate-pulse">Carregando horários...</div>`;
+    const dataFmt = new Date(dataStr + 'T00:00').toLocaleDateString(LOCALE_JS);
+    container.innerHTML = `<div class="text-center py-3 text-gray-400 text-sm animate-pulse">${T.loading_times}</div>`;
 
     // Busca a grade de horários que o profissional atende nesse dia
     fetch(`/${tenantSlug}/api/grade-horarios?profissional_id=${dadosCliente.profissional_id}&data=${dataStr}`)
@@ -752,16 +759,16 @@ function mostrarListaEspera(dataStr) {
             .join('');
         container.innerHTML = `
             <div class="bg-gray-700 rounded-2xl p-4 space-y-3">
-                <p class="text-white text-sm">Escolha o horário que você gostaria para <strong>${dataFmt}</strong>. Se abrir vaga, entramos em contato.</p>
-                <div class="grid grid-cols-3 gap-2">${opcoes || '<p class="col-span-3 text-gray-400 text-sm text-center">Sem horários configurados.</p>'}</div>
+                <p class="text-white text-sm">${tt('waitlist_pick_time', { date: dataFmt })}</p>
+                <div class="grid grid-cols-3 gap-2">${opcoes || `<p class="col-span-3 text-gray-400 text-sm text-center">${T.waitlist_no_times}</p>`}</div>
                 <button type="button" onclick="enviarListaEspera('${dataStr}')"
                     class="w-full bg-amber-500 hover:bg-amber-600 text-white font-semibold py-3 rounded-2xl text-sm transition">
-                    Entrar na lista de espera
+                    ${T.waitlist_enter}
                 </button>
             </div>`;
         container.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
     })
-    .catch(() => addMensagemBot('⚠️ Erro ao carregar horários. Tente novamente.'));
+    .catch(() => addMensagemBot(T.waitlist_times_error));
 }
 
 let horaEsperaSelecionada = null;
@@ -777,7 +784,7 @@ function selecionarHoraEspera(btn, hora) {
 
 function enviarListaEspera(dataStr) {
     const hora = horaEsperaSelecionada;
-    if (!hora) { addMensagemBot('⚠️ Escolha o horário que você gostaria.'); return; }
+    if (!hora) { addMensagemBot(T.waitlist_pick_hint); return; }
 
     fetch(`/${tenantSlug}/lista-espera`, {
         method: 'POST',
@@ -793,12 +800,12 @@ function enviarListaEspera(dataStr) {
     })
     .then(r => { if (!r.ok) throw new Error(); return r.json(); })
     .then(() => {
-        const dataFmt = new Date(dataStr + 'T00:00').toLocaleDateString('pt-BR');
+        const dataFmt = new Date(dataStr + 'T00:00').toLocaleDateString(LOCALE_JS);
         // Remove o card de horários e confirma a entrada na lista
         if (cardAtivo) cardAtivo.remove();
-        addMensagemBot(`✅ Pronto, ${dadosCliente.nome}! Você entrou na lista de espera de <strong>${dataFmt}</strong> às <strong>${hora}</strong>. Se abrir vaga, entraremos em contato. 😊`);
+        addMensagemBot(tt('waitlist_done', { name: sanitizeText(dadosCliente.nome), date: dataFmt, time: hora }));
     })
-    .catch(() => addMensagemBot('⚠️ Não foi possível entrar na lista. Tente novamente.'));
+    .catch(() => addMensagemBot(T.waitlist_error));
 }
 
 function selecionarHoraNoCard(hora, datetime) {
@@ -818,8 +825,8 @@ function selecionarHoraNoCard(hora, datetime) {
 }
 
 function confirmarDataHora() {
-    if (!dadosCliente.data) { addMensagemBot('⚠️ Escolha um dia antes de continuar.'); return; }
-    if (!dadosCliente.hora) { addMensagemBot('⚠️ Escolha um horário antes de continuar.'); return; }
+    if (!dadosCliente.data) { addMensagemBot(T.pick_day_first); return; }
+    if (!dadosCliente.hora) { addMensagemBot(T.pick_time_first); return; }
     addMensagemCliente(formatarDataHora(dadosCliente.data_hora));
 
     // Verifica se tem campos extras configurados
@@ -829,16 +836,16 @@ function confirmarDataHora() {
         if (Array.isArray(campos) && campos.length > 0) {
             dadosCliente._camposExtras = campos;
             estado = 'campos_extras';
-            addMensagemBot('📋 Precisamos de mais algumas informações:');
+            addMensagemBot(T.extra_fields_intro);
         } else {
             estado = 'confirmar';
-            addMensagemBot('Quase lá! 🎉 Confirme os detalhes do seu agendamento:');
+            addMensagemBot(T.almost_there);
         }
         renderInput();
     })
     .catch(() => {
         estado = 'confirmar';
-        addMensagemBot('Quase lá! 🎉 Confirme os detalhes do seu agendamento:');
+        addMensagemBot(T.almost_there);
         renderInput();
     });
 }
@@ -854,7 +861,7 @@ function enviarCamposExtras() {
     // Validar obrigatórios
     for (const campo of (dadosCliente._camposExtras || [])) {
         if (campo.obrigatorio && !extras[campo.slug]) {
-            addMensagemBot(`⚠️ O campo "${campo.nome}" é obrigatório.`);
+            addMensagemBot(tt('field_required', { field: sanitizeText(campo.nome) }));
             return;
         }
     }
@@ -864,7 +871,7 @@ function enviarCamposExtras() {
     if (resumo) addMensagemCliente(resumo);
 
     estado = 'confirmar';
-    addMensagemBot('Quase lá! 🎉 Confirme os detalhes do seu agendamento:');
+    addMensagemBot(T.almost_there);
     renderInput();
 }
 

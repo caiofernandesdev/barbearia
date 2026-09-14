@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Meus Agendamentos | ' . $nomeBarbearia)
+@section('title', __('booking.my_bookings_title') . ' | ' . $nomeBarbearia)
 
 @section('content')
 <div class="min-h-screen bg-gray-900 px-4 py-6 max-w-lg mx-auto">
@@ -11,7 +11,7 @@
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
             </svg>
         </a>
-        <h1 class="text-white font-bold text-lg">Meus Agendamentos</h1>
+        <h1 class="text-white font-bold text-lg">{{ __('booking.my_bookings_title') }}</h1>
     </div>
 
     @if(session('sucesso'))
@@ -32,30 +32,30 @@
         <div class="flex items-start justify-between mb-3">
             <div>
                 <div class="text-white font-semibold text-sm">{{ $ag->nomesServicos() }}</div>
-                <div class="text-gray-400 text-xs mt-0.5">com {{ $ag->profissional->nome }}</div>
+                <div class="text-gray-400 text-xs mt-0.5">{{ __('booking.with_label') }} {{ $ag->profissional->nome }}</div>
             </div>
             <span class="text-xs font-medium px-3 py-1 rounded-full
                 @if($ag->status === 'confirmado') bg-green-500 bg-opacity-20 text-green-400
                 @else bg-yellow-500 bg-opacity-20 text-yellow-400 @endif">
-                {{ $ag->status === 'confirmado' ? 'Confirmado' : 'Aguardando' }}
+                {{ $ag->status === 'confirmado' ? __('booking.status_confirmed') : __('booking.status_pending') }}
             </span>
         </div>
         <div class="flex items-center justify-between text-xs text-gray-400">
             <div class="flex items-center gap-1">
                 <span>📅</span>
-                {{ $ag->data_hora->format('d/m/Y') }} às {{ $ag->data_hora->format('H:i') }}
+                {{ $ag->data_hora->format('d/m/Y') }} {{ __('booking.at_time') }} {{ $ag->data_hora->format('H:i') }}
             </div>
             <div class="text-amber-400 font-semibold">R$ {{ number_format((float) ($ag->valor_total ?? $ag->servico?->preco ?? 0), 2, ',', '.') }}</div>
         </div>
 
         @if(in_array($ag->status, ['pendente', 'confirmado']))
         <form method="POST" action="{{ route('agendamento.cancelar', ['tenant' => $tenantSlug, 'agendamentoId' => $ag->id]) }}" class="mt-3"
-            onsubmit="return confirm('Cancelar este agendamento?')">
+            onsubmit="return confirm('{{ __('booking.cancel_confirm') }}')">
             @csrf
             <input type="hidden" name="telefone" value="{{ $telefone }}">
             <button type="submit"
                 class="w-full border border-red-500 text-red-400 hover:bg-red-500 hover:text-white py-2 rounded-xl text-xs font-medium transition">
-                Cancelar agendamento
+                {{ __('booking.cancel_booking') }}
             </button>
         </form>
         @endif
@@ -63,10 +63,10 @@
     @empty
     <div class="text-center py-12">
         <div class="text-5xl mb-3">📭</div>
-        <p class="text-gray-400 text-sm">Nenhum agendamento ativo no momento.</p>
+        <p class="text-gray-400 text-sm">{{ __('booking.no_bookings') }}</p>
         <a href="{{ route('agendamento.index', ['tenant' => $tenantSlug]) }}"
             class="inline-block mt-4 bg-amber-500 hover:bg-amber-600 text-white font-medium px-6 py-2 rounded-xl text-sm transition">
-            Fazer agendamento
+            {{ __('booking.make_booking') }}
         </a>
     </div>
     @endforelse

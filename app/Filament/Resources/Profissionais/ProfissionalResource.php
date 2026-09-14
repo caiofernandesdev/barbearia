@@ -19,11 +19,20 @@ class ProfissionalResource extends Resource
 
     protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedUserGroup;
 
-    protected static ?string $navigationLabel = 'Profissionais';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.profissionais');
+    }
 
-    protected static ?string $modelLabel = 'Profissional';
+    public static function getModelLabel(): string
+    {
+        return __('painel.model.profissional');
+    }
 
-    protected static ?string $pluralModelLabel = 'Profissionais';
+    public static function getPluralModelLabel(): string
+    {
+        return __('painel.model.profissionais');
+    }
 
     protected static ?string $recordTitleAttribute = 'nome';
 
@@ -31,7 +40,7 @@ class ProfissionalResource extends Resource
 
     public static function getNavigationGroup(): string
     {
-        return 'Cadastros';
+        return __('painel.group.cadastros');
     }
 
     public static function canAccess(): bool

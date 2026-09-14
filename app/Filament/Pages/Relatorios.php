@@ -25,7 +25,10 @@ class Relatorios extends Page implements HasTable
 
     protected string $view = 'filament.pages.relatorios';
 
-    protected static ?string $navigationLabel = 'Relatórios';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.relatorios');
+    }
 
     protected static ?string $title = 'Relatórios';
 
@@ -35,7 +38,7 @@ class Relatorios extends Page implements HasTable
 
     public static function getNavigationGroup(): string
     {
-        return 'Financeiro';
+        return __('painel.group.financeiro');
     }
 
     public static function canAccess(): bool

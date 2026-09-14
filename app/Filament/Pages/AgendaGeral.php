@@ -14,7 +14,10 @@ class AgendaGeral extends Page
 {
     protected string $view = 'filament.pages.agenda-geral';
 
-    protected static ?string $navigationLabel = 'Agenda';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.agenda');
+    }
 
     protected static ?string $title = 'Agenda';
 
@@ -24,7 +27,7 @@ class AgendaGeral extends Page
 
     public static function getNavigationGroup(): string
     {
-        return 'Agenda';
+        return __('painel.group.agenda');
     }
 
     public static function canAccess(): bool

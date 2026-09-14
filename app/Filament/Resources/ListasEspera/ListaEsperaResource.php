@@ -14,17 +14,26 @@ class ListaEsperaResource extends Resource
 
     protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedClock;
 
-    protected static ?string $navigationLabel = 'Lista de Espera';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.lista_espera');
+    }
 
-    protected static ?string $modelLabel = 'Lista de espera';
+    public static function getModelLabel(): string
+    {
+        return __('painel.model.lista_espera');
+    }
 
-    protected static ?string $pluralModelLabel = 'Lista de Espera';
+    public static function getPluralModelLabel(): string
+    {
+        return __('painel.model.lista_espera');
+    }
 
     protected static ?int $navigationSort = 3;
 
     public static function getNavigationGroup(): string
     {
-        return 'Agenda';
+        return __('painel.group.agenda');
     }
 
     public static function canAccess(): bool

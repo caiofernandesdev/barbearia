@@ -16,10 +16,12 @@ use Illuminate\Database\Eloquent\Model;
     'intervalo_minutos',
     'percentual_barbearia',
     'dias_antecedencia_lembrete',
+    'dias_antecedencia_agendamento',
     'mensagem_repescagem',
     'cancelar_nao_confirmados',
     'horas_antecedencia_cancelamento',
     'tema_agendamento',
+    'idioma',
     'tenant_id',
 ])]
 class ConfiguracaoBarbearia extends Model
@@ -47,6 +49,7 @@ class ConfiguracaoBarbearia extends Model
             'intervalo_minutos' => 'integer',
             'percentual_barbearia' => 'decimal:2',
             'dias_antecedencia_lembrete' => 'integer',
+            'dias_antecedencia_agendamento' => 'integer',
         ];
     }
 

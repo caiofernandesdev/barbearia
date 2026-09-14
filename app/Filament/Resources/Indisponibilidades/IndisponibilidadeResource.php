@@ -19,17 +19,26 @@ class IndisponibilidadeResource extends Resource
 
     protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedNoSymbol;
 
-    protected static ?string $navigationLabel = 'Indisponibilidades';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.indisponibilidades');
+    }
 
-    protected static ?string $modelLabel = 'Indisponibilidade';
+    public static function getModelLabel(): string
+    {
+        return __('painel.model.indisponibilidade');
+    }
 
-    protected static ?string $pluralModelLabel = 'Indisponibilidades';
+    public static function getPluralModelLabel(): string
+    {
+        return __('painel.model.indisponibilidades');
+    }
 
     protected static ?int $navigationSort = 2;
 
     public static function getNavigationGroup(): string
     {
-        return 'Agenda';
+        return __('painel.group.agenda');
     }
 
     public static function canAccess(): bool

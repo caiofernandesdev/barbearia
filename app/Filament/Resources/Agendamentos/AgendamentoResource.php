@@ -19,19 +19,28 @@ class AgendamentoResource extends Resource
 
     protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedCalendarDays;
 
-    protected static ?string $navigationLabel = 'Agendamentos';
-
-    protected static ?string $modelLabel = 'Agendamento';
-
-    protected static ?string $pluralModelLabel = 'Agendamentos';
-
     protected static ?string $recordTitleAttribute = 'cliente_nome';
 
     protected static ?int $navigationSort = 1;
 
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.agendamentos');
+    }
+
+    public static function getModelLabel(): string
+    {
+        return __('painel.model.agendamento');
+    }
+
+    public static function getPluralModelLabel(): string
+    {
+        return __('painel.model.agendamentos');
+    }
+
     public static function getNavigationGroup(): string
     {
-        return 'Agenda';
+        return __('painel.group.agenda');
     }
 
     public static function canAccess(): bool

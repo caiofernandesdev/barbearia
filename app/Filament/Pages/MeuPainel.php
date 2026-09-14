@@ -26,7 +26,10 @@ class MeuPainel extends Page implements HasTable
 
     protected string $view = 'filament.pages.meu-painel';
 
-    protected static ?string $navigationLabel = 'Meu Painel';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.meu_painel');
+    }
 
     protected static ?string $title = 'Meu Painel';
 

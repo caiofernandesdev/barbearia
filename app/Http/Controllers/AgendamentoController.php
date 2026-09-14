@@ -13,6 +13,7 @@ use App\Services\DisponibilidadeService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class AgendamentoController extends Controller
 {
@@ -28,6 +29,7 @@ class AgendamentoController extends Controller
             'tenantSlug' => $request->route('tenant'),
             'tema' => $config->tema_agendamento ?? 'escuro',
             'temListaEspera' => $tenant?->hasFeature('lista_espera') ?? false,
+            'diasAntecedencia' => (int) ($config->dias_antecedencia_agendamento ?? 14),
         ]);
     }
 
@@ -207,11 +209,12 @@ class AgendamentoController extends Controller
         $data = Carbon::parse($request->data)->startOfDay();
         $hoje = Carbon::today();
 
-        if ($data->lt($hoje) || $data->gt($hoje->copy()->addDays(14))) {
-            return response()->json(['error' => 'Data fora do limite permitido (máximo 14 dias)'], 422);
-        }
-
         $config = ConfiguracaoBarbearia::getInstance();
+        $diasAntecedencia = (int) ($config->dias_antecedencia_agendamento ?? 14);
+
+        if ($data->lt($hoje) || $data->gt($hoje->copy()->addDays($diasAntecedencia))) {
+            return response()->json(['error' => "Data fora do limite permitido (máximo {$diasAntecedencia} dias)"], 422);
+        }
         $profissional = Profissional::findOrFail($request->profissional_id);
 
         $diasTrabalho = $profissional->dias_trabalho ?? [1, 2, 3, 4, 5, 6];
@@ -496,7 +499,7 @@ class AgendamentoController extends Controller
 
         // Flash próprio: cancelamento não deve aparecer em verde de "sucesso"
         return redirect()->route('agendamento.meus-agendamentos', ['tenant' => $request->route('tenant')])
-            ->with('cancelado', 'Seu agendamento foi cancelado.');
+            ->with('cancelado', __('booking.flash_cancelled'));
     }
 
     // ─── Helpers privados ─────────────────────────────────────────────────────
@@ -524,10 +527,12 @@ class AgendamentoController extends Controller
         $proximos = [];
         $hoje = Carbon::today();
         $limite = $hoje->copy()->addDays($dias);
-        $nomeDias = [
-            0 => 'Domingo', 1 => 'Segunda', 2 => 'Terça',
-            3 => 'Quarta',  4 => 'Quinta',  5 => 'Sexta', 6 => 'Sábado',
-        ];
+        // Nomes dos dias no idioma do estabelecimento (middleware já aplicou o locale)
+        $nomeDias = collect(range(0, 6))->mapWithKeys(fn ($d) => [
+            $d => Str::ucfirst(
+                Carbon::now()->startOfWeek(Carbon::SUNDAY)->addDays($d)->locale(app()->getLocale())->isoFormat('dddd')
+            ),
+        ])->all();
 
         foreach ($mensalista->horariosFixos()->where('ativo', true)->with(['profissional', 'servico'])->get() as $fixo) {
             // Encontra a próxima ocorrência do dia da semana configurado

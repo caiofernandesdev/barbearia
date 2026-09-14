@@ -25,11 +25,20 @@ class CampoPersonalizadoResource extends Resource
 
     protected static ?string $slug = 'campos-agendamento';
 
-    protected static ?string $navigationLabel = 'Campos do Agendamento';
+    public static function getNavigationLabel(): string
+    {
+        return __('painel.nav.campos');
+    }
 
-    protected static ?string $modelLabel = 'Campo';
+    public static function getModelLabel(): string
+    {
+        return __('painel.model.campo');
+    }
 
-    protected static ?string $pluralModelLabel = 'Campos do Agendamento';
+    public static function getPluralModelLabel(): string
+    {
+        return __('painel.model.campos');
+    }
 
     protected static ?int $navigationSort = 3;
 
@@ -40,7 +49,7 @@ class CampoPersonalizadoResource extends Resource
 
     public static function getNavigationGroup(): string
     {
-        return 'Cadastros';
+        return __('painel.group.cadastros');
     }
 
     public static function canAccess(): bool
