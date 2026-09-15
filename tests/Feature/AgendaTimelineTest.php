@@ -127,6 +127,23 @@ class AgendaTimelineTest extends TestCase
         $this->assertContains(44.0, $tl['subLinhas']); // 08:20
     }
 
+    public function test_intervalo_grande_divide_a_hora_em_15min(): void
+    {
+        // Intervalo de 1h não deixaria referência dentro da hora → cai no grid de 15min
+        ConfiguracaoBarbearia::getInstance()->update(['intervalo_minutos' => 60]);
+
+        $comp = new AgendaDiaTable;
+        $comp->profissionalId = $this->prof->id;
+        $comp->dataSelecionada = '2026-08-18';
+
+        $tl = $comp->getTimeline();
+
+        // 08:15, 08:30, 08:45 → 33 / 66 / 99 px (15/30/45 min * 2.2)
+        $this->assertContains(33.0, $tl['subLinhas']);
+        $this->assertContains(66.0, $tl['subLinhas']);
+        $this->assertContains(99.0, $tl['subLinhas']);
+    }
+
     public function test_agenda_de_outro_dia_nao_tem_linha_do_agora(): void
     {
         $comp = new AgendaDiaTable;

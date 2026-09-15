@@ -115,8 +115,8 @@
         .dark .agx-tl-body { border-color:rgba(255,255,255,.10); }
         .agx-tl-hour { position:absolute; left:0; right:0; border-top:1px solid #e5e7eb; pointer-events:none; }
         .dark .agx-tl-hour { border-color:rgba(255,255,255,.10); }
-        .agx-tl-subhour { position:absolute; left:0; right:0; border-top:1px solid #f2f4f7; pointer-events:none; }
-        .dark .agx-tl-subhour { border-color:rgba(255,255,255,.04); }
+        .agx-tl-subhour { position:absolute; left:0; right:0; border-top:1px dashed #eceff4; pointer-events:none; }
+        .dark .agx-tl-subhour { border-color:rgba(255,255,255,.07); }
         .agx-tl-hourlabel { position:absolute; left:-56px; width:48px; text-align:right; font-size:11px; color:#94a3b8; transform:translateY(-7px); pointer-events:none; }
         .agx-tl-now { position:absolute; left:0; right:0; border-top:2px solid #ef4444; z-index:6; pointer-events:none; }
         .agx-tl-nowlabel { position:absolute; left:-56px; background:#ef4444; color:#fff; font-size:10px; font-weight:700; padding:1px 5px; border-radius:6px; transform:translateY(-50%); z-index:6; pointer-events:none; }

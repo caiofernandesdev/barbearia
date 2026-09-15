@@ -643,10 +643,13 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
             ];
         }
 
-        // Listras intermediárias a cada intervalo de agendamento (ex.: 10 em 10min),
-        // fora as que caem na hora cheia (essas já têm a linha + rótulo).
+        // Linhas de divisão dentro de cada hora (fora a hora cheia, que já tem
+        // rótulo). Grid regular: usa o intervalo de agendamento quando ele é fino
+        // e divide bem a hora (10/15/20 min); nos intervalos maiores cai num grid
+        // de 15 em 15 min para a hora nunca ficar sem referência de minutos.
+        $subPasso = ($intervalo > 0 && $intervalo < 30 && 60 % $intervalo === 0) ? $intervalo : 15;
         $subLinhas = [];
-        for ($m = $inicioMin; $m <= $fimMin; $m += max(5, $intervalo)) {
+        for ($m = $inicioMin; $m <= $fimMin; $m += $subPasso) {
             if ($m % 60 !== 0) {
                 $subLinhas[] = round(($m - $inicioMin) * $pxPorMin, 1);
             }
