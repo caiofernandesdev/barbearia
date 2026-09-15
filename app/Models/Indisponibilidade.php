@@ -26,11 +26,11 @@ class Indisponibilidade extends Model
         return $this->belongsTo(Profissional::class);
     }
 
-    // Retorna label amigável do escopo
+    // Retorna label amigável do escopo (no idioma do estabelecimento)
     public function getEscopoAttribute(): string
     {
         return $this->profissional_id
-            ? ($this->profissional->nome ?? 'Profissional')
-            : 'Todo o estabelecimento';
+            ? ($this->profissional->nome ?? __('painel.agendamento.profissional'))
+            : __('painel.indisp.escopo_todos');
     }
 }

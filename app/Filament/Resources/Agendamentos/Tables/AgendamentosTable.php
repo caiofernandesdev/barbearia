@@ -34,14 +34,14 @@ class AgendamentosTable
             ->defaultSort('data_hora', 'desc')
             ->filters([
                 Filter::make('data')
-                    ->label('Período')
+                    ->label(__('painel.agendamento.f_periodo'))
                     ->form([
                         DatePicker::make('data_inicio')
-                            ->label('De')
+                            ->label(__('painel.agendamento.f_de'))
                             ->displayFormat('d/m/Y')
                             ->native(false),
                         DatePicker::make('data_fim')
-                            ->label('Até')
+                            ->label(__('painel.agendamento.f_ate'))
                             ->displayFormat('d/m/Y')
                             ->native(false),
                     ])
@@ -53,38 +53,38 @@ class AgendamentosTable
                     ->indicateUsing(function (array $data): array {
                         $indicators = [];
                         if ($data['data_inicio'] ?? null) {
-                            $indicators[] = 'De: '.Carbon::parse($data['data_inicio'])->format('d/m/Y');
+                            $indicators[] = __('painel.agendamento.ind_de').' '.Carbon::parse($data['data_inicio'])->format('d/m/Y');
                         }
                         if ($data['data_fim'] ?? null) {
-                            $indicators[] = 'Até: '.Carbon::parse($data['data_fim'])->format('d/m/Y');
+                            $indicators[] = __('painel.agendamento.ind_ate').' '.Carbon::parse($data['data_fim'])->format('d/m/Y');
                         }
 
                         return $indicators;
                     }),
 
                 Filter::make('hoje')
-                    ->label('Hoje')
+                    ->label(__('painel.agendamento.f_hoje'))
                     ->query(fn (Builder $query) => $query->whereDate('data_hora', now()->today())),
 
                 SelectFilter::make('status')
-                    ->label('Status')
+                    ->label(__('painel.agendamento.status'))
                     ->options([
-                        'pendente' => 'Pendente',
-                        'confirmado' => 'Confirmado',
-                        'concluido' => 'Concluído',
-                        'cancelado' => 'Cancelado',
+                        'pendente' => __('painel.agendamento.st_pendente'),
+                        'confirmado' => __('painel.agendamento.st_confirmado'),
+                        'concluido' => __('painel.agendamento.st_concluido'),
+                        'cancelado' => __('painel.agendamento.st_cancelado'),
                     ]),
 
                 SelectFilter::make('profissional_id')
-                    ->label('Profissional')
+                    ->label(__('painel.agendamento.profissional'))
                     ->relationship('profissional', 'nome'),
 
                 Filter::make('mensalistas')
-                    ->label('Apenas mensalistas')
+                    ->label(__('painel.agendamento.f_so_mensalistas'))
                     ->query(fn (Builder $query) => $query->where('mensalista', true)),
 
                 Filter::make('avulso_mensalista_fixo')
-                    ->label('⚠ Avulso fora do horário fixo')
+                    ->label(__('painel.agendamento.f_avulso_fixo'))
                     ->query(fn (Builder $query) => $query->where('is_avulso_mensalista_fixo', true)),
 
                 // Filtros dinâmicos por campo personalizado (respostas em dados_extras JSON)
@@ -92,13 +92,13 @@ class AgendamentosTable
             ])
             ->recordActions([
                 Action::make('enviar_confirmacao')
-                    ->label('Pedir confirmação')
+                    ->label(__('painel.agendamento.act_pedir'))
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('warning')
                     ->requiresConfirmation()
-                    ->modalHeading('Pedir confirmação por WhatsApp?')
-                    ->modalDescription(fn ($record) => "Enviar mensagem pedindo confirmação para {$record->cliente_nome} ({$record->cliente_telefone})?")
-                    ->modalSubmitActionLabel('Enviar')
+                    ->modalHeading(__('painel.agendamento.act_modal_heading'))
+                    ->modalDescription(fn ($record) => __('painel.agendamento.act_modal_desc', ['nome' => $record->cliente_nome, 'tel' => $record->cliente_telefone]))
+                    ->modalSubmitActionLabel(__('painel.agendamento.act_enviar'))
                     // Sem módulo WhatsApp ativo não há confirmação por mensagem
                     ->visible(fn () => (app()->bound('current_tenant') ? app('current_tenant')?->whatsappAtivo() : false) ?? false)
                     ->hidden(fn ($record) => $record->status === 'cancelado')
@@ -106,21 +106,21 @@ class AgendamentosTable
                         $nomeBarbearia = ConfiguracaoBarbearia::getInstance()->nome_barbearia;
                         $mensagem = AgendamentoObserver::mensagemLembrete($record, $nomeBarbearia);
                         EnviarWhatsAppJob::dispatch($record->cliente_telefone, $mensagem, $record->tenant_id);
-                        Notification::make()->title('Mensagem enviada!')->body("Confirmação enviada para {$record->cliente_nome}.")->success()->send();
+                        Notification::make()->title(__('painel.agendamento.notif_enviada'))->body(__('painel.agendamento.notif_enviada_body', ['nome' => $record->cliente_nome]))->success()->send();
                     }),
 
                 EditAction::make(),
-                DeleteAction::make()->label('Excluir'),
+                DeleteAction::make(),
             ])
             ->toolbarActions([
                 BulkAction::make('enviar_confirmacao_massa')
-                    ->label('Pedir confirmação')
+                    ->label(__('painel.agendamento.act_pedir'))
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('warning')
                     ->requiresConfirmation()
-                    ->modalHeading('Pedir confirmação por WhatsApp?')
-                    ->modalDescription(fn (Collection $records) => "Enviar mensagem de confirmação para {$records->count()} agendamento(s) selecionado(s)?")
-                    ->modalSubmitActionLabel('Enviar para todos')
+                    ->modalHeading(__('painel.agendamento.act_modal_heading'))
+                    ->modalDescription(fn (Collection $records) => __('painel.agendamento.act_bulk_desc', ['count' => $records->count()]))
+                    ->modalSubmitActionLabel(__('painel.agendamento.act_enviar_todos'))
                     ->visible(fn () => (app()->bound('current_tenant') ? app('current_tenant')?->whatsappAtivo() : false) ?? false)
                     ->deselectRecordsAfterCompletion()
                     ->action(function (Collection $records) {
@@ -138,7 +138,7 @@ class AgendamentosTable
 
                         if ($enviados > 0) {
                             Notification::make()
-                                ->title("$enviados mensagem(ns) na fila!")
+                                ->title(__('painel.agendamento.notif_fila', ['count' => $enviados]))
                                 ->success()
                                 ->send();
                         }
@@ -156,8 +156,15 @@ class AgendamentosTable
     private static function colunaStatus(): TextColumn
     {
         return TextColumn::make('status')
-            ->label('Status')
+            ->label(__('painel.agendamento.status'))
             ->badge()
+            ->formatStateUsing(fn (string $state): string => match ($state) {
+                'pendente' => __('painel.agendamento.st_pendente'),
+                'confirmado' => __('painel.agendamento.st_confirmado'),
+                'concluido' => __('painel.agendamento.st_concluido'),
+                'cancelado' => __('painel.agendamento.st_cancelado'),
+                default => $state,
+            })
             ->color(fn (string $state): string => match ($state) {
                 'pendente' => 'warning',
                 'confirmado' => 'success',
@@ -174,53 +181,53 @@ class AgendamentosTable
             ->contentGrid(null)
             ->columns([
                 TextColumn::make('cliente_nome')
-                    ->label('Cliente')
+                    ->label(__('painel.agendamento.col_cliente'))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('cliente_telefone')
-                    ->label('Telefone')
+                    ->label(__('painel.agendamento.col_telefone'))
                     ->searchable()
                     ->visibleFrom('lg'),
 
                 TextColumn::make('profissional.nome')
-                    ->label('Profissional')
+                    ->label(__('painel.agendamento.profissional'))
                     ->sortable()
                     ->visibleFrom('md'),
 
                 TextColumn::make('servico.nome')
-                    ->label('Serviço')
+                    ->label(__('painel.agendamento.col_servico'))
                     ->getStateUsing(fn ($record) => $record->nomesServicos())
                     ->description(fn ($record) => 'R$ '.number_format((float) ($record->valor_total ?? $record->servico?->preco ?? 0), 2, ',', '.'))
                     ->sortable()
                     ->visibleFrom('sm'),
 
                 TextColumn::make('data_hora')
-                    ->label('Data e Hora')
+                    ->label(__('painel.agendamento.data_hora'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
 
                 self::colunaStatus(),
 
                 IconColumn::make('mensalista')
-                    ->label('Mensalista')
+                    ->label(__('painel.agendamento.mensalista'))
                     ->boolean()
                     ->visibleFrom('lg'),
 
                 IconColumn::make('is_avulso_mensalista_fixo')
-                    ->label('⚠ Avulso Fixo')
+                    ->label(__('painel.agendamento.col_avulso_fixo'))
                     ->boolean()
                     ->trueIcon('heroicon-o-exclamation-triangle')
                     ->falseIcon('heroicon-o-minus')
                     ->trueColor('warning')
                     ->falseColor('gray')
-                    ->tooltip('Mensalista Fixo que agendou fora do horário fixo')
+                    ->tooltip(__('painel.agendamento.tip_avulso_fixo'))
                     ->visibleFrom('lg'),
 
                 AgendamentoTabela::colunaDetalhes(),
 
                 TextColumn::make('created_at')
-                    ->label('Criado em')
+                    ->label(__('painel.agendamento.col_criado'))
                     ->date('d/m/Y')
                     ->toggleable(isToggledHiddenByDefault: true),
             ]);

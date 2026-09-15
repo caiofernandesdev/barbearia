@@ -27,28 +27,28 @@ class ListasEsperaTable
             ->filters([
                 SelectFilter::make('status')
                     ->options([
-                        'aguardando' => 'Aguardando',
-                        'encaixado' => 'Encaixado',
-                        'cancelado' => 'Cancelado',
+                        'aguardando' => __('painel.espera.st_aguardando'),
+                        'encaixado' => __('painel.espera.st_encaixado'),
+                        'cancelado' => __('painel.espera.st_cancelado'),
                     ])
                     ->default('aguardando'),
             ])
             ->recordActions([
                 // Cria o agendamento a partir do pedido, se o horário estiver livre
                 Action::make('encaixar')
-                    ->label('Encaixar')
+                    ->label(__('painel.espera.act_encaixar'))
                     ->icon('heroicon-o-calendar-days')
                     ->color('success')
-                    ->modalHeading('Encaixar na agenda')
-                    ->modalSubmitActionLabel('Encaixar')
+                    ->modalHeading(__('painel.espera.enc_heading'))
+                    ->modalSubmitActionLabel(__('painel.espera.act_encaixar'))
                     ->visible(fn ($record) => $record->status === 'aguardando')
                     // O dono escolhe qualquer horário livre do profissional nesse dia
                     ->schema([
                         Select::make('hora')
-                            ->label('Horário')
+                            ->label(__('painel.espera.enc_hora'))
                             ->options(fn ($record) => self::horariosLivres($record))
                             ->default(fn ($record) => $record->hora_preferida)
-                            ->helperText(fn ($record) => "Cliente pediu {$record->hora_preferida}. Escolha o horário livre para encaixar.")
+                            ->helperText(fn ($record) => __('painel.espera.enc_help', ['hora' => $record->hora_preferida]))
                             ->required(),
                     ])
                     ->action(function (array $data, $record) {
@@ -57,8 +57,8 @@ class ListasEsperaTable
 
                         if (Agendamento::temConflito((int) $record->profissional_id, $inicio, $duracao, $record->tenant_id)) {
                             Notification::make()
-                                ->title('Horário ocupado')
-                                ->body('Esse horário já tem outro atendimento. Escolha outro.')
+                                ->title(__('painel.espera.n_ocupado'))
+                                ->body(__('painel.espera.n_ocupado_body'))
                                 ->danger()
                                 ->send();
 
@@ -75,10 +75,10 @@ class ListasEsperaTable
                         ]);
                         $record->update(['status' => 'encaixado']);
 
-                        Notification::make()->title('Cliente encaixado na agenda!')->success()->send();
+                        Notification::make()->title(__('painel.espera.n_encaixado'))->success()->send();
                     }),
 
-                DeleteAction::make()->label('Remover'),
+                DeleteAction::make()->label(__('painel.espera.act_remover')),
             ]);
 
         return $emGrade
@@ -90,7 +90,7 @@ class ListasEsperaTable
     private static function colunaStatus(): TextColumn
     {
         return TextColumn::make('status')
-            ->label('Status')
+            ->label(__('painel.espera.status'))
             ->badge()
             ->color(fn (string $state) => match ($state) {
                 'aguardando' => 'warning',
@@ -99,9 +99,9 @@ class ListasEsperaTable
                 default => 'gray',
             })
             ->formatStateUsing(fn (string $state) => match ($state) {
-                'aguardando' => 'Aguardando',
-                'encaixado' => 'Encaixado',
-                'cancelado' => 'Cancelado',
+                'aguardando' => __('painel.espera.st_aguardando'),
+                'encaixado' => __('painel.espera.st_encaixado'),
+                'cancelado' => __('painel.espera.st_cancelado'),
                 default => $state,
             });
     }
@@ -113,33 +113,33 @@ class ListasEsperaTable
             ->contentGrid(null)
             ->columns([
                 TextColumn::make('data')
-                    ->label('Dia desejado')
+                    ->label(__('painel.espera.col_dia'))
                     ->date('d/m/Y')
                     ->sortable(),
 
                 TextColumn::make('hora_preferida')
-                    ->label('Horário')
+                    ->label(__('painel.espera.col_hora'))
                     ->badge()
                     ->color('warning'),
 
                 TextColumn::make('cliente_nome')
-                    ->label('Cliente')
+                    ->label(__('painel.agendamento.col_cliente'))
                     ->description(fn ($record) => $record->cliente_telefone)
                     ->searchable(),
 
                 TextColumn::make('profissional.nome')
-                    ->label('Profissional')
+                    ->label(__('painel.agendamento.profissional'))
                     ->visibleFrom('md'),
 
                 TextColumn::make('servico.nome')
-                    ->label('Serviço')
+                    ->label(__('painel.agendamento.col_servico'))
                     ->placeholder('—')
                     ->visibleFrom('md'),
 
                 self::colunaStatus(),
 
                 TextColumn::make('created_at')
-                    ->label('Entrou em')
+                    ->label(__('painel.espera.col_entrou'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
@@ -162,7 +162,7 @@ class ListasEsperaTable
                     TextColumn::make('data')
                         ->date('d/m/Y')
                         ->prefix('📅 ')
-                        ->suffix(fn ($record) => ' às '.$record->hora_preferida)
+                        ->suffix(fn ($record) => __('painel.espera.grade_as').$record->hora_preferida)
                         ->color('gray'),
 
                     TextColumn::make('profissional.nome')
@@ -170,7 +170,7 @@ class ListasEsperaTable
                         ->color('gray'),
 
                     TextColumn::make('servico.nome')
-                        ->placeholder('sem serviço definido')
+                        ->placeholder(__('painel.espera.grade_sem_servico'))
                         ->icon('heroicon-m-scissors')
                         ->color('gray'),
 

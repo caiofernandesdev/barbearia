@@ -44,18 +44,18 @@ class RepescagemStatsWidget extends StatsOverviewWidget
         $criticos = $this->contarAusentes(90);
 
         return [
-            Stat::make('Clientes sumidos', (string) $sumidos)
-                ->description('sem agendar há 30+ dias')
+            Stat::make(__('painel.repescagem.stat_sumidos'), (string) $sumidos)
+                ->description(__('painel.repescagem.stat_sumidos_desc'))
                 ->descriptionIcon(Heroicon::OutlinedUserGroup)
                 ->color($sumidos > 0 ? 'warning' : 'success'),
 
-            Stat::make('Há 60+ dias', (string) $antigos)
-                ->description('vale um empurrãozinho')
+            Stat::make(__('painel.repescagem.stat_60'), (string) $antigos)
+                ->description(__('painel.repescagem.stat_60_desc'))
                 ->descriptionIcon(Heroicon::OutlinedClock)
                 ->color($antigos > 0 ? 'warning' : 'gray'),
 
-            Stat::make('Há 90+ dias', (string) $criticos)
-                ->description('risco de perder o cliente')
+            Stat::make(__('painel.repescagem.stat_90'), (string) $criticos)
+                ->description(__('painel.repescagem.stat_90_desc'))
                 ->descriptionIcon(Heroicon::OutlinedExclamationTriangle)
                 ->color($criticos > 0 ? 'danger' : 'gray'),
         ];

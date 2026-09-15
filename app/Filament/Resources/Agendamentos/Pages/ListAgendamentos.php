@@ -17,7 +17,7 @@ class ListAgendamentos extends ListRecords
     {
         return [
             $this->layoutToggleAction(),
-            CreateAction::make()->label('Novo Agendamento'),
+            CreateAction::make(),
         ];
     }
 }

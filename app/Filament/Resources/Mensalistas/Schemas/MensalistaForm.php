@@ -2,106 +2,108 @@
 
 namespace App\Filament\Resources\Mensalistas\Schemas;
 
+use Carbon\Carbon;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class MensalistaForm
 {
+    /** 0=Dom ... 6=Sáb, nomes no idioma do estabelecimento. */
+    private static function dias(): array
+    {
+        return collect(range(0, 6))->mapWithKeys(fn ($d) => [
+            $d => Str::ucfirst(Carbon::now()->startOfWeek(Carbon::SUNDAY)->addDays($d)->locale(app()->getLocale())->isoFormat('dddd')),
+        ])->all();
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
 
             TextInput::make('nome')
-                ->label('Nome')
+                ->label(__('painel.cliente.nome'))
                 ->required()
                 ->maxLength(100),
 
             TextInput::make('telefone')
-                ->label('Telefone (somente números)')
+                ->label(__('painel.cliente.telefone'))
                 ->required()
                 ->tel()
                 ->maxLength(20)
-                ->helperText('Use o mesmo número que o cliente informa no agendamento.'),
+                ->helperText(__('painel.cliente.telefone_help')),
 
             Select::make('tipo')
-                ->label('Tipo de Cliente')
+                ->label(__('painel.cliente.tipo'))
                 ->options([
-                    'avulso' => 'Avulso — atendimento esporádico, sem restrição',
-                    'mensalista' => 'Mensalista — limite de cortes por semana',
-                    'mensalista_fixo' => 'Mensalista Fixo — horário semanal fixo',
+                    'avulso' => __('painel.cliente.tipo_avulso'),
+                    'mensalista' => __('painel.cliente.tipo_mensalista'),
+                    'mensalista_fixo' => __('painel.cliente.tipo_fixo'),
                 ])
                 ->default('avulso')
                 ->required()
                 ->live()
-                ->helperText('Avulso = liberdade total. Mensalista = limite semanal. Fixo = horário recorrente cadastrado.'),
+                ->helperText(__('painel.cliente.tipo_help')),
 
             TextInput::make('limite_cortes_semana')
-                ->label('Limite de cortes por semana')
+                ->label(__('painel.cliente.limite'))
                 ->numeric()
                 ->default(1)
                 ->minValue(1)
                 ->maxValue(7)
-                ->helperText('Sobrescreve o limite global configurado no estabelecimento.')
+                ->helperText(__('painel.cliente.limite_help'))
                 ->visible(fn (Get $get): bool => $get('tipo') === 'mensalista'),
 
             TextInput::make('valor_mensalidade')
-                ->label('Valor da mensalidade (R$)')
+                ->label(__('painel.cliente.valor'))
                 ->numeric()
                 ->default(0)
                 ->minValue(0)
                 ->prefix('R$')
-                ->helperText('Valor cobrado mensalmente deste cliente. Usado no cálculo do Salário Emocional.')
+                ->helperText(__('painel.cliente.valor_help'))
                 ->visible(fn (Get $get): bool => in_array($get('tipo'), ['mensalista', 'mensalista_fixo'])),
 
             // Repeater para horários fixos — visível apenas quando tipo = mensalista_fixo
             Repeater::make('horariosFixos')
-                ->label('Horários Fixos Semanais')
+                ->label(__('painel.cliente.rep_titulo'))
                 ->relationship()
                 ->schema([
                     Select::make('profissional_id')
-                        ->label('Profissional')
+                        ->label(__('painel.agendamento.profissional'))
                         ->relationship('profissional', 'nome')
                         ->required(),
 
                     Select::make('servico_id')
-                        ->label('Serviço')
+                        ->label(__('painel.agendamento.col_servico'))
                         ->relationship('servico', 'nome')
                         ->required(),
 
                     Select::make('dia_semana')
-                        ->label('Dia da Semana')
-                        ->options([
-                            0 => 'Domingo',
-                            1 => 'Segunda-feira',
-                            2 => 'Terça-feira',
-                            3 => 'Quarta-feira',
-                            4 => 'Quinta-feira',
-                            5 => 'Sexta-feira',
-                            6 => 'Sábado',
-                        ])
+                        ->label(__('painel.cliente.rep_dia'))
+                        ->options(self::dias())
                         ->required(),
 
                     Select::make('hora')
-                        ->label('Horário')
+                        ->label(__('painel.cliente.rep_hora'))
                         ->options(
                             collect(range(6, 22))->flatMap(fn ($h) => [
                                 sprintf('%02d:00', $h) => sprintf('%02d:00', $h),
                                 sprintf('%02d:30', $h) => sprintf('%02d:30', $h),
-                            ])->prepend('Selecione', '')->toArray()
+                            ])->prepend(__('painel.cliente.rep_selecione'), '')->toArray()
                         )
                         ->required(),
 
                     Toggle::make('ativo')
-                        ->label('Ativo')
+                        ->label(__('painel.cliente.rep_ativo'))
                         ->default(true),
                 ])
                 ->columns(2)
-                ->addActionLabel('+ Adicionar horário fixo')
-                ->helperText('Esses horários são bloqueados na agenda para outros clientes e exibidos ao mensalista fixo ao identificar o telefone.')
+                ->addActionLabel(__('painel.cliente.rep_add'))
+                ->helperText(__('painel.cliente.rep_help'))
                 ->visible(fn (Get $get): bool => $get('tipo') === 'mensalista_fixo'),
 
         ]);

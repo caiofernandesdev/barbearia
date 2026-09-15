@@ -25,7 +25,7 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
 
     public ?int $profissionalId = null;
 
-    public string $heading = 'Minha Agenda';
+    public string $heading = '';
 
     public string $dataSelecionada = '';
 
@@ -40,6 +40,8 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
 
     public function mount(): void
     {
+        // Título padrão traduzido (não sobrescreve um heading passado pela página)
+        $this->heading = $this->heading ?: __('painel.agenda.titulo');
         $this->dataSelecionada = now()->format('Y-m-d');
     }
 
@@ -107,8 +109,8 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         $this->fecharCancelModal();
 
         Notification::make()
-            ->title('Agendamento cancelado')
-            ->body("O horário de {$cliente} foi liberado.")
+            ->title(__('painel.agenda.n_cancelado'))
+            ->body(__('painel.agenda.n_cancelado_body', ['nome' => $cliente]))
             ->success()
             ->send();
     }
@@ -125,16 +127,16 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
     public function agendarAction(): Action
     {
         return Action::make('agendar')
-            ->modalHeading(fn (array $arguments) => 'Agendar — '.($arguments['hora'] ?? ''))
+            ->modalHeading(fn (array $arguments) => __('painel.agenda.ag_heading', ['hora' => $arguments['hora'] ?? '']))
             // Slot já passou: avisa mas deixa marcar (registro de balcão/atraso)
             ->modalDescription(fn (array $arguments) => ($arguments['passado'] ?? false)
-                ? '⚠️ Esse horário já passou. Deseja marcar mesmo assim? Preencha e confirme.'
+                ? __('painel.agenda.ag_passado_desc')
                 : null)
-            ->modalSubmitActionLabel('Confirmar agendamento')
+            ->modalSubmitActionLabel(__('painel.agenda.ag_submit'))
             ->schema([
                 Select::make('cliente_id')
-                    ->label('Buscar cliente cadastrado')
-                    ->placeholder('Digite o nome ou telefone')
+                    ->label(__('painel.agenda.ag_buscar'))
+                    ->placeholder(__('painel.agenda.ag_buscar_ph'))
                     ->searchable()
                     ->getSearchResultsUsing(fn (string $search) => Mensalista::query()
                         ->where(fn ($q) => $q->where('nome', 'like', "%{$search}%")->orWhere('telefone', 'like', "%{$search}%"))
@@ -151,15 +153,15 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
                     })
                     // Só serve para preencher os campos abaixo; não vai para o $data
                     ->dehydrated(false)
-                    ->helperText('Opcional — preenche nome e telefone automaticamente.'),
+                    ->helperText(__('painel.agenda.ag_buscar_help')),
 
                 TextInput::make('cliente_nome')
-                    ->label('Nome do cliente')
+                    ->label(__('painel.agenda.ag_nome'))
                     ->required()
                     ->maxLength(100),
 
                 TextInput::make('cliente_telefone')
-                    ->label('Telefone (opcional)')
+                    ->label(__('painel.agendamento.telefone'))
                     // Sem ->tel(): a validação de formato do Filament rejeita
                     // número colado/autopreenchido no iOS (caractere invisível).
                     // O campo é livre e limpamos para só dígitos ao salvar.
@@ -167,13 +169,13 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
                     ->maxLength(30),
 
                 Select::make('servico_ids')
-                    ->label('Serviços')
+                    ->label(__('painel.agendamento.servicos'))
                     ->multiple()
                     ->searchable()
                     ->required()
                     ->options(Servico::where('ativo', true)->orderBy('ordem')->get()
                         ->mapWithKeys(fn ($s) => [$s->id => $s->nome.' — R$ '.number_format((float) $s->preco, 2, ',', '.')])->all())
-                    ->helperText('Pode escolher mais de um.'),
+                    ->helperText(__('painel.agenda.ag_servicos_help')),
             ])
             ->action(fn (array $data, array $arguments) => $this->criarAgendamentoRapido($arguments['hora'] ?? '', $data));
     }
@@ -194,7 +196,7 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
 
         $servicos = Servico::whereIn('id', $data['servico_ids'] ?? [])->where('ativo', true)->get();
         if ($servicos->isEmpty()) {
-            Notification::make()->title('Selecione ao menos um serviço')->danger()->send();
+            Notification::make()->title(__('painel.agenda.n_selecione_servico'))->danger()->send();
 
             return;
         }
@@ -204,8 +206,8 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
 
         // Trava 1: não pode sobrepor outro atendimento (considera a duração total)
         if (Agendamento::temConflito((int) $this->profissionalId, $inicio, $duracao, $tenantId)) {
-            Notification::make()->title('Horário indisponível')
-                ->body("O horário {$hora} conflita com outro atendimento desse profissional.")->danger()->send();
+            Notification::make()->title(__('painel.agenda.n_indisponivel'))
+                ->body(__('painel.agenda.n_conflito_body', ['hora' => $hora]))->danger()->send();
 
             return;
         }
@@ -219,8 +221,8 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
             ->exists();
 
         if ($bloqueado) {
-            Notification::make()->title('Horário indisponível')
-                ->body("O horário {$hora} está marcado como indisponível.")->danger()->send();
+            Notification::make()->title(__('painel.agenda.n_indisponivel'))
+                ->body(__('painel.agenda.n_bloqueado_body', ['hora' => $hora]))->danger()->send();
 
             return;
         }
@@ -244,8 +246,8 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         ]);
         $agendamento->servicos()->attach($servicos->pluck('id')->all());
 
-        Notification::make()->title('Agendamento criado!')
-            ->body($data['cliente_nome'].' às '.$hora)->success()->send();
+        Notification::make()->title(__('painel.agenda.n_criado'))
+            ->body(__('painel.agenda.n_criado_body', ['nome' => $data['cliente_nome'], 'hora' => $hora]))->success()->send();
     }
 
     /**
@@ -256,20 +258,20 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
     public function inverterAction(): Action
     {
         return Action::make('inverter')
-            ->modalHeading('Inverter agendamentos')
-            ->modalDescription('Troca o horário de dois clientes entre si. Os dois são avisados por WhatsApp da nova data.')
-            ->modalSubmitActionLabel('Trocar horários')
+            ->modalHeading(__('painel.agenda.inv_heading'))
+            ->modalDescription(__('painel.agenda.inv_desc'))
+            ->modalSubmitActionLabel(__('painel.agenda.inv_submit'))
             ->modalIcon('heroicon-o-arrows-right-left')
             ->schema([
                 Select::make('agendamento_a')
-                    ->label('Agendamento 1')
+                    ->label(__('painel.agenda.inv_ag1'))
                     ->required()
                     ->searchable()
                     ->options(fn () => $this->opcoesAgendamentos())
-                    ->helperText('Dia/hora — cliente.'),
+                    ->helperText(__('painel.agenda.inv_ag_help')),
 
                 Select::make('agendamento_b')
-                    ->label('Agendamento 2')
+                    ->label(__('painel.agenda.inv_ag2'))
                     ->required()
                     ->searchable()
                     ->different('agendamento_a')
@@ -285,33 +287,33 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
     public function indisponibilidadeAction(): Action
     {
         return Action::make('indisponibilidade')
-            ->modalHeading(fn () => 'Bloquear horário — '.Carbon::parse($this->dataSelecionada)->locale('pt_BR')->isoFormat('ddd, D [de] MMM'))
-            ->modalDescription('Marca um período como indisponível na agenda deste dia.')
-            ->modalSubmitActionLabel('Bloquear')
+            ->modalHeading(fn () => __('painel.agenda.ind_heading', ['data' => Carbon::parse($this->dataSelecionada)->locale(app()->getLocale())->isoFormat('ddd, D MMM')]))
+            ->modalDescription(__('painel.agenda.ind_desc'))
+            ->modalSubmitActionLabel(__('painel.agenda.ind_submit'))
             ->modalIcon('heroicon-o-lock-closed')
             ->schema([
                 Select::make('profissional_id')
-                    ->label('Profissional')
+                    ->label(__('painel.agendamento.profissional'))
                     ->options(fn () => Profissional::where('ativo', true)->orderBy('nome')->pluck('nome', 'id')->all())
                     ->default($this->profissionalId)
-                    ->placeholder('Todo o estabelecimento')
-                    ->helperText('Em branco = bloqueia a agenda de todos.'),
+                    ->placeholder(__('painel.agenda.ind_prof_ph'))
+                    ->helperText(__('painel.agenda.ind_prof_help')),
 
                 TextInput::make('hora_inicio')
-                    ->label('Início')
+                    ->label(__('painel.agenda.ind_inicio'))
                     ->type('time')
                     ->required()
                     ->default('09:00'),
 
                 TextInput::make('hora_fim')
-                    ->label('Fim')
+                    ->label(__('painel.agenda.ind_fim'))
                     ->type('time')
                     ->required()
                     ->default('10:00'),
 
                 TextInput::make('motivo')
-                    ->label('Motivo')
-                    ->placeholder('Ex.: almoço, compromisso, feriado...')
+                    ->label(__('painel.agenda.ind_motivo'))
+                    ->placeholder(__('painel.agenda.ind_motivo_ph'))
                     ->maxLength(255),
             ])
             ->action(fn (array $data) => $this->criarIndisponibilidade($data));
@@ -327,7 +329,7 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         $fim = Carbon::parse($this->dataSelecionada.' '.$data['hora_fim']);
 
         if ($fim->lte($inicio)) {
-            Notification::make()->title('O fim deve ser depois do início')->danger()->send();
+            Notification::make()->title(__('painel.agenda.ind_fim_antes'))->danger()->send();
 
             return;
         }
@@ -340,7 +342,7 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
             'tenant_id' => auth('admin')->user()?->tenant_id,
         ]);
 
-        Notification::make()->title('Horário bloqueado!')
+        Notification::make()->title(__('painel.agenda.ind_bloqueado'))
             ->body($inicio->format('H:i').' – '.$fim->format('H:i'))
             ->success()->send();
     }
@@ -363,7 +365,7 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
     private function inverterAgendamentos(int $idA, int $idB): void
     {
         if ($idA === $idB) {
-            Notification::make()->title('Selecione dois agendamentos diferentes')->danger()->send();
+            Notification::make()->title(__('painel.agenda.inv_diferentes'))->danger()->send();
 
             return;
         }
@@ -374,8 +376,8 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         // Só troca agendamentos ativos (não faz sentido em cancelado/concluído)
         foreach ([$a, $b] as $ag) {
             if (! $ag || ! in_array($ag->status, ['pendente', 'confirmado'], true)) {
-                Notification::make()->title('Agendamento inválido')
-                    ->body('Um dos agendamentos não existe mais ou já foi finalizado.')->danger()->send();
+                Notification::make()->title(__('painel.agenda.inv_invalido'))
+                    ->body(__('painel.agenda.inv_invalido_body'))->danger()->send();
 
                 return;
             }
@@ -388,8 +390,8 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         // novos horários ignorando os dois que estão trocando entre si.
         if ($this->conflitoNaTroca($a, $tempoB, [$a->id, $b->id])
             || $this->conflitoNaTroca($b, $tempoA, [$a->id, $b->id])) {
-            Notification::make()->title('A troca geraria conflito de horário')
-                ->body('Os serviços têm durações diferentes e um deles bateria em outro atendimento.')
+            Notification::make()->title(__('painel.agenda.inv_conflito'))
+                ->body(__('painel.agenda.inv_conflito_body'))
                 ->danger()->send();
 
             return;
@@ -399,8 +401,8 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         $a->update(['data_hora' => $tempoB]);
         $b->update(['data_hora' => $tempoA]);
 
-        Notification::make()->title('Horários trocados!')
-            ->body($a->cliente_nome.' ⇄ '.$b->cliente_nome.'. Os dois clientes foram avisados.')
+        Notification::make()->title(__('painel.agenda.inv_trocado'))
+            ->body(__('painel.agenda.inv_trocado_body', ['a' => $a->cliente_nome, 'b' => $b->cliente_nome]))
             ->success()->send();
     }
 

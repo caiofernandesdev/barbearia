@@ -19,7 +19,7 @@ class AgendamentoTabela
     public static function colunaDetalhes(bool $ocultaPorPadrao = true): TextColumn
     {
         return TextColumn::make('dados_extras')
-            ->label('Detalhes')
+            ->label(__('painel.agendamento.col_detalhes'))
             ->formatStateUsing(function ($record) {
                 $extras = $record->dados_extras;
                 if (empty($extras)) {

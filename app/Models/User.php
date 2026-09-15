@@ -43,6 +43,22 @@ class User extends Authenticatable implements FilamentUser
     /** O que um barbeiro enxerga por padrão quando nada foi configurado. */
     public const PADRAO_BARBEIRO = ['agenda_fixa', 'salario_emocional'];
 
+    /** Rótulos das permissões no idioma do estabelecimento (reusa o menu). */
+    public static function permissoesLabels(): array
+    {
+        $mapa = [
+            'agenda' => 'agenda', 'agendamentos' => 'agendamentos',
+            'indisponibilidades' => 'indisponibilidades', 'lista_espera' => 'lista_espera',
+            'clientes' => 'clientes', 'agenda_fixa' => 'agenda_fixa', 'repescagem' => 'repescagem',
+            'profissionais' => 'profissionais', 'servicos' => 'servicos',
+            'campos_agendamento' => 'campos', 'relatorios' => 'relatorios',
+            'salario_emocional' => 'salario_emocional', 'usuarios' => 'usuarios',
+            'configuracoes' => 'configuracoes',
+        ];
+
+        return collect($mapa)->mapWithKeys(fn ($navKey, $slug) => [$slug => __("painel.nav.{$navKey}")])->all();
+    }
+
     public function canAccessPanel(Panel $panel): bool
     {
         if ($panel->getId() === 'super-admin') {

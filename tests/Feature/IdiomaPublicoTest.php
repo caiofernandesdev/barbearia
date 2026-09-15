@@ -84,6 +84,37 @@ class IdiomaPublicoTest extends TestCase
         }
     }
 
+    public function test_painel_tem_as_mesmas_chaves_em_todos_os_idiomas(): void
+    {
+        $achatar = function (array $arr, string $prefixo = '') use (&$achatar): array {
+            $chaves = [];
+            foreach ($arr as $k => $v) {
+                $chaves = is_array($v)
+                    ? array_merge($chaves, $achatar($v, $prefixo.$k.'.'))
+                    : array_merge($chaves, [$prefixo.$k]);
+            }
+
+            return $chaves;
+        };
+
+        $base = $achatar(trans('painel', [], 'pt_BR'));
+
+        foreach (Locale::SUPORTADOS as $locale) {
+            $this->assertEqualsCanonicalizing(
+                $base, $achatar(trans('painel', [], $locale)),
+                "Chaves do painel divergem em [{$locale}]."
+            );
+        }
+    }
+
+    public function test_painel_traduz_config_em_ingles(): void
+    {
+        // Resolve de verdade (não cai no fallback devolvendo a chave)
+        $this->assertSame('Establishment Name', trans('painel.config.nome_label', [], 'en'));
+        $this->assertSame('Settings', trans('painel.nav.configuracoes', [], 'en'));
+        $this->assertSame('Impostazioni', trans('painel.nav.configuracoes', [], 'it'));
+    }
+
     public function test_chave_de_traducao_nao_vaza_no_html(): void
     {
         $tenant = $this->tenantComIdioma('en');

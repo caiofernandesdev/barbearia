@@ -137,82 +137,82 @@ class RepescagemAvulsos extends Page implements HasActions, HasSchemas, HasTable
             ->query($this->getQuery())
             ->columns([
                 TextColumn::make('cliente_nome')
-                    ->label('Cliente')
+                    ->label(__('painel.repescagem.col_cliente'))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('cliente_telefone')
-                    ->label('Telefone'),
+                    ->label(__('painel.repescagem.col_telefone')),
 
                 TextColumn::make('ultimo_agendamento')
-                    ->label('Último agendamento')
+                    ->label(__('painel.repescagem.col_ultimo'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
 
                 TextColumn::make('dias_ausente')
-                    ->label('Dias ausente')
-                    ->suffix(' dias')
+                    ->label(__('painel.repescagem.col_dias'))
+                    ->suffix(__('painel.repescagem.dias_suffix'))
                     ->sortable()
                     ->color(fn ($state) => $state > 60 ? 'danger' : ($state > 30 ? 'warning' : 'success')),
 
                 TextColumn::make('total_agendamentos')
-                    ->label('Visitas')
+                    ->label(__('painel.repescagem.col_visitas'))
                     ->sortable(),
             ])
             ->defaultSort('dias_ausente', 'desc')
             ->headerActions([
                 Action::make('filtro_dias')
-                    ->label(fn () => "Ausentes há mais de {$this->diasSemAgendar} dias")
+                    ->label(fn () => __('painel.repescagem.filtro_label', ['dias' => $this->diasSemAgendar]))
                     ->icon('heroicon-o-funnel')
                     ->color('gray')
                     ->form([
                         Select::make('dias')
-                            ->label('Ausentes há mais de')
-                            ->options([15 => '15 dias', 30 => '30 dias', 45 => '45 dias', 60 => '60 dias', 90 => '90 dias'])
+                            ->label(__('painel.repescagem.filtro_dias'))
+                            ->options(collect([15, 30, 45, 60, 90])->mapWithKeys(fn ($n) => [$n => __('painel.repescagem.opt_dias', ['n' => $n])])->all())
                             ->default($this->diasSemAgendar),
                     ])
                     ->action(fn (array $data) => $this->diasSemAgendar = $data['dias']),
             ])
             ->recordActions([
                 Action::make('enviar_whatsapp')
-                    ->label('Chamar de volta')
+                    ->label(__('painel.repescagem.act_chamar'))
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('success')
                     ->requiresConfirmation()
-                    ->modalHeading('Enviar mensagem de repescagem?')
-                    ->modalDescription(fn ($record) => $record ? "Enviar mensagem para {$record->cliente_nome} ({$record->cliente_telefone})?" : '')
-                    ->modalSubmitActionLabel('Enviar')
+                    ->modalHeading(__('painel.repescagem.modal_enviar'))
+                    ->modalDescription(fn ($record) => $record ? __('painel.repescagem.modal_desc', ['nome' => $record->cliente_nome, 'tel' => $record->cliente_telefone]) : '')
+                    ->modalSubmitActionLabel(__('painel.repescagem.modal_submit'))
                     ->action(function ($record) {
                         if (! $record) {
                             return;
                         }
                         $enviado = $this->enviarMensagem($record->cliente_telefone, $record->cliente_nome, $this->getMensagemPadrao());
                         Notification::make()
-                            ->title($enviado ? 'Mensagem enviada!' : 'Falha no envio')
+                            ->title($enviado ? __('painel.repescagem.n_enviada') : __('painel.repescagem.n_falha'))
                             ->color($enviado ? 'success' : 'danger')
                             ->send();
                     }),
             ])
             ->toolbarActions([
                 BulkAction::make('enviar_massa')
-                    ->label('Chamar de volta')
+                    ->label(__('painel.repescagem.act_chamar'))
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('success')
                     ->form(fn () => [
                         Textarea::make('mensagem')
-                            ->label('Mensagem')
+                            ->label(__('painel.repescagem.msg_label'))
                             ->rows(5)
                             ->default($this->getMensagemPadrao())
                             ->required()
-                            ->helperText('{nome} será substituído pelo nome de cada cliente'),
+                            ->helperText(__('painel.repescagem.msg_help')),
                     ])
-                    ->modalHeading(fn () => 'Chamar de volta '.count($this->selectedTableRecords).' cliente(s)')
-                    ->modalSubmitActionLabel('Enviar para todos')
+                    ->modalHeading(fn () => __('painel.repescagem.modal_massa', ['count' => count($this->selectedTableRecords)]))
+                    ->modalSubmitActionLabel(__('painel.repescagem.modal_massa_submit'))
                     ->deselectRecordsAfterCompletion()
                     ->action(function (array $data) {
                         $telefones = $this->selectedTableRecords;
                         if (empty($telefones)) {
-                            Notification::make()->title('Nenhum cliente selecionado')->warning()->send();
+                            Notification::make()->title(__('painel.repescagem.n_nenhum'))->warning()->send();
 
                             return;
                         }
@@ -233,10 +233,10 @@ class RepescagemAvulsos extends Page implements HasActions, HasSchemas, HasTable
                             }
                         }
                         if ($ok > 0) {
-                            Notification::make()->title("$ok mensagem(ns) enviada(s)!")->success()->send();
+                            Notification::make()->title(__('painel.repescagem.n_enviadas', ['count' => $ok]))->success()->send();
                         }
                         if ($falhas > 0) {
-                            Notification::make()->title("$falhas falha(s)")->danger()->send();
+                            Notification::make()->title(__('painel.repescagem.n_falhas', ['count' => $falhas]))->danger()->send();
                         }
                     }),
             ]);

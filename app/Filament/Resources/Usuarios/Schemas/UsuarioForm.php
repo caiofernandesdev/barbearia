@@ -17,63 +17,63 @@ class UsuarioForm
     {
         return $schema->components([
             TextInput::make('name')
-                ->label('Nome')
+                ->label(__('painel.usuario.nome'))
                 ->required()
                 ->maxLength(100),
 
             TextInput::make('email')
-                ->label('E-mail')
+                ->label(__('painel.usuario.email'))
                 ->email()
                 ->required()
                 ->unique(ignoreRecord: true)
                 ->maxLength(150),
 
             TextInput::make('password')
-                ->label('Senha')
+                ->label(__('painel.usuario.senha'))
                 ->password()
                 ->revealable()
                 ->minLength(8)
                 ->dehydrated(fn ($state) => filled($state))
                 ->required(fn (string $operation) => $operation === 'create')
-                ->helperText('Deixe em branco para manter a senha atual (somente na edição).'),
+                ->helperText(__('painel.usuario.senha_help')),
 
             Select::make('role')
-                ->label('Perfil')
+                ->label(__('painel.usuario.perfil'))
                 ->options([
-                    'admin' => 'Dono / Admin (acesso total)',
-                    'barbeiro' => 'Profissional (painel próprio)',
+                    'admin' => __('painel.usuario.role_admin'),
+                    'barbeiro' => __('painel.usuario.role_barbeiro'),
                 ])
                 ->default('barbeiro')
                 ->required()
                 ->live(),
 
             Select::make('profissional_id')
-                ->label('Profissional vinculado')
+                ->label(__('painel.usuario.prof_vinculado'))
                 ->options(Profissional::where('ativo', true)->orderBy('nome')->pluck('nome', 'id'))
-                ->placeholder('Selecione o profissional...')
+                ->placeholder(__('painel.usuario.prof_vinculado_ph'))
                 ->searchable()
                 ->nullable()
                 ->visible(fn ($get) => $get('role') === 'barbeiro')
-                ->helperText('Vincule este login ao cadastro do profissional para filtrar os dados dele.'),
+                ->helperText(__('painel.usuario.prof_vinculado_help')),
 
             Toggle::make('pode_cancelar')
-                ->label('Pode cancelar agendamentos')
+                ->label(__('painel.usuario.pode_cancelar'))
                 ->default(false)
                 ->visible(fn ($get) => $get('role') === 'barbeiro')
-                ->helperText('Se ligado, este profissional pode cancelar agendamentos no painel dele.'),
+                ->helperText(__('painel.usuario.pode_cancelar_help')),
 
-            Section::make('Permissões de acesso')
-                ->description('Marque o que este usuário pode ver e usar no painel. Se não mexer, vale o padrão do perfil (o dono vê tudo; o profissional vê o próprio painel).')
+            Section::make(__('painel.usuario.sec_permissoes'))
+                ->description(__('painel.usuario.sec_permissoes_desc'))
                 ->schema([
                     CheckboxList::make('permissoes')
                         ->hiddenLabel()
-                        ->options(User::PERMISSOES)
+                        ->options(User::permissoesLabels())
                         ->columns(2)
                         ->bulkToggleable()
                         // Usuário sem permissões definidas mostra o padrão do perfil
                         ->formatStateUsing(fn ($state, ?User $record) => $state
                             ?? User::padraoPermissoes($record?->role ?? 'barbeiro'))
-                        ->helperText('“Usuários” fica sempre disponível para o Dono/Admin (evita se trancar para fora).'),
+                        ->helperText(__('painel.usuario.permissoes_help')),
                 ]),
         ]);
     }

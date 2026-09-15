@@ -19,17 +19,17 @@ class ConfiguracaoBarbeariaForm
     {
         return $schema->components([
 
-            Section::make('Identidade')
+            Section::make(__('painel.config.sec_identidade'))
                 ->columns(2)
                 ->schema([
                     TextInput::make('nome_barbearia')
-                        ->label('Nome do Estabelecimento')
+                        ->label(__('painel.config.nome_label'))
                         ->required()
                         ->maxLength(100)
-                        ->helperText('Aparece no cabeçalho e nas páginas públicas de agendamento.'),
+                        ->helperText(__('painel.config.nome_help')),
 
                     FileUpload::make('logo')
-                        ->label('Logo')
+                        ->label(__('painel.config.logo_label'))
                         ->image()
                         ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                         ->imageResizeMode('contain')
@@ -39,30 +39,30 @@ class ConfiguracaoBarbeariaForm
                         ->directory('barbearia')
                         ->imagePreviewHeight('80')
                         ->nullable()
-                        ->helperText('Exibida no chatbot de agendamento e no cabeçalho do sistema.'),
+                        ->helperText(__('painel.config.logo_help')),
 
                     Select::make('idioma')
-                        ->label('Idioma')
+                        ->label(__('painel.config.idioma_label'))
                         ->options(Locale::opcoes())
                         ->default(Locale::PADRAO)
                         ->required()
-                        ->helperText('Idioma da página de agendamento e do painel. Aplica ao recarregar.'),
+                        ->helperText(__('painel.config.idioma_help')),
 
                     Select::make('tema_agendamento')
-                        ->label('Tema da página de agendamento')
+                        ->label(__('painel.config.tema_label'))
                         ->options([
-                            'escuro' => '🌙 Escuro (preto)',
-                            'claro' => '☀️ Claro (branco)',
-                            'tecnologico' => '⚡ Tecnológico (azul)',
-                            'feminino' => '🌸 Feminino (rosa)',
-                            'neutro' => '⚪ Neutro (cinza)',
+                            'escuro' => __('painel.config.tema_escuro'),
+                            'claro' => __('painel.config.tema_claro'),
+                            'tecnologico' => __('painel.config.tema_tecnologico'),
+                            'feminino' => __('painel.config.tema_feminino'),
+                            'neutro' => __('painel.config.tema_neutro'),
                         ])
                         ->default('escuro')
                         ->required()
-                        ->helperText('Aparência da página pública onde os clientes agendam.'),
+                        ->helperText(__('painel.config.tema_help')),
 
                     Placeholder::make('link_agendamento')
-                        ->label('Link de agendamento — envie aos seus clientes')
+                        ->label(__('painel.config.link_label'))
                         ->columnSpanFull()
                         ->content(function () {
                             $tenant = app()->bound('current_tenant') ? app('current_tenant') : null;
@@ -76,112 +76,112 @@ class ConfiguracaoBarbeariaForm
                                 '<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">'
                                 .'<code style="padding:8px 12px;border-radius:8px;background:rgba(120,120,120,.15);font-size:13px;user-select:all;">'.e($url).'</code>'
                                 .'<button type="button" style="padding:8px 14px;border-radius:8px;background:#f59e0b;color:#111827;font-weight:600;font-size:13px;cursor:pointer;" '
-                                .'onclick="navigator.clipboard.writeText(\''.e($url).'\').then(() => { this.textContent = \'✓ Copiado!\'; setTimeout(() => this.textContent = \'Copiar link\', 2000); })">Copiar link</button>'
-                                .'<a href="'.e($url).'" target="_blank" style="font-size:13px;text-decoration:underline;opacity:.8;">abrir em nova aba</a>'
+                                .'onclick="navigator.clipboard.writeText(\''.e($url).'\').then(() => { this.textContent = \''.e(__('painel.config.link_copiado')).'\'; setTimeout(() => this.textContent = \''.e(__('painel.config.link_copiar')).'\', 2000); })">'.e(__('painel.config.link_copiar')).'</button>'
+                                .'<a href="'.e($url).'" target="_blank" style="font-size:13px;text-decoration:underline;opacity:.8;">'.e(__('painel.config.link_abrir')).'</a>'
                                 .'</div>'
                             );
                         }),
                 ]),
 
-            Section::make('Horários e Slots')
-                ->description('Define como os slots de agendamento são gerados para todos os barbeiros.')
+            Section::make(__('painel.config.sec_horarios'))
+                ->description(__('painel.config.sec_horarios_desc'))
                 ->columns(3)
                 ->schema([
                     TextInput::make('horario_abertura')
-                        ->label('Abertura')
+                        ->label(__('painel.config.abertura'))
                         ->type('time')
                         ->required(),
 
                     TextInput::make('horario_encerramento')
-                        ->label('Encerramento')
+                        ->label(__('painel.config.encerramento'))
                         ->type('time')
                         ->required(),
 
                     Select::make('intervalo_minutos')
-                        ->label('Intervalo entre slots')
+                        ->label(__('painel.config.intervalo_label'))
                         ->options([
-                            10 => '10 minutos',
-                            15 => '15 minutos',
-                            20 => '20 minutos',
-                            30 => '30 minutos',
-                            45 => '45 minutos',
-                            60 => '1 hora',
-                            90 => '1h30min',
-                            120 => '2 horas',
+                            10 => __('painel.config.int_10'),
+                            15 => __('painel.config.int_15'),
+                            20 => __('painel.config.int_20'),
+                            30 => __('painel.config.int_30'),
+                            45 => __('painel.config.int_45'),
+                            60 => __('painel.config.int_60'),
+                            90 => __('painel.config.int_90'),
+                            120 => __('painel.config.int_120'),
                         ])
                         ->default(60)
                         ->required(),
 
                     TextInput::make('dias_antecedencia_agendamento')
-                        ->label('Dias liberados para agendamento')
+                        ->label(__('painel.config.dias_label'))
                         ->numeric()
                         ->default(14)
                         ->minValue(1)
                         ->maxValue(90)
                         ->required()
-                        ->suffix('dias')
-                        ->helperText('Quantos dias no futuro o cliente pode agendar na página pública.'),
+                        ->suffix(__('painel.config.dias_suffix'))
+                        ->helperText(__('painel.config.dias_help')),
                 ]),
 
-            Section::make('Regras de Mensalistas')
-                ->description('Limite global de cortes por semana para clientes mensalistas. Pode ser sobrescrito individualmente no cadastro do mensalista.')
+            Section::make(__('painel.config.sec_mensalistas'))
+                ->description(__('painel.config.sec_mensalistas_desc'))
                 ->schema([
                     TextInput::make('mensalista_limite_cortes_semana')
-                        ->label('Limite de cortes por semana (global)')
+                        ->label(__('painel.config.limite_label'))
                         ->numeric()
                         ->default(1)
                         ->minValue(1)
                         ->maxValue(7)
                         ->required()
-                        ->helperText('Controle semanal é mais preciso que mensal, pois o mês não tem semanas fixas.'),
+                        ->helperText(__('painel.config.limite_help')),
                 ]),
 
-            Section::make('WhatsApp')
-                ->description('Configurações de mensagens automáticas por WhatsApp.')
+            Section::make(__('painel.config.sec_whatsapp'))
+                ->description(__('painel.config.sec_whatsapp_desc'))
                 ->schema([
                     Select::make('dias_antecedencia_lembrete')
-                        ->label('Enviar lembrete com antecedência de')
+                        ->label(__('painel.config.lembrete_label'))
                         ->options([
-                            1 => '1 dia antes',
-                            2 => '2 dias antes',
-                            3 => '3 dias antes',
+                            1 => __('painel.config.lembrete_1'),
+                            2 => __('painel.config.lembrete_2'),
+                            3 => __('painel.config.lembrete_3'),
                         ])
                         ->default(1)
                         ->required()
-                        ->helperText('O comando agendamentos:lembretes usa esse valor.'),
+                        ->helperText(__('painel.config.lembrete_help')),
 
                     Toggle::make('cancelar_nao_confirmados')
-                        ->label('Cancelar automaticamente não confirmados')
-                        ->helperText('Cancela agendamentos pendentes que não foram confirmados até X horas antes do horário.')
+                        ->label(__('painel.config.cancelar_label'))
+                        ->helperText(__('painel.config.cancelar_help'))
                         ->live(),
 
                     Select::make('horas_antecedencia_cancelamento')
-                        ->label('Cancelar com antecedência de')
+                        ->label(__('painel.config.horas_label'))
                         ->options([
-                            1 => '1 hora antes',
-                            2 => '2 horas antes',
-                            3 => '3 horas antes',
-                            6 => '6 horas antes',
-                            12 => '12 horas antes',
-                            24 => '24 horas antes (dia anterior)',
+                            1 => __('painel.config.horas_1'),
+                            2 => __('painel.config.horas_2'),
+                            3 => __('painel.config.horas_3'),
+                            6 => __('painel.config.horas_6'),
+                            12 => __('painel.config.horas_12'),
+                            24 => __('painel.config.horas_24'),
                         ])
                         ->default(2)
                         ->visible(fn ($get) => $get('cancelar_nao_confirmados'))
-                        ->helperText('O sistema cancela e avisa o cliente por WhatsApp.'),
+                        ->helperText(__('painel.config.horas_help')),
 
                     Textarea::make('mensagem_repescagem')
-                        ->label('Mensagem padrão de repescagem')
+                        ->label(__('painel.config.repescagem_label'))
                         ->rows(4)
-                        ->placeholder("Olá, {nome}! 👋\n\nFaz tempo que não te vemos por aqui na {estabelecimento}!\nQue tal agendar um horário?\n\nAcesse: {link}")
-                        ->helperText('Variáveis: {nome}, {estabelecimento}, {link}. Deixe vazio para usar a mensagem padrão do sistema.'),
+                        ->placeholder(__('painel.config.repescagem_placeholder'))
+                        ->helperText(__('painel.config.repescagem_help')),
                 ]),
 
-            Section::make('Financeiro')
-                ->description('Define a divisão de receita entre o estabelecimento e os profissionais.')
+            Section::make(__('painel.config.sec_financeiro'))
+                ->description(__('painel.config.sec_financeiro_desc'))
                 ->columns(2)
                 ->schema([
                     TextInput::make('percentual_barbearia')
-                        ->label('Percentual do Estabelecimento (%)')
+                        ->label(__('painel.config.percentual_label'))
                         ->numeric()
                         ->default(60)
                         ->minValue(0)
@@ -189,12 +189,12 @@ class ConfiguracaoBarbeariaForm
                         ->suffix('%')
                         ->required()
                         ->live()
-                        ->helperText('Percentual da receita retido pelo estabelecimento sobre cada serviço.'),
+                        ->helperText(__('painel.config.percentual_help')),
 
                     Placeholder::make('percentual_barbeiros_info')
-                        ->label('Percentual dos Profissionais')
+                        ->label(__('painel.config.percentual_prof_label'))
                         ->content(fn ($get) => (100 - (float) ($get('percentual_barbearia') ?? 60)).'%')
-                        ->helperText('Calculado automaticamente: 100% − percentual do estabelecimento.'),
+                        ->helperText(__('painel.config.percentual_prof_help')),
                 ]),
 
         ]);

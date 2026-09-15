@@ -22,12 +22,12 @@ class ProfissionaisTable
         $table
             ->filters([
                 Filter::make('ativos')
-                    ->label('Apenas ativos')
+                    ->label(__('painel.profissional.f_ativos'))
                     ->query(fn ($query) => $query->where('ativo', true)),
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make()->label('Excluir'),
+                DeleteAction::make(),
             ])
             ->toolbarActions([
                 DeleteBulkAction::make(),
@@ -45,38 +45,38 @@ class ProfissionaisTable
             ->contentGrid(null)
             ->columns([
                 ImageColumn::make('foto')
-                    ->label('Foto')
+                    ->label(__('painel.profissional.col_foto'))
                     ->circular(),
 
                 TextColumn::make('nome')
-                    ->label('Nome')
+                    ->label(__('painel.profissional.nome'))
                     ->searchable()
                     ->sortable(),
 
                 // Sem telefone o profissional não recebe nenhum aviso por WhatsApp —
                 // sinaliza para o dono não descobrir isso só quando faltar mensagem
                 TextColumn::make('telefone')
-                    ->label('WhatsApp')
-                    ->placeholder('sem telefone — não recebe avisos')
+                    ->label(__('painel.profissional.col_whatsapp'))
+                    ->placeholder(__('painel.profissional.col_sem_telefone'))
                     ->badge()
                     ->color(fn ($state) => filled($state) ? 'gray' : 'warning')
                     ->icon(fn ($state) => filled($state) ? null : 'heroicon-o-exclamation-triangle'),
 
                 TextColumn::make('limite_mensalistas')
-                    ->label('Limite Mensalistas')
+                    ->label(__('painel.profissional.col_limite'))
                     ->sortable(),
 
                 TextColumn::make('agendamentos_count')
-                    ->label('Agendamentos')
+                    ->label(__('painel.profissional.col_agendamentos'))
                     ->counts('agendamentos')
                     ->sortable(),
 
                 IconColumn::make('ativo')
-                    ->label('Ativo')
+                    ->label(__('painel.profissional.col_ativo'))
                     ->boolean(),
 
                 TextColumn::make('created_at')
-                    ->label('Cadastrado em')
+                    ->label(__('painel.profissional.col_cadastrado'))
                     ->date('d/m/Y')
                     ->toggleable(isToggledHiddenByDefault: true),
             ]);
@@ -100,19 +100,19 @@ class ProfissionaisTable
                         ->size('lg'),
 
                     TextColumn::make('telefone')
-                        ->placeholder('sem WhatsApp — não recebe avisos')
+                        ->placeholder(__('painel.profissional.col_sem_whatsapp'))
                         ->icon('heroicon-m-device-phone-mobile')
                         ->color(fn ($state) => filled($state) ? 'gray' : 'warning'),
 
                     TextColumn::make('agendamentos_count')
                         ->counts('agendamentos')
-                        ->suffix(' agendamentos')
+                        ->suffix(__('painel.profissional.col_ag_suffix'))
                         ->icon('heroicon-m-calendar-days')
                         ->color('gray'),
 
                     TextColumn::make('status_badge')
                         ->badge()
-                        ->getStateUsing(fn ($record) => $record->ativo ? 'Ativo' : 'Inativo')
+                        ->getStateUsing(fn ($record) => $record->ativo ? __('painel.profissional.ativo') : __('painel.profissional.inativo'))
                         ->color(fn ($record) => $record->ativo ? 'success' : 'danger'),
                 ])
                     ->space(2),

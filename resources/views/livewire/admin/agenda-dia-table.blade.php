@@ -138,19 +138,19 @@
         <div style="display:flex; justify-content:space-between; align-items:center; gap:8px; margin-bottom:12px; flex-wrap:wrap;">
             <div class="agx-modo">
                 <button type="button" wire:click="$set('modoAgenda','slots')"
-                    class="agx-modo-btn {{ $modoAgenda === 'slots' ? 'agx-modo-btn--on' : '' }}">▦ Slots</button>
+                    class="agx-modo-btn {{ $modoAgenda === 'slots' ? 'agx-modo-btn--on' : '' }}">▦ {{ __('painel.agenda.modo_slots') }}</button>
                 <button type="button" wire:click="$set('modoAgenda','agenda')"
-                    class="agx-modo-btn {{ $modoAgenda === 'agenda' ? 'agx-modo-btn--on' : '' }}">📅 Agenda</button>
+                    class="agx-modo-btn {{ $modoAgenda === 'agenda' ? 'agx-modo-btn--on' : '' }}">📅 {{ __('painel.agenda.modo_agenda') }}</button>
             </div>
             <div style="display:flex; gap:8px; flex-wrap:wrap;">
                 @if($this->podeIndisponibilidade)
                     <button type="button" wire:click="mountAction('indisponibilidade')" class="agx-swapbtn">
-                        🔒 Indisponibilidade
+                        🔒 {{ __('painel.agenda.btn_indisponibilidade') }}
                     </button>
                 @endif
                 @if($this->podeCancelar)
                     <button type="button" wire:click="mountAction('inverter')" class="agx-swapbtn">
-                        🔄 Inverter
+                        🔄 {{ __('painel.agenda.btn_inverter') }}
                     </button>
                 @endif
             </div>
@@ -173,7 +173,7 @@
         </div>
 
         <div class="agx-muted" style="font-size:13px; text-align:center; margin:12px 0;">
-            {{ \Carbon\Carbon::parse($dataSelecionada)->locale('pt_BR')->isoFormat('dddd, D [de] MMMM') }}
+            {{ \Carbon\Carbon::parse($dataSelecionada)->locale(app()->getLocale())->isoFormat('dddd, D MMMM') }}
         </div>
 
         {{-- Grid de horários (modo slots) --}}
@@ -183,7 +183,7 @@
                 @if($slot['ocupado'])
                     @if($slot['cancelavel'])
                         <button wire:click="abrirCancelamento({{ $slot['agendamento_id'] }})"
-                            title="Cancelar o agendamento de {{ $slot['cliente'] }}"
+                            title="{{ __('painel.agenda.cancelar_title', ['nome' => $slot['cliente']]) }}"
                             class="agx-slot agx-busy agx-busy--btn">
                             <div class="agx-hora">{{ $slot['hora'] }}</div>
                             <div class="agx-sub">{{ $slot['cliente'] }}</div>
@@ -205,36 +205,36 @@
                 @elseif($slot['indisponivel'])
                     <div class="agx-slot agx-indis">
                         <div class="agx-hora">{{ $slot['hora'] }}</div>
-                        <div class="agx-sub">🔒 Indisponível</div>
+                        <div class="agx-sub">🔒 {{ __('painel.agenda.indisponivel') }}</div>
                         @if(!empty($slot['motivo']))
                             <div class="agx-sub2">{{ $slot['motivo'] }}</div>
                         @endif
                     </div>
                 @elseif($slot['passado'])
                     <button wire:click="mountAction('agendar', { hora: '{{ $slot['hora'] }}', passado: true })"
-                        title="Horário já passou — clique para marcar mesmo assim"
+                        title="{{ __('painel.agenda.passado_title') }}"
                         class="agx-slot agx-past agx-past--btn">
                         <div class="agx-hora">{{ $slot['hora'] }}</div>
-                        <div class="agx-sub">marcar assim mesmo</div>
+                        <div class="agx-sub">{{ __('painel.agenda.passado_marcar') }}</div>
                     </button>
                 @else
                     <button wire:click="mountAction('agendar', { hora: '{{ $slot['hora'] }}' })" class="agx-slot agx-avail">
                         <div class="agx-hora">{{ $slot['hora'] }}</div>
-                        <div class="agx-sub">Disponível</div>
+                        <div class="agx-sub">{{ __('painel.agenda.disponivel') }}</div>
                     </button>
                 @endif
             @empty
                 <div class="agx-muted" style="grid-column:span 3; text-align:center; padding:24px;">
-                    Nenhum horário neste dia.
+                    {{ __('painel.agenda.nenhum_horario') }}
                 </div>
             @endforelse
         </div>
 
         <div class="agx-legend agx-muted">
-            <span><span style="color:#10b981;">●</span> Disponível</span>
-            <span><span style="color:#ef4444;">●</span> Ocupado</span>
-            <span><span style="color:#8b5cf6;">●</span> Indisponível</span>
-            <span><span style="color:#94a3b8;">●</span> Passado (clicável)</span>
+            <span><span style="color:#10b981;">●</span> {{ __('painel.agenda.leg_disponivel') }}</span>
+            <span><span style="color:#ef4444;">●</span> {{ __('painel.agenda.leg_ocupado') }}</span>
+            <span><span style="color:#8b5cf6;">●</span> {{ __('painel.agenda.leg_indisponivel') }}</span>
+            <span><span style="color:#94a3b8;">●</span> {{ __('painel.agenda.leg_passado') }}</span>
         </div>
 
         {{-- Vista de agenda (timeline por horário) --}}
@@ -274,7 +274,7 @@
             </div>
         </div>
         <p class="agx-muted" style="text-align:center; font-size:12px; margin-top:12px;">
-            Toque num espaço livre para agendar naquele horário.
+            {{ __('painel.agenda.timeline_hint') }}
         </p>
         @endif
     </x-filament::section>
@@ -283,12 +283,12 @@
     @if($showCancelModal)
     <div class="agx-backdrop" wire:click.self="fecharCancelModal">
         <div class="agx-modal">
-            <h3>Cancelar agendamento?</h3>
+            <h3>{{ __('painel.agenda.cancel_titulo') }}</h3>
             <p class="agx-modal-text">{{ $cancelarResumo }}</p>
-            <p class="agx-modal-hint">O horário será liberado e o cliente avisado por WhatsApp.</p>
+            <p class="agx-modal-hint">{{ __('painel.agenda.cancel_hint') }}</p>
             <div style="display:flex; gap:8px;">
-                <button wire:click="confirmarCancelamento" class="agx-btn-primary" style="background:#ef4444;">Sim, cancelar</button>
-                <button wire:click="fecharCancelModal" class="agx-btn-secondary">Voltar</button>
+                <button wire:click="confirmarCancelamento" class="agx-btn-primary" style="background:#ef4444;">{{ __('painel.agenda.cancel_sim') }}</button>
+                <button wire:click="fecharCancelModal" class="agx-btn-secondary">{{ __('painel.agenda.cancel_voltar') }}</button>
             </div>
         </div>
     </div>

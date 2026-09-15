@@ -29,39 +29,39 @@ class ListMensalistas extends ListRecords
             $this->layoutToggleAction(),
 
             Action::make('exportar')
-                ->label('Exportar Excel')
+                ->label(__('painel.cliente.exportar'))
                 ->icon('heroicon-o-arrow-down-tray')
                 ->color('gray')
                 ->action(fn () => Excel::download(new MensalistasExport, 'mensalistas.xlsx')),
 
             Action::make('importar')
-                ->label('Importar Excel')
+                ->label(__('painel.cliente.importar'))
                 ->icon('heroicon-o-arrow-up-tray')
                 ->color('warning')
-                ->modalHeading('Importar mensalistas')
-                ->modalDescription('Envie uma planilha .xlsx ou .csv com seus clientes. Cada linha vira um mensalista.')
+                ->modalHeading(__('painel.cliente.imp_heading'))
+                ->modalDescription(__('painel.cliente.imp_desc'))
                 ->modalWidth(Width::Large)
-                ->modalSubmitActionLabel('Importar agora')
+                ->modalSubmitActionLabel(__('painel.cliente.imp_submit'))
                 ->form([
                     // Instruções + link de modelo dentro do próprio modal.
                     Placeholder::make('instrucoes')
-                        ->label('Como montar a planilha')
+                        ->label(__('painel.cliente.imp_instr_label'))
                         ->content(new HtmlString(
                             '<div class="text-sm space-y-2">'
-                            .'<p>A primeira linha deve conter os <strong>cabeçalhos</strong> exatamente com estes nomes:</p>'
+                            .'<p>'.__('painel.cliente.imp_intro').'</p>'
                             .'<ul class="list-disc list-inside space-y-1">'
-                            .'<li><code>nome</code> <span class="text-danger-600">(obrigatório)</span></li>'
-                            .'<li><code>telefone</code> <span class="text-danger-600">(obrigatório)</span> — só números</li>'
-                            .'<li><code>tipo</code> — <code>avulso</code>, <code>mensalista</code> ou <code>mensalista_fixo</code> (padrão: avulso)</li>'
-                            .'<li><code>limite_cortes_semana</code> — número (padrão: 1)</li>'
-                            .'<li><code>valor_mensalidade</code> — ex.: 99,90</li>'
+                            .'<li>'.__('painel.cliente.imp_li_nome').'</li>'
+                            .'<li>'.__('painel.cliente.imp_li_telefone').'</li>'
+                            .'<li>'.__('painel.cliente.imp_li_tipo').'</li>'
+                            .'<li>'.__('painel.cliente.imp_li_limite').'</li>'
+                            .'<li>'.__('painel.cliente.imp_li_valor').'</li>'
                             .'</ul>'
-                            .'<p class="text-gray-500">Clientes com telefone já cadastrado são ignorados (não duplica).</p>'
+                            .'<p class="text-gray-500">'.__('painel.cliente.imp_nota').'</p>'
                             .'</div>'
                         )),
 
                     FileUpload::make('arquivo')
-                        ->label('Planilha (.xlsx ou .csv)')
+                        ->label(__('painel.cliente.imp_file'))
                         ->acceptedFileTypes([
                             'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
                             'text/csv',
@@ -73,7 +73,7 @@ class ListMensalistas extends ListRecords
                 // Botão extra no rodapé do modal para baixar o modelo pronto.
                 ->extraModalFooterActions([
                     Action::make('baixar_modelo')
-                        ->label('Baixar modelo')
+                        ->label(__('painel.cliente.imp_baixar_modelo'))
                         ->icon('heroicon-o-document-arrow-down')
                         ->color('gray')
                         ->action(fn () => Excel::download(new MensalistasModeloExport, 'modelo-mensalistas.xlsx')),
@@ -87,22 +87,22 @@ class ListMensalistas extends ListRecords
                         $duplicados = $import->duplicados;
                         $invalidas = $import->invalidas();
 
-                        $partes = ["{$importados} importado(s)"];
+                        $partes = [__('painel.cliente.imp_importados', ['count' => $importados])];
                         if ($duplicados > 0) {
-                            $partes[] = "{$duplicados} já existia(m)";
+                            $partes[] = __('painel.cliente.imp_ja_existia', ['count' => $duplicados]);
                         }
                         if ($invalidas > 0) {
-                            $partes[] = "{$invalidas} linha(s) inválida(s)";
+                            $partes[] = __('painel.cliente.imp_invalidas', ['count' => $invalidas]);
                         }
 
                         Notification::make()
-                            ->title($importados > 0 ? 'Importação concluída!' : 'Nada novo importado')
+                            ->title($importados > 0 ? __('painel.cliente.imp_ok') : __('painel.cliente.imp_nada'))
                             ->body(implode(' · ', $partes))
                             ->color($importados > 0 ? 'success' : 'warning')
                             ->send();
                     } catch (\Throwable $e) {
                         Notification::make()
-                            ->title('Erro na importação')
+                            ->title(__('painel.cliente.imp_erro'))
                             ->body($e->getMessage())
                             ->danger()
                             ->send();

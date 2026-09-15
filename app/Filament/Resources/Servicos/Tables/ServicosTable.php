@@ -23,16 +23,16 @@ class ServicosTable
             ->defaultSort('ordem')
             ->filters([
                 Filter::make('ativos')
-                    ->label('Apenas ativos')
+                    ->label(__('painel.servico.f_ativos'))
                     ->query(fn ($query) => $query->where('ativo', true)),
 
                 Filter::make('destaques')
-                    ->label('Em destaque')
+                    ->label(__('painel.servico.f_destaque'))
                     ->query(fn ($query) => $query->where('destaque', true)),
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make()->label('Excluir'),
+                DeleteAction::make(),
             ])
             ->toolbarActions([
                 DeleteBulkAction::make(),
@@ -50,40 +50,40 @@ class ServicosTable
             ->contentGrid(null)
             ->columns([
                 TextColumn::make('ordem')
-                    ->label('#')
+                    ->label(__('painel.servico.col_ordem'))
                     ->sortable(),
 
                 ImageColumn::make('foto')
-                    ->label('Foto')
+                    ->label(__('painel.servico.col_foto'))
                     ->circular()
                     ->defaultImageUrl(null)
                     ->toggleable(),
 
                 TextColumn::make('nome')
-                    ->label('Serviço')
+                    ->label(__('painel.servico.col_servico'))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('preco')
-                    ->label('Preço')
+                    ->label(__('painel.servico.col_preco'))
                     ->money('BRL')
                     ->sortable(),
 
                 TextColumn::make('duracao_minutos')
-                    ->label('Duração')
+                    ->label(__('painel.servico.col_duracao'))
                     ->suffix(' min')
                     ->sortable(),
 
                 IconColumn::make('destaque')
-                    ->label('Destaque')
+                    ->label(__('painel.servico.destaque'))
                     ->boolean(),
 
                 IconColumn::make('ativo')
-                    ->label('Ativo')
+                    ->label(__('painel.servico.ativo'))
                     ->boolean(),
 
                 TextColumn::make('created_at')
-                    ->label('Cadastrado em')
+                    ->label(__('painel.servico.col_cadastrado'))
                     ->date('d/m/Y')
                     ->toggleable(isToggledHiddenByDefault: true),
             ]);
@@ -118,7 +118,7 @@ class ServicosTable
 
                     TextColumn::make('status_badge')
                         ->badge()
-                        ->getStateUsing(fn ($record) => $record->ativo ? 'Ativo' : 'Inativo')
+                        ->getStateUsing(fn ($record) => $record->ativo ? __('painel.servico.ativo') : __('painel.servico.inativo'))
                         ->color(fn ($record) => $record->ativo ? 'success' : 'danger'),
                 ])
                     ->space(2),

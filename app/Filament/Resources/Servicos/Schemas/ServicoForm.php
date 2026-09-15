@@ -2,11 +2,13 @@
 
 namespace App\Filament\Resources\Servicos\Schemas;
 
+use Carbon\Carbon;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class ServicoForm
 {
@@ -14,12 +16,12 @@ class ServicoForm
     {
         return $schema->components([
             TextInput::make('nome')
-                ->label('Nome')
+                ->label(__('painel.servico.nome'))
                 ->required()
                 ->maxLength(100),
 
             FileUpload::make('foto')
-                ->label('Imagem do Serviço')
+                ->label(__('painel.servico.foto'))
                 ->image()
                 ->acceptedFileTypes(['image/jpeg', 'image/png', 'image/webp'])
                 ->imageResizeMode('contain')
@@ -29,51 +31,48 @@ class ServicoForm
                 ->directory('servicos')
                 ->imagePreviewHeight('120')
                 ->nullable()
-                ->helperText('Exibida no chatbot de agendamento ao lado do serviço.'),
+                ->helperText(__('painel.servico.foto_help')),
 
             TextInput::make('preco')
-                ->label('Preço (R$)')
+                ->label(__('painel.servico.preco'))
                 ->numeric()
                 ->required()
                 ->prefix('R$')
                 ->minValue(0),
 
             TextInput::make('duracao_minutos')
-                ->label('Duração (minutos)')
+                ->label(__('painel.servico.duracao'))
                 ->numeric()
                 ->required()
                 ->minValue(5)
                 ->suffix('min'),
 
             TextInput::make('ordem')
-                ->label('Ordem de exibição')
+                ->label(__('painel.servico.ordem'))
                 ->numeric()
                 ->minValue(0)
-                ->helperText('Menor número aparece primeiro. Deixe em branco para o serviço ir para o fim.'),
+                ->helperText(__('painel.servico.ordem_help')),
 
-            Section::make('Preço por dia da semana')
-                ->description('Opcional. Preencha só os dias com valor diferente — os demais usam o preço acima.')
+            Section::make(__('painel.servico.sec_preco_dia'))
+                ->description(__('painel.servico.sec_preco_dia_desc'))
                 ->collapsed()
                 ->columns(2)
                 ->schema(
-                    collect([
-                        1 => 'Segunda', 2 => 'Terça', 3 => 'Quarta', 4 => 'Quinta',
-                        5 => 'Sexta', 6 => 'Sábado', 0 => 'Domingo',
-                    ])->map(fn (string $label, int $dia) => TextInput::make("precos_por_dia.{$dia}")
-                        ->label($label)
+                    collect([1, 2, 3, 4, 5, 6, 0])->map(fn (int $dia) => TextInput::make("precos_por_dia.{$dia}")
+                        ->label(Str::ucfirst(Carbon::now()->startOfWeek(Carbon::SUNDAY)->addDays($dia)->locale(app()->getLocale())->isoFormat('dddd')))
                         ->numeric()
                         ->prefix('R$')
                         ->minValue(0)
-                        ->placeholder('usa o preço base')
+                        ->placeholder(__('painel.servico.preco_dia_ph'))
                     )->values()->all()
                 ),
 
             Toggle::make('destaque')
-                ->label('Destaque')
+                ->label(__('painel.servico.destaque'))
                 ->default(false),
 
             Toggle::make('ativo')
-                ->label('Ativo')
+                ->label(__('painel.servico.ativo'))
                 ->default(true),
         ]);
     }

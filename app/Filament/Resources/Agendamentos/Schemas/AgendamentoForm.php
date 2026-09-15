@@ -17,12 +17,12 @@ class AgendamentoForm
     {
         return $schema->components([
             TextInput::make('cliente_nome')
-                ->label('Nome do Cliente')
+                ->label(__('painel.agendamento.cliente_nome'))
                 ->required()
                 ->maxLength(100),
 
             TextInput::make('cliente_telefone')
-                ->label('Telefone (opcional)')
+                ->label(__('painel.agendamento.telefone'))
                 // Sem ->tel(): a validação de formato do Filament rejeita número
                 // colado/autopreenchido no iOS (caractere invisível). Campo livre;
                 // guardamos só os dígitos (ou null quando vazio) ao salvar.
@@ -31,41 +31,41 @@ class AgendamentoForm
                 ->maxLength(30),
 
             Select::make('profissional_id')
-                ->label('Profissional')
+                ->label(__('painel.agendamento.profissional'))
                 ->required()
                 ->options(Profissional::where('ativo', true)->pluck('nome', 'id')),
 
             Select::make('servico_ids')
-                ->label('Serviços')
+                ->label(__('painel.agendamento.servicos'))
                 ->multiple()
                 ->required()
                 ->searchable()
                 ->options(Servico::where('ativo', true)->orderBy('ordem')->get()
                     ->mapWithKeys(fn ($s) => [$s->id => $s->nome.' — R$ '.number_format((float) $s->preco, 2, ',', '.')])->all())
-                ->helperText('Pode escolher mais de um. Valor e duração somam automaticamente.'),
+                ->helperText(__('painel.agendamento.servicos_help')),
 
             DateTimePicker::make('data_hora')
-                ->label('Data e Hora')
+                ->label(__('painel.agendamento.data_hora'))
                 ->required()
                 ->seconds(false),
 
             Select::make('status')
-                ->label('Status')
+                ->label(__('painel.agendamento.status'))
                 ->required()
                 ->options([
-                    'pendente' => 'Pendente',
-                    'confirmado' => 'Confirmado',
-                    'concluido' => 'Concluído',
-                    'cancelado' => 'Cancelado',
+                    'pendente' => __('painel.agendamento.st_pendente'),
+                    'confirmado' => __('painel.agendamento.st_confirmado'),
+                    'concluido' => __('painel.agendamento.st_concluido'),
+                    'cancelado' => __('painel.agendamento.st_cancelado'),
                 ])
                 ->default('pendente'),
 
             Toggle::make('mensalista')
-                ->label('Mensalista')
+                ->label(__('painel.agendamento.mensalista'))
                 ->default(false),
 
             Textarea::make('observacao')
-                ->label('Observação')
+                ->label(__('painel.agendamento.observacao'))
                 ->nullable()
                 ->rows(3),
         ]);

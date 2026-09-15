@@ -30,7 +30,7 @@
         <livewire:admin.agenda-dia-table
             :wire:key="'agenda-geral-' . $this->profissionalId"
             :profissional-id="$this->profissionalId"
-            :heading="'Agenda — ' . $this->nomeProfissional" />
+            :heading="__('painel.agenda.titulo_prof', ['prof' => $this->nomeProfissional])" />
     @else
         <x-filament::section>
             <p class="text-sm text-gray-500">Nenhum profissional ativo cadastrado.</p>

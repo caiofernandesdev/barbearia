@@ -14,16 +14,16 @@ class UsuariosTable
         return $table
             ->columns([
                 TextColumn::make('name')
-                    ->label('Nome')
+                    ->label(__('painel.usuario.nome'))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('email')
-                    ->label('E-mail')
+                    ->label(__('painel.usuario.email'))
                     ->searchable(),
 
                 TextColumn::make('role')
-                    ->label('Perfil')
+                    ->label(__('painel.usuario.perfil'))
                     ->badge()
                     ->color(fn ($state) => match ($state) {
                         'admin' => 'warning',
@@ -31,24 +31,24 @@ class UsuariosTable
                         default => 'gray',
                     })
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'admin' => 'Admin',
-                        'barbeiro' => 'Profissional',
+                        'admin' => __('painel.usuario.badge_admin'),
+                        'barbeiro' => __('painel.usuario.badge_barbeiro'),
                         default => ucfirst($state),
                     }),
 
                 TextColumn::make('profissional.nome')
-                    ->label('Profissional vinculado')
+                    ->label(__('painel.usuario.prof_vinculado'))
                     ->placeholder('—')
                     ->sortable(),
 
                 TextColumn::make('created_at')
-                    ->label('Criado em')
+                    ->label(__('painel.usuario.col_criado'))
                     ->date('d/m/Y')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->recordActions([
                 EditAction::make(),
-                DeleteAction::make()->label('Excluir'),
+                DeleteAction::make(),
             ]);
     }
 }

@@ -21,14 +21,14 @@ class MensalistasTable
             ->filters([
                 SelectFilter::make('tipo')
                     ->options([
-                        'avulso' => 'Avulso',
-                        'mensalista' => 'Mensalista',
-                        'mensalista_fixo' => 'Mensalista Fixo',
+                        'avulso' => __('painel.cliente.f_avulso'),
+                        'mensalista' => __('painel.cliente.f_mensalista'),
+                        'mensalista_fixo' => __('painel.cliente.f_fixo'),
                     ]),
             ])
             ->actions([
                 Action::make('agenda_fixa')
-                    ->label('Agenda Fixa')
+                    ->label(__('painel.cliente.act_agenda_fixa'))
                     ->icon('heroicon-o-calendar-days')
                     ->color('warning')
                     ->visible(fn () => (app()->bound('current_tenant') ? app('current_tenant')?->hasFeature('agenda_fixa') : false) ?? false)
@@ -46,7 +46,7 @@ class MensalistasTable
     private static function colunaTipo(): TextColumn
     {
         return TextColumn::make('tipo')
-            ->label('Tipo')
+            ->label(__('painel.cliente.col_tipo'))
             ->badge()
             ->color(fn (string $state): string => match ($state) {
                 'mensalista_fixo' => 'warning',
@@ -54,9 +54,9 @@ class MensalistasTable
                 default => 'gray',
             })
             ->formatStateUsing(fn (string $state): string => match ($state) {
-                'mensalista_fixo' => 'Fixo',
-                'mensalista' => 'Mensalista',
-                default => 'Avulso',
+                'mensalista_fixo' => __('painel.cliente.badge_fixo'),
+                'mensalista' => __('painel.cliente.badge_mensalista'),
+                default => __('painel.cliente.badge_avulso'),
             });
     }
 
@@ -67,30 +67,30 @@ class MensalistasTable
             ->contentGrid(null)
             ->columns([
                 TextColumn::make('nome')
-                    ->label('Nome')
+                    ->label(__('painel.cliente.nome'))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('telefone')
-                    ->label('Telefone')
+                    ->label(__('painel.cliente.col_telefone'))
                     ->searchable()
                     ->visibleFrom('sm'),
 
                 self::colunaTipo(),
 
                 TextColumn::make('limite_cortes_semana')
-                    ->label('Limite/semana')
+                    ->label(__('painel.cliente.col_limite'))
                     ->alignCenter()
                     ->visibleFrom('md'),
 
                 TextColumn::make('horariosFixos_count')
                     ->counts('horariosFixos')
-                    ->label('Horários fixos')
+                    ->label(__('painel.cliente.col_horarios_fixos'))
                     ->alignCenter()
                     ->visibleFrom('lg'),
 
                 TextColumn::make('updated_at')
-                    ->label('Atualizado')
+                    ->label(__('painel.cliente.col_atualizado'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable()
                     ->visibleFrom('lg'),
@@ -112,13 +112,13 @@ class MensalistasTable
                     self::colunaTipo(),
 
                     TextColumn::make('telefone')
-                        ->placeholder('sem telefone')
+                        ->placeholder(__('painel.cliente.col_sem_telefone'))
                         ->icon('heroicon-m-device-phone-mobile')
                         ->color('gray'),
 
                     TextColumn::make('limite_cortes_semana')
-                        ->prefix('Limite: ')
-                        ->suffix('/semana')
+                        ->prefix(__('painel.cliente.grade_limite_prefix'))
+                        ->suffix(__('painel.cliente.grade_limite_suffix'))
                         ->icon('heroicon-m-scissors')
                         ->color('gray'),
                 ])

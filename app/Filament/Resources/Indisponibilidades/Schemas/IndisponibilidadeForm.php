@@ -19,10 +19,10 @@ class IndisponibilidadeForm
                 ->columns(2)
                 ->schema([
                     Select::make('profissional_id')
-                        ->label('Profissional')
+                        ->label(__('painel.agendamento.profissional'))
                         ->options(fn () => Profissional::orderBy('nome')->pluck('nome', 'id')->toArray())
-                        ->placeholder('Todo o estabelecimento')
-                        ->helperText('Deixe em branco para bloquear a agenda de todos.')
+                        ->placeholder(__('painel.agenda.ind_prof_ph'))
+                        ->helperText(__('painel.indisp.prof_help'))
                         ->searchable()
                         ->nullable()
                         ->columnSpanFull(),
@@ -30,21 +30,21 @@ class IndisponibilidadeForm
                     // native() de propósito: no celular abre o seletor do próprio
                     // sistema. O picker JS do Filament fica espremido em tela pequena.
                     DateTimePicker::make('inicio')
-                        ->label('Início')
+                        ->label(__('painel.agenda.ind_inicio'))
                         ->required()
                         ->seconds(false)
                         ->default(now()->startOfHour()),
 
                     DateTimePicker::make('fim')
-                        ->label('Fim')
+                        ->label(__('painel.agenda.ind_fim'))
                         ->required()
                         ->seconds(false)
                         ->after('inicio')
                         ->default(now()->startOfHour()->addHour()),
 
                     TextInput::make('motivo')
-                        ->label('Motivo')
-                        ->placeholder('Ex: Feriado, evento, compromisso pessoal...')
+                        ->label(__('painel.agenda.ind_motivo'))
+                        ->placeholder(__('painel.indisp.motivo_ph'))
                         ->maxLength(255)
                         ->columnSpanFull(),
                 ]),

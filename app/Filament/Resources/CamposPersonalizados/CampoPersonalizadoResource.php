@@ -66,49 +66,49 @@ class CampoPersonalizadoResource extends Resource
     {
         return $schema->components([
             TextInput::make('nome')
-                ->label('Nome do campo')
+                ->label(__('painel.campo.nome'))
                 ->required()
                 ->maxLength(100)
-                ->placeholder('Ex: Convênio, Porte do animal...')
+                ->placeholder(__('painel.campo.nome_ph'))
                 ->live(onBlur: true)
                 ->afterStateUpdated(fn ($set, $state) => $set('slug', Str::slug($state))),
 
             TextInput::make('slug')
-                ->label('Identificador')
+                ->label(__('painel.campo.slug'))
                 ->required()
                 ->alphaDash()
                 ->maxLength(60)
-                ->helperText('Gerado automaticamente. Usado internamente.'),
+                ->helperText(__('painel.campo.slug_help')),
 
             Select::make('tipo')
-                ->label('Tipo de campo')
+                ->label(__('painel.campo.tipo'))
                 ->options([
-                    'select' => 'Lista de opções (dropdown)',
-                    'text' => 'Texto livre',
-                    'toggle' => 'Sim / Não',
+                    'select' => __('painel.campo.tipo_select'),
+                    'text' => __('painel.campo.tipo_text'),
+                    'toggle' => __('painel.campo.tipo_toggle'),
                 ])
                 ->default('select')
                 ->required()
                 ->live(),
 
             TagsInput::make('opcoes')
-                ->label('Opções')
-                ->placeholder('Adicionar opção...')
-                ->helperText('As opções que o cliente poderá escolher')
+                ->label(__('painel.campo.opcoes'))
+                ->placeholder(__('painel.campo.opcoes_ph'))
+                ->helperText(__('painel.campo.opcoes_help'))
                 ->visible(fn ($get) => $get('tipo') === 'select'),
 
             Toggle::make('obrigatorio')
-                ->label('Obrigatório')
-                ->helperText('Cliente não pode pular este campo'),
+                ->label(__('painel.campo.obrigatorio'))
+                ->helperText(__('painel.campo.obrigatorio_help')),
 
             TextInput::make('ordem')
-                ->label('Ordem de exibição')
+                ->label(__('painel.campo.ordem'))
                 ->numeric()
                 ->default(0)
                 ->minValue(0),
 
             Toggle::make('ativo')
-                ->label('Ativo')
+                ->label(__('painel.campo.ativo'))
                 ->default(true),
         ]);
     }
@@ -118,17 +118,17 @@ class CampoPersonalizadoResource extends Resource
         return $table
             ->columns([
                 TextColumn::make('nome')
-                    ->label('Campo')
+                    ->label(__('painel.campo.col_campo'))
                     ->searchable()
                     ->sortable(),
 
                 TextColumn::make('tipo')
-                    ->label('Tipo')
+                    ->label(__('painel.campo.tipo'))
                     ->badge()
                     ->formatStateUsing(fn ($state) => match ($state) {
-                        'select' => 'Lista',
-                        'text' => 'Texto',
-                        'toggle' => 'Sim/Não',
+                        'select' => __('painel.campo.badge_lista'),
+                        'text' => __('painel.campo.badge_texto'),
+                        'toggle' => __('painel.campo.badge_simnao'),
                         default => $state,
                     })
                     ->color(fn ($state) => match ($state) {
@@ -139,21 +139,21 @@ class CampoPersonalizadoResource extends Resource
                     }),
 
                 TextColumn::make('opcoes')
-                    ->label('Opções')
+                    ->label(__('painel.campo.col_opcoes'))
                     ->formatStateUsing(fn ($record) => implode(', ', $record->opcoes ?? []))
                     ->wrap()
                     ->limit(50),
 
                 IconColumn::make('obrigatorio')
-                    ->label('Obrigatório')
+                    ->label(__('painel.campo.obrigatorio'))
                     ->boolean(),
 
                 TextColumn::make('ordem')
-                    ->label('Ordem')
+                    ->label(__('painel.campo.col_ordem'))
                     ->sortable(),
 
                 IconColumn::make('ativo')
-                    ->label('Ativo')
+                    ->label(__('painel.campo.ativo'))
                     ->boolean(),
             ])
             ->defaultSort('ordem')

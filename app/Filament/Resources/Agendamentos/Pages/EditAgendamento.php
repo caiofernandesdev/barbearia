@@ -16,7 +16,7 @@ class EditAgendamento extends EditRecord
     protected function getHeaderActions(): array
     {
         return [
-            DeleteAction::make()->label('Excluir'),
+            DeleteAction::make(),
         ];
     }
 

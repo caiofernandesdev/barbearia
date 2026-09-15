@@ -14,27 +14,27 @@ class IndisponibilidadesTable
         return $table
             ->columns([
                 TextColumn::make('escopo')
-                    ->label('Escopo')
+                    ->label(__('painel.indisp.col_escopo'))
                     ->badge()
-                    ->color(fn ($state) => $state === 'Todo o estabelecimento' ? 'danger' : 'warning'),
+                    ->color(fn ($record) => $record->profissional_id ? 'warning' : 'danger'),
 
                 TextColumn::make('inicio')
-                    ->label('Início')
+                    ->label(__('painel.agenda.ind_inicio'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
 
                 TextColumn::make('fim')
-                    ->label('Fim')
+                    ->label(__('painel.agenda.ind_fim'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
 
                 TextColumn::make('motivo')
-                    ->label('Motivo')
+                    ->label(__('painel.agenda.ind_motivo'))
                     ->placeholder('—')
                     ->limit(50),
 
                 TextColumn::make('created_at')
-                    ->label('Criado em')
+                    ->label(__('painel.indisp.col_criado'))
                     ->dateTime('d/m/Y')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -43,7 +43,7 @@ class IndisponibilidadesTable
                 EditAction::make(),
                 DeleteAction::make(),
             ])
-            ->emptyStateHeading('Nenhuma indisponibilidade cadastrada')
-            ->emptyStateDescription('Cadastre bloqueios de agenda por feriados, eventos ou compromissos.');
+            ->emptyStateHeading(__('painel.indisp.empty_heading'))
+            ->emptyStateDescription(__('painel.indisp.empty_desc'));
     }
 }

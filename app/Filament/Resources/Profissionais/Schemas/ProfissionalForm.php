@@ -2,25 +2,24 @@
 
 namespace App\Filament\Resources\Profissionais\Schemas;
 
+use Carbon\Carbon;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Str;
 
 class ProfissionalForm
 {
-    /** 0=Dom ... 6=Sáb — mesma convenção do Carbon::dayOfWeek */
-    private const DIAS = [
-        0 => 'Domingo',
-        1 => 'Segunda-feira',
-        2 => 'Terça-feira',
-        3 => 'Quarta-feira',
-        4 => 'Quinta-feira',
-        5 => 'Sexta-feira',
-        6 => 'Sábado',
-    ];
+    /** 0=Dom ... 6=Sáb, nomes no idioma do estabelecimento. */
+    private static function dias(): array
+    {
+        return collect(range(0, 6))->mapWithKeys(fn ($d) => [
+            $d => Str::ucfirst(Carbon::now()->startOfWeek(Carbon::SUNDAY)->addDays($d)->locale(app()->getLocale())->isoFormat('dddd')),
+        ])->all();
+    }
 
     /** Slots de meia em meia hora, das 6h às 23h30 */
     private static function opcoesHorarios(): array
@@ -34,7 +33,7 @@ class ProfissionalForm
     /** Uma lista de horários por dia da semana, visível só nos dias trabalhados */
     private static function camposPorDia(): array
     {
-        return collect(self::DIAS)->map(
+        return collect(self::dias())->map(
             fn (string $label, int $num) => CheckboxList::make("horarios_por_dia.{$num}")
                 ->label($label)
                 ->options(self::opcoesHorarios())
@@ -55,7 +54,7 @@ class ProfissionalForm
     {
         return $schema->components([
             TextInput::make('nome')
-                ->label('Nome')
+                ->label(__('painel.profissional.nome'))
                 ->required()
                 ->maxLength(100),
 
@@ -63,30 +62,30 @@ class ProfissionalForm
             // telefone vazio antes de disparar. Exigir aqui travava a edição de
             // profissionais cadastrados antes deste campo existir.
             TextInput::make('telefone')
-                ->label('WhatsApp do profissional')
+                ->label(__('painel.profissional.whatsapp'))
                 ->tel()
                 ->maxLength(20)
-                ->placeholder('(11) 99999-9999')
-                ->helperText('Recebe notificações de novos agendamentos e cancelamentos. Sem telefone, ele não recebe nenhum aviso.'),
+                ->placeholder(__('painel.profissional.whatsapp_ph'))
+                ->helperText(__('painel.profissional.whatsapp_help')),
 
             TextInput::make('limite_mensalistas')
-                ->label('Limite de Mensalistas')
+                ->label(__('painel.profissional.limite'))
                 ->numeric()
                 ->required()
                 ->default(10)
                 ->minValue(0),
 
             TextInput::make('comissao_percentual')
-                ->label('Comissão (%)')
+                ->label(__('painel.profissional.comissao'))
                 ->numeric()
                 ->default(0)
                 ->minValue(0)
                 ->maxValue(100)
                 ->suffix('%')
-                ->helperText('Percentual sobre a receita de serviços. Usado na Consolidação Financeira do Salário Emocional.'),
+                ->helperText(__('painel.profissional.comissao_help')),
 
             FileUpload::make('foto')
-                ->label('Foto')
+                ->label(__('painel.profissional.foto'))
                 ->image()
                 // Sem HEIC: navegadores de PC não exibem; o iPhone converte p/ JPEG
                 // automaticamente quando o campo não aceita o formato
@@ -101,11 +100,11 @@ class ProfissionalForm
                 ->nullable(),
 
             Toggle::make('ativo')
-                ->label('Ativo')
+                ->label(__('painel.profissional.ativo'))
                 ->default(true),
 
-            Section::make('Serviços que realiza')
-                ->description('Marque os serviços que este profissional atende. Se nenhum for marcado, ele atende todos os serviços.')
+            Section::make(__('painel.profissional.sec_servicos'))
+                ->description(__('painel.profissional.sec_servicos_desc'))
                 ->schema([
                     CheckboxList::make('servicos')
                         ->label('')
@@ -113,31 +112,31 @@ class ProfissionalForm
                         ->columns(3),
                 ]),
 
-            Section::make('Dias de Trabalho')
-                ->description('Selecione os dias da semana em que este profissional atende.')
+            Section::make(__('painel.profissional.sec_dias'))
+                ->description(__('painel.profissional.sec_dias_desc'))
                 ->schema([
                     CheckboxList::make('dias_trabalho')
                         ->label('')
-                        ->options(self::DIAS)
+                        ->options(self::dias())
                         ->columns(4)
                         ->default([1, 2, 3, 4, 5, 6])
                         // Reativo: os campos de horário por dia seguem esta seleção
                         ->live(),
                 ]),
 
-            Section::make('Horários Específicos')
-                ->description('Opcional. Se deixar tudo em branco, o sistema usa todos os slots do intervalo configurado.')
+            Section::make(__('painel.profissional.sec_horarios'))
+                ->description(__('painel.profissional.sec_horarios_desc'))
                 ->schema([
                     Toggle::make('horarios_por_dia_ativo')
-                        ->label('Definir horários diferentes para cada dia')
-                        ->helperText('Desligado: a mesma lista de horários vale para todos os dias. Ligado: você escolhe os horários dia a dia.')
+                        ->label(__('painel.profissional.por_dia_ativo'))
+                        ->helperText(__('painel.profissional.por_dia_ativo_help'))
                         ->default(false)
                         ->live(),
 
                     // Label explícito: o Filament 4 ignora ->label('') e cai no
                     // nome da coluna ("Horarios trabalho")
                     CheckboxList::make('horarios_trabalho')
-                        ->label('Horários (todos os dias)')
+                        ->label(__('painel.profissional.horarios_todos'))
                         ->options(self::opcoesHorarios())
                         ->columns(6)
                         ->visible(fn ($get) => ! $get('horarios_por_dia_ativo')),
