@@ -12,6 +12,7 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -69,7 +70,47 @@ class TenantsResource extends Resource
                 ->label('Plano')
                 ->options(Plano::where('ativo', true)->pluck('nome', 'id'))
                 ->nullable()
-                ->searchable(),
+                ->searchable()
+                ->hidden(fn ($get) => (bool) $get('personalizado')),
+
+            Toggle::make('personalizado')
+                ->label('Plano personalizado')
+                ->live()
+                ->helperText('Ignora o plano acima e define módulos/limites só pra este cliente, sem precisar criar um plano novo.')
+                ->default(false),
+
+            Section::make('Módulos do plano personalizado')
+                ->description('Mesmas opções do cadastro de planos, válidas só para este estabelecimento.')
+                ->columns(1)
+                ->visible(fn ($get) => (bool) $get('personalizado'))
+                ->schema([
+                    CheckboxList::make('features_custom')
+                        ->label('Módulos inclusos')
+                        ->options(Plano::FEATURES)
+                        ->columns(2)
+                        ->live(),
+
+                    CheckboxList::make('relatorios_inclusos_custom')
+                        ->label('Relatórios inclusos')
+                        ->helperText('Nenhum marcado = todos os relatórios liberados.')
+                        ->options(Plano::RELATORIOS)
+                        ->columns(2)
+                        ->visible(fn ($get) => in_array('relatorios', $get('features_custom') ?? [])),
+
+                    TextInput::make('max_profissionais_custom')
+                        ->label('Máximo de profissionais')
+                        ->numeric()
+                        ->default(0)
+                        ->minValue(0)
+                        ->helperText('0 = ilimitado.'),
+
+                    TextInput::make('max_usuarios_custom')
+                        ->label('Máximo de usuários (logins)')
+                        ->numeric()
+                        ->default(0)
+                        ->minValue(0)
+                        ->helperText('0 = ilimitado. Conta admins e profissionais com acesso.'),
+                ]),
 
             Toggle::make('ativo')
                 ->label('Ativo')
@@ -83,7 +124,7 @@ class TenantsResource extends Resource
                         ->label('Mensalidade personalizada (R$)')
                         ->numeric()
                         ->minValue(0)
-                        ->helperText('Deixe vazio para cobrar o preço do plano. Preencha só para desconto ou acordo específico.')
+                        ->helperText('Deixe vazio para cobrar o preço do plano. Preencha só para desconto ou acordo específico — OBRIGATÓRIO no plano personalizado, senão a cobrança fica como cortesia (R$ 0).')
                         ->columnSpanFull(),
 
                     DatePicker::make('assinatura_inicio')
@@ -174,7 +215,9 @@ class TenantsResource extends Resource
 
                 TextColumn::make('plano.nome')
                     ->label('Plano')
-                    ->default('—'),
+                    ->badge()
+                    ->color(fn ($record) => $record->personalizado ? 'warning' : 'gray')
+                    ->getStateUsing(fn ($record) => $record->personalizado ? 'Personalizado' : ($record->plano?->nome ?? '—')),
 
                 IconColumn::make('ativo')
                     ->label('Ativo')
@@ -218,5 +261,30 @@ class TenantsResource extends Resource
             'create' => CreateTenant::route('/create'),
             'edit' => EditTenant::route('/{record}/edit'),
         ];
+    }
+
+    /**
+     * Junta os relatórios granulares (rel_*) de volta no array features_custom
+     * do plano personalizado. Mesma regra do PlanosResource::mesclarRelatoriosNasFeatures.
+     */
+    public static function mesclarRelatoriosCustom(array $data): array
+    {
+        if (! ($data['personalizado'] ?? false)) {
+            unset($data['relatorios_inclusos_custom']);
+
+            return $data;
+        }
+
+        $features = array_values(array_filter($data['features_custom'] ?? [], fn ($f) => ! str_starts_with($f, 'rel_')));
+        $relatorios = $data['relatorios_inclusos_custom'] ?? [];
+
+        if (in_array('relatorios', $features, true)) {
+            $features = array_values(array_unique(array_merge($features, $relatorios)));
+        }
+
+        $data['features_custom'] = $features;
+        unset($data['relatorios_inclusos_custom']);
+
+        return $data;
     }
 }

@@ -6,7 +6,7 @@ use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Model;
 
-#[Fillable(['slug', 'nome', 'tipo', 'tipo_estabelecimento_id', 'plano_id', 'valor_mensalidade', 'whatsapp_config', 'whatsapp_ativo', 'ativo', 'assinatura_inicio', 'dia_vencimento', 'proximo_vencimento'])]
+#[Fillable(['slug', 'nome', 'tipo', 'tipo_estabelecimento_id', 'plano_id', 'personalizado', 'features_custom', 'max_profissionais_custom', 'max_usuarios_custom', 'valor_mensalidade', 'whatsapp_config', 'whatsapp_ativo', 'ativo', 'assinatura_inicio', 'dia_vencimento', 'proximo_vencimento'])]
 class Tenant extends Model
 {
     protected $table = 'tenants';
@@ -17,6 +17,10 @@ class Tenant extends Model
             'whatsapp_config' => 'array',
             'whatsapp_ativo' => 'boolean',
             'ativo' => 'boolean',
+            'personalizado' => 'boolean',
+            'features_custom' => 'array',
+            'max_profissionais_custom' => 'integer',
+            'max_usuarios_custom' => 'integer',
             'assinatura_inicio' => 'date',
             'dia_vencimento' => 'integer',
             'proximo_vencimento' => 'date',
@@ -187,7 +191,10 @@ class Tenant extends Model
     /** Ainda cabe mais um profissional no limite do plano? (0 = ilimitado) */
     public function podeAdicionarProfissional(): bool
     {
-        $max = (int) ($this->plano?->max_profissionais ?? 0);
+        $max = $this->personalizado
+            ? (int) ($this->max_profissionais_custom ?? 0)
+            : (int) ($this->plano?->max_profissionais ?? 0);
+
         if ($max <= 0) {
             return true;
         }
@@ -198,7 +205,10 @@ class Tenant extends Model
     /** Ainda cabe mais um usuário no limite do plano? (0 = ilimitado) */
     public function podeAdicionarUsuario(): bool
     {
-        $max = (int) ($this->plano?->max_usuarios ?? 0);
+        $max = $this->personalizado
+            ? (int) ($this->max_usuarios_custom ?? 0)
+            : (int) ($this->plano?->max_usuarios ?? 0);
+
         if ($max <= 0) {
             return true;
         }
@@ -241,13 +251,27 @@ class Tenant extends Model
         return $this->tipoEstabelecimento?->nome ?? $this->tipo ?? 'Estabelecimento';
     }
 
+    /**
+     * Módulos efetivos deste tenant: do plano personalizado dele quando
+     * `personalizado` está ligado, senão os do Plano vinculado.
+     */
+    public function features(): array
+    {
+        if ($this->personalizado) {
+            return $this->features_custom ?? [];
+        }
+
+        return $this->plano?->features ?? [];
+    }
+
     public function hasFeature(string $feature): bool
     {
-        return $this->plano?->hasFeature($feature) ?? false;
+        return in_array($feature, $this->features(), true);
     }
 
     /**
-     * O plano inclui este relatório granular? (slug sem o prefixo rel_)
+     * O plano (ou plano personalizado) inclui este relatório granular?
+     * (slug sem o prefixo rel_)
      *
      * Retrocompat: plano antigo com 'relatorios' e NENHUM rel_* marcado
      * mantém todos os relatórios liberados.
@@ -258,7 +282,7 @@ class Tenant extends Model
             return false;
         }
 
-        $features = $this->plano?->features ?? [];
+        $features = $this->features();
         $granulares = array_filter($features, fn ($f) => str_starts_with($f, 'rel_'));
 
         if ($granulares === []) {

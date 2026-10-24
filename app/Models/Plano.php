@@ -18,6 +18,24 @@ class Plano extends Model
     }
 
     /**
+     * Módulos disponíveis no sistema. Slug (vai no array features) => rótulo
+     * exibido no super admin. Única fonte pra não desalinhar o CheckboxList
+     * do Plano e o do plano personalizado do Tenant (ver TenantsResource).
+     */
+    public const FEATURES = [
+        'mensalistas' => 'Mensalistas',
+        'indisponibilidades' => 'Indisponibilidades de agenda',
+        'relatorios' => 'Relatórios e dashboard',
+        'repescagem' => 'Repescagem de clientes',
+        'salario_emocional' => 'Salário emocional',
+        'whatsapp' => 'Integração WhatsApp',
+        'campos_agendamento' => 'Campos personalizados no agendamento',
+        'agenda_fixa' => 'Agenda Fixa (planejamento mensal do cliente)',
+        'lista_espera' => 'Lista de espera (dias lotados)',
+        'import_export' => 'Importação / Exportação',
+    ];
+
+    /**
      * Relatórios granulares (sub-módulos do módulo 'relatorios').
      * Slug (vai no array features) => rótulo exibido no super admin.
      */

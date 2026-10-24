@@ -74,18 +74,7 @@ class PlanosResource extends Resource
 
             CheckboxList::make('features')
                 ->label('Módulos inclusos')
-                ->options([
-                    'mensalistas' => 'Mensalistas',
-                    'indisponibilidades' => 'Indisponibilidades de agenda',
-                    'relatorios' => 'Relatórios e dashboard',
-                    'repescagem' => 'Repescagem de clientes',
-                    'salario_emocional' => 'Salário emocional',
-                    'whatsapp' => 'Integração WhatsApp',
-                    'campos_agendamento' => 'Campos personalizados no agendamento',
-                    'agenda_fixa' => 'Agenda Fixa (planejamento mensal do cliente)',
-                    'lista_espera' => 'Lista de espera (dias lotados)',
-                    'import_export' => 'Importação / Exportação',
-                ])
+                ->options(Plano::FEATURES)
                 ->columns(2)
                 ->live(),
 
