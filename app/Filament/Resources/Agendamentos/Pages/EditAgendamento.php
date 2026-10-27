@@ -34,9 +34,18 @@ class EditAgendamento extends EditRecord
         return $data;
     }
 
-    /** Recomputa totais e sincroniza o pivot ao editar (mesma regra do create). */
+    /**
+     * Sincroniza o pivot e recomputa a duração ao editar (mesma regra do create).
+     *
+     * O valor só é recalculado quando os serviços escolhidos de fato mudam.
+     * Sem essa trava, editar só o telefone ou o horário apagaria um valor
+     * lançado manualmente depois (ação "Lançar valor" — o caso do serviço
+     * "sem preço fixo", onde o preço real só é digitado após o atendimento).
+     */
     protected function handleRecordUpdate(Model $record, array $data): Model
     {
+        $servicoIdsAntigos = $record->servicos()->pluck('servicos.id')->sort()->values()->all();
+
         $servicoIds = $data['servico_ids'] ?? [];
         unset($data['servico_ids']);
 
@@ -44,7 +53,9 @@ class EditAgendamento extends EditRecord
         $diaSemana = Carbon::parse($data['data_hora'])->dayOfWeek;
 
         $data['servico_id'] = $servicos->first()?->id;
-        $data['valor_total'] = $servicos->sum(fn ($s) => $s->precoNoDia($diaSemana));
+        if ($servicos->pluck('id')->sort()->values()->all() !== $servicoIdsAntigos) {
+            $data['valor_total'] = Servico::somarPrecos($servicos, $diaSemana);
+        }
         $data['duracao_total_minutos'] = (int) $servicos->sum('duracao_minutos');
 
         $record->update($data);

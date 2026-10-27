@@ -50,7 +50,9 @@ class ProximosAgendamentosWidget extends TableWidget
                 TextColumn::make('servico.nome')
                     ->label('Serviço')
                     ->getStateUsing(fn ($record) => $record->nomesServicos())
-                    ->description(fn ($record) => 'R$ '.number_format((float) ($record->valor_total ?? $record->servico?->preco ?? 0), 2, ',', '.')),
+                    ->description(fn ($record) => ($v = $record->valor_total ?? $record->servico?->preco) !== null
+                        ? 'R$ '.number_format((float) $v, 2, ',', '.')
+                        : __('painel.agendamento.preco_a_combinar')),
 
                 AgendamentoTabela::colunaDetalhes(),
 

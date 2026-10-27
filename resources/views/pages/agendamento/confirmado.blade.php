@@ -45,7 +45,8 @@
                 <span class="text-2xl">💰</span>
                 <div>
                     <div class="text-gray-400 text-xs">{{ __('booking.label_price') }}</div>
-                    <div class="text-amber-400 font-semibold">R$ {{ number_format((float) ($agendamento->valor_total ?? $agendamento->servico?->preco ?? 0), 2, ',', '.') }}</div>
+                    @php($valor = $agendamento->valor_total ?? $agendamento->servico?->preco)
+                    <div class="text-amber-400 font-semibold">{{ $valor !== null ? 'R$ '.number_format((float) $valor, 2, ',', '.') : __('booking.price_on_request') }}</div>
                 </div>
             </div>
             <div class="flex items-center gap-3 text-sm">

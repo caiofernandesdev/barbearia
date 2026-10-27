@@ -36,9 +36,11 @@ class ServicoForm
             TextInput::make('preco')
                 ->label(__('painel.servico.preco'))
                 ->numeric()
-                ->required()
+                ->nullable()
                 ->prefix('R$')
-                ->minValue(0),
+                ->minValue(0)
+                ->live()
+                ->helperText(__('painel.servico.preco_help')),
 
             TextInput::make('duracao_minutos')
                 ->label(__('painel.servico.duracao'))

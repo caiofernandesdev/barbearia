@@ -27,6 +27,9 @@ class CreateAgendamento extends CreateRecord
     /**
      * Multi-serviço: servico_ids não é coluna — vira o pivot. servico_id guarda
      * o primeiro (retrocompat) e os totais somam pelo preço do dia do atendimento.
+     * Serviço "sem preço fixo" faz o total ficar null (a combinar) — ver
+     * Servico::somarPrecos(). O valor final pode ser lançado depois na
+     * listagem de agendamentos ("Lançar valor").
      */
     protected function handleRecordCreation(array $data): Model
     {
@@ -37,7 +40,7 @@ class CreateAgendamento extends CreateRecord
         $diaSemana = Carbon::parse($data['data_hora'])->dayOfWeek;
 
         $data['servico_id'] = $servicos->first()?->id;
-        $data['valor_total'] = $servicos->sum(fn ($s) => $s->precoNoDia($diaSemana));
+        $data['valor_total'] = Servico::somarPrecos($servicos, $diaSemana);
         $data['duracao_total_minutos'] = (int) $servicos->sum('duracao_minutos');
 
         $record = static::getModel()::create($data);

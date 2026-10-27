@@ -94,6 +94,7 @@ return [
     'label_professional' => 'Professional',
     'label_datetime' => 'Date and time',
     'label_price' => 'Price',
+    'price_on_request' => 'to be confirmed',
     'label_duration' => 'Estimated duration',
     'minutes' => 'minutes',
     'back_home' => 'Back to start',

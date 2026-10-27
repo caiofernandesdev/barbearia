@@ -94,6 +94,7 @@ return [
     'label_professional' => 'Profesional',
     'label_datetime' => 'Fecha y hora',
     'label_price' => 'Precio',
+    'price_on_request' => 'a definir',
     'label_duration' => 'Duración estimada',
     'minutes' => 'minutos',
     'back_home' => 'Volver al inicio',

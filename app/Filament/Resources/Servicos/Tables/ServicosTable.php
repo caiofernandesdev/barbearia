@@ -67,6 +67,7 @@ class ServicosTable
                 TextColumn::make('preco')
                     ->label(__('painel.servico.col_preco'))
                     ->money('BRL')
+                    ->placeholder(__('painel.agendamento.preco_a_combinar'))
                     ->sortable(),
 
                 TextColumn::make('duracao_minutos')
@@ -108,6 +109,7 @@ class ServicosTable
 
                     TextColumn::make('preco')
                         ->money('BRL')
+                        ->placeholder(__('painel.agendamento.preco_a_combinar'))
                         ->color('primary')
                         ->weight('semibold'),
 

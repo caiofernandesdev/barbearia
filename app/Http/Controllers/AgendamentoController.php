@@ -352,7 +352,8 @@ class AgendamentoController extends Controller
             'profissional_id' => $request->profissional_id,
             // servico_id = primeiro serviço (retrocompat); todos vão no pivot abaixo
             'servico_id' => $servicoIds[0],
-            'valor_total' => $servicosSelecionados->sum(fn ($s) => $s->precoNoDia($diaSemana)),
+            // null quando algum serviço é "sem preço fixo" (a combinar)
+            'valor_total' => Servico::somarPrecos($servicosSelecionados, $diaSemana),
             'duracao_total_minutos' => (int) $servicosSelecionados->sum('duracao_minutos'),
             'data_hora' => Carbon::parse($request->data_hora),
             'status' => 'pendente',

@@ -41,7 +41,7 @@ class AgendamentoForm
                 ->required()
                 ->searchable()
                 ->options(Servico::where('ativo', true)->orderBy('ordem')->get()
-                    ->mapWithKeys(fn ($s) => [$s->id => $s->nome.' — R$ '.number_format((float) $s->preco, 2, ',', '.')])->all())
+                    ->mapWithKeys(fn ($s) => [$s->id => $s->nome.' — '.($s->temPrecoFixo() ? 'R$ '.number_format((float) $s->preco, 2, ',', '.') : __('painel.agendamento.preco_a_combinar'))])->all())
                 ->helperText(__('painel.agendamento.servicos_help')),
 
             DateTimePicker::make('data_hora')

@@ -13,6 +13,7 @@ use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\Layout\Stack;
@@ -95,6 +96,7 @@ class AgendamentosTable
                     ->label(__('painel.agendamento.act_pedir'))
                     ->icon('heroicon-o-chat-bubble-left-ellipsis')
                     ->color('warning')
+                    ->button()
                     ->requiresConfirmation()
                     ->modalHeading(__('painel.agendamento.act_modal_heading'))
                     ->modalDescription(fn ($record) => __('painel.agendamento.act_modal_desc', ['nome' => $record->cliente_nome, 'tel' => $record->cliente_telefone]))
@@ -109,8 +111,33 @@ class AgendamentosTable
                         Notification::make()->title(__('painel.agendamento.notif_enviada'))->body(__('painel.agendamento.notif_enviada_body', ['nome' => $record->cliente_nome]))->success()->send();
                     }),
 
-                EditAction::make(),
-                DeleteAction::make(),
+                Action::make('lancar_valor')
+                    ->label(__('painel.agendamento.act_lancar_valor'))
+                    ->icon('heroicon-o-banknotes')
+                    ->color('success')
+                    ->button()
+                    // Chamada curta pra digitar o valor final — útil no serviço
+                    // "sem preço fixo" (ex: cabelo), onde só se sabe o preço
+                    // depois de feito o atendimento.
+                    ->schema([
+                        TextInput::make('valor_total')
+                            ->label(__('painel.agendamento.valor_total'))
+                            ->numeric()
+                            ->nullable()
+                            ->prefix('R$')
+                            ->minValue(0)
+                            ->default(fn ($record) => $record->valor_total),
+                    ])
+                    ->modalSubmitActionLabel(__('painel.agendamento.act_salvar'))
+                    ->action(function ($record, array $data) {
+                        $record->update(['valor_total' => $data['valor_total'] !== '' ? $data['valor_total'] : null]);
+                        Notification::make()->title(__('painel.agendamento.notif_valor_lancado'))->success()->send();
+                    }),
+
+                EditAction::make()
+                    ->button(),
+                DeleteAction::make()
+                    ->button(),
             ])
             ->toolbarActions([
                 BulkAction::make('enviar_confirmacao_massa')
@@ -174,7 +201,26 @@ class AgendamentosTable
             });
     }
 
-    /** Layout em linhas — colunas secundárias somem no mobile. */
+    /**
+     * "R$ x,xx" ou "a combinar" quando não há valor lançado (serviço sem
+     * preço fixo que ainda não teve o valor final informado).
+     */
+    private static function formatarValor($record): string
+    {
+        $valor = $record->valor_total ?? $record->servico?->preco;
+
+        return $valor !== null
+            ? 'R$ '.number_format((float) $valor, 2, ',', '.')
+            : __('painel.agendamento.preco_a_combinar');
+    }
+
+    /**
+     * Layout em linhas. Só cliente, data e status ficam sempre visíveis —
+     * o resto começa oculto (tela limpa, principalmente no celular) e pode
+     * ser ligado por quem usa, a qualquer momento, no botão de colunas da
+     * tabela (sem essa trava, no mobile tudo que tinha visibleFrom ficava
+     * escondido sem opção de escolha).
+     */
     protected static function configurarLista(Table $table): Table
     {
         return $table
@@ -185,34 +231,35 @@ class AgendamentosTable
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('cliente_telefone')
-                    ->label(__('painel.agendamento.col_telefone'))
-                    ->searchable()
-                    ->visibleFrom('lg'),
-
-                TextColumn::make('profissional.nome')
-                    ->label(__('painel.agendamento.profissional'))
-                    ->sortable()
-                    ->visibleFrom('md'),
-
-                TextColumn::make('servico.nome')
-                    ->label(__('painel.agendamento.col_servico'))
-                    ->getStateUsing(fn ($record) => $record->nomesServicos())
-                    ->description(fn ($record) => 'R$ '.number_format((float) ($record->valor_total ?? $record->servico?->preco ?? 0), 2, ',', '.'))
-                    ->sortable()
-                    ->visibleFrom('sm'),
-
                 TextColumn::make('data_hora')
                     ->label(__('painel.agendamento.data_hora'))
                     ->dateTime('d/m/Y H:i')
                     ->sortable(),
 
-                self::colunaStatus(),
+                self::colunaStatus()
+                    ->toggleable(),
+
+                TextColumn::make('servico.nome')
+                    ->label(__('painel.agendamento.col_servico'))
+                    ->getStateUsing(fn ($record) => $record->nomesServicos())
+                    ->description(fn ($record) => self::formatarValor($record))
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('cliente_telefone')
+                    ->label(__('painel.agendamento.col_telefone'))
+                    ->searchable()
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                TextColumn::make('profissional.nome')
+                    ->label(__('painel.agendamento.profissional'))
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 IconColumn::make('mensalista')
                     ->label(__('painel.agendamento.mensalista'))
                     ->boolean()
-                    ->visibleFrom('lg'),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 IconColumn::make('is_avulso_mensalista_fixo')
                     ->label(__('painel.agendamento.col_avulso_fixo'))
@@ -222,7 +269,7 @@ class AgendamentosTable
                     ->trueColor('warning')
                     ->falseColor('gray')
                     ->tooltip(__('painel.agendamento.tip_avulso_fixo'))
-                    ->visibleFrom('lg'),
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 AgendamentoTabela::colunaDetalhes(),
 
@@ -252,15 +299,18 @@ class AgendamentosTable
 
                     TextColumn::make('servico.nome')
                         ->getStateUsing(fn ($record) => $record->nomesServicos())
-                        ->description(fn ($record) => 'R$ '.number_format((float) ($record->valor_total ?? $record->servico?->preco ?? 0), 2, ',', '.'))
+                        ->description(fn ($record) => self::formatarValor($record))
                         ->icon('heroicon-m-scissors')
-                        ->color('gray'),
+                        ->color('gray')
+                        ->toggleable(),
 
                     TextColumn::make('profissional.nome')
                         ->icon('heroicon-m-user')
-                        ->color('gray'),
+                        ->color('gray')
+                        ->toggleable(isToggledHiddenByDefault: true),
 
-                    self::colunaStatus(),
+                    self::colunaStatus()
+                        ->toggleable(),
                 ])
                     ->space(2),
             ]);

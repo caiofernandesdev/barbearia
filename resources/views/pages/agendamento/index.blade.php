@@ -110,6 +110,28 @@ let servicos = [];
 
 let cardAtivo = null; // referência ao card interativo atual
 
+// ─── Preço ──────────────────────────────────────────────────────────────────
+// Serviço "sem preço fixo" (ex: produto variável por cliente) chega com
+// preco = null da API — mostramos "a combinar" em vez de um valor.
+
+function precoFmt(valor) {
+    return valor === null || valor === undefined
+        ? T.price_on_request
+        : 'R$ ' + parseFloat(valor).toFixed(2).replace('.', ',');
+}
+
+// Soma os preços de uma lista de serviços; null se algum não tiver preço fixo.
+function somarPrecos(lista, diaSemana = null) {
+    let total = 0;
+    for (const s of lista) {
+        const v = diaSemana !== null ? precoServicoNoDia(s, diaSemana) : (s.preco === null ? null : parseFloat(s.preco));
+        if (v === null) return null;
+        total += v;
+    }
+
+    return total;
+}
+
 // ─── Scroll ───────────────────────────────────────────────────────────────────
 
 function scrollToBottom() {
@@ -295,7 +317,7 @@ function renderInput() {
                 ${fotoHtml}
                 <span class="text-white text-xs font-medium text-center leading-tight line-clamp-2 w-full"
                     title="${sanitizeText(s.nome)}">${sanitizeText(s.nome)}${s.destaque ? ' 🔥' : ''}</span>
-                <span class="text-amber-400 text-xs font-semibold">R$ ${parseFloat(s.preco).toFixed(2).replace('.', ',')}</span>
+                <span class="text-amber-400 text-xs font-semibold">${precoFmt(s.preco)}</span>
                 <span class="text-gray-400 text-xs">⏱ ${s.duracao_minutos}min</span>
             </button>`;
         }).join('');
@@ -418,7 +440,7 @@ function renderInput() {
                     <div>✂️ ${dadosCliente.servico_nome}</div>
                     <div>👨 ${dadosCliente.profissional_nome}</div>
                     <div>📅 ${formatarDataHora(dadosCliente.data_hora)}</div>
-                    <div>💰 R$ ${parseFloat(dadosCliente.servico_preco).toFixed(2).replace('.', ',')}</div>
+                    <div>💰 ${precoFmt(dadosCliente.servico_preco)}</div>
                     <div>⏱ ${dadosCliente.servico_duracao} min</div>
                     ${dadosCliente.dados_extras ? Object.entries(dadosCliente.dados_extras).filter(([,v])=>v).map(([k,v]) => `<div>📝 <strong>${sanitizeText(k)}</strong>: ${sanitizeText(v)}</div>`).join('') : ''}
                 </div>
@@ -622,11 +644,14 @@ function servicosSelecionadosLista() {
         .filter(Boolean);
 }
 
-// Preço de um serviço num dia da semana (0=Dom..6=Sáb). Dia sem valor usa o base.
+// Preço de um serviço num dia da semana (0=Dom..6=Sáb). Dia sem valor usa o
+// base — e se o base for null ("sem preço fixo"), o resultado também é null.
 function precoServicoNoDia(s, dia) {
     const pd = s.precos_por_dia || {};
     const v = (pd[dia] !== undefined) ? pd[dia] : pd[String(dia)];
-    return (v !== undefined && v !== null && v !== '') ? parseFloat(v) : parseFloat(s.preco);
+    if (v !== undefined && v !== null && v !== '') return parseFloat(v);
+
+    return s.preco === null || s.preco === undefined ? null : parseFloat(s.preco);
 }
 
 function atualizarTotalServicos() {
@@ -637,10 +662,10 @@ function atualizarTotalServicos() {
         el.textContent = T.tap_services;
         return;
     }
-    const preco = sel.reduce((t, s) => t + parseFloat(s.preco), 0);
+    const preco = somarPrecos(sel);
     const dur   = sel.reduce((t, s) => t + s.duracao_minutos, 0);
-    const precoFmt = `<strong class="text-amber-400">R$ ${preco.toFixed(2).replace('.', ',')}</strong>`;
-    el.innerHTML = tt('services_summary', { count: sel.length, price: precoFmt, min: dur });
+    const precoHtml = `<strong class="text-amber-400">${precoFmt(preco)}</strong>`;
+    el.innerHTML = tt('services_summary', { count: sel.length, price: precoHtml, min: dur });
 }
 
 function confirmarServicos() {
@@ -650,7 +675,7 @@ function confirmarServicos() {
         return;
     }
 
-    const preco = sel.reduce((t, s) => t + parseFloat(s.preco), 0);
+    const preco = somarPrecos(sel);
     dadosCliente.servico_id      = sel[0].id;
     dadosCliente.servico_ids     = sel.map(s => s.id).join(',');
     dadosCliente.servico_nome    = sel.map(s => s.nome).join(' + ');
@@ -660,7 +685,7 @@ function confirmarServicos() {
     dadosCliente.hora            = null;
     dadosCliente.data_hora       = null;
 
-    addMensagemCliente(dadosCliente.servico_nome + ' — R$ ' + preco.toFixed(2).replace('.', ','));
+    addMensagemCliente(dadosCliente.servico_nome + ' — ' + precoFmt(preco));
     estado = 'data';
     addMensagemBot(T.pick_day_time_bot);
     renderInput();
@@ -695,7 +720,7 @@ function selecionarDataNoCard(dataStr, rolar = true) {
     const selData = servicosSelecionadosLista();
     if (selData.length) {
         const diaSemana = new Date(dataStr + 'T12:00:00').getDay();
-        dadosCliente.servico_preco = selData.reduce((t, s) => t + precoServicoNoDia(s, diaSemana), 0);
+        dadosCliente.servico_preco = somarPrecos(selData, diaSemana);
     }
 
     const display = document.getElementById('data-hora-display');

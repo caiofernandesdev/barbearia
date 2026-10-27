@@ -119,7 +119,10 @@ class AgendamentoObserver
     public static function mensagemConfirmado(Agendamento $ag, string $nb): string
     {
         $servicos = $ag->nomesServicos();
-        $preco = 'R$ '.number_format((float) ($ag->valor_total ?? $ag->servico?->preco ?? 0), 2, ',', '.');
+        $valor = $ag->valor_total ?? $ag->servico?->preco;
+        // Serviço "sem preço fixo" (ex: produto que varia por cliente): valor
+        // só é conhecido depois do atendimento, por isso "a combinar" aqui.
+        $preco = $valor !== null ? 'R$ '.number_format((float) $valor, 2, ',', '.') : 'a combinar';
 
         return "Olá, {$ag->cliente_nome}! ✨\n\nSeu agendamento na *{$nb}* foi *confirmado*!\n\n📅 *Data:* {$ag->data_hora->format('d/m/Y')}\n⏰ *Hora:* {$ag->data_hora->format('H:i')}\n👤 *Profissional:* {$ag->profissional->nome}\n✨ *Serviço:* {$servicos}\n💰 *Valor:* {$preco}\n\nTe esperamos lá! 😊";
     }

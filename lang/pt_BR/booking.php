@@ -106,6 +106,7 @@ return [
     'label_professional' => 'Profissional',
     'label_datetime' => 'Data e hora',
     'label_price' => 'Valor',
+    'price_on_request' => 'a combinar',
     'label_duration' => 'Duração estimada',
     'minutes' => 'minutos',
     'back_home' => 'Voltar ao início',

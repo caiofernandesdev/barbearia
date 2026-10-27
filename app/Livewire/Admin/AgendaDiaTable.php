@@ -174,7 +174,7 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
                     ->searchable()
                     ->required()
                     ->options(Servico::where('ativo', true)->orderBy('ordem')->get()
-                        ->mapWithKeys(fn ($s) => [$s->id => $s->nome.' — R$ '.number_format((float) $s->preco, 2, ',', '.')])->all())
+                        ->mapWithKeys(fn ($s) => [$s->id => $s->nome.' — '.($s->temPrecoFixo() ? 'R$ '.number_format((float) $s->preco, 2, ',', '.') : __('painel.agendamento.preco_a_combinar'))])->all())
                     ->helperText(__('painel.agenda.ag_servicos_help')),
             ])
             ->action(fn (array $data, array $arguments) => $this->criarAgendamentoRapido($arguments['hora'] ?? '', $data));
@@ -236,8 +236,9 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
             'profissional_id' => $this->profissionalId,
             // servico_id = primeiro (retrocompat); todos vão no pivot
             'servico_id' => $servicos->first()->id,
-            // Preço do dia do slot (serviço pode cobrar diferente por dia)
-            'valor_total' => $servicos->sum(fn ($s) => $s->precoNoDia($inicio->dayOfWeek)),
+            // Preço do dia do slot; null (a combinar) se algum serviço não
+            // tiver preço fixo — ver Servico::somarPrecos().
+            'valor_total' => Servico::somarPrecos($servicos, $inicio->dayOfWeek),
             'duracao_total_minutos' => $duracao,
             'data_hora' => $inicio->format('Y-m-d H:i:s'),
             'status' => 'pendente',

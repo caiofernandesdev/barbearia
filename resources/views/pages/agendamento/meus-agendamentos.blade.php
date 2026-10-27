@@ -45,7 +45,8 @@
                 <span>📅</span>
                 {{ $ag->data_hora->format('d/m/Y') }} {{ __('booking.at_time') }} {{ $ag->data_hora->format('H:i') }}
             </div>
-            <div class="text-amber-400 font-semibold">R$ {{ number_format((float) ($ag->valor_total ?? $ag->servico?->preco ?? 0), 2, ',', '.') }}</div>
+            @php($valor = $ag->valor_total ?? $ag->servico?->preco)
+            <div class="text-amber-400 font-semibold">{{ $valor !== null ? 'R$ '.number_format((float) $valor, 2, ',', '.') : __('booking.price_on_request') }}</div>
         </div>
 
         @if(in_array($ag->status, ['pendente', 'confirmado']))
