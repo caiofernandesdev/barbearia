@@ -290,7 +290,7 @@
                         <li>✅ Relatórios completos + PDF/Excel</li>
                         <li>✅ Painel do profissional</li>
                         <li class="text-gray-600">✕ Salário Emocional</li>
-                        <li class="text-gray-600">✕ Agenda Fixa</li>
+                        <li class="text-gray-600">✕ Agenda Recorrente</li>
                     </ul>
                     <a href="https://wa.me/5514996118316?text={{ urlencode('Quero o plano '.$pPro->nome) }}" target="_blank"
                        class="block text-center bg-brand-500 hover:bg-brand-600 text-black py-3 rounded-xl font-bold text-sm transition">
@@ -309,7 +309,7 @@
                     <ul class="space-y-2.5 text-xs sm:text-sm text-gray-300 mb-8">
                         <li>✅ Tudo do {{ $pPro->nome ?? 'plano anterior' }}</li>
                         <li>✅ Salário Emocional</li>
-                        <li>✅ Agenda Fixa</li>
+                        <li>✅ Agenda Recorrente</li>
                         <li>✅ Campos personalizados</li>
                         <li>✅ Todos os relatórios</li>
                         <li>✅ Suporte prioritário</li>

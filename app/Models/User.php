@@ -29,7 +29,7 @@ class User extends Authenticatable implements FilamentUser
         'indisponibilidades' => 'Indisponibilidades',
         'lista_espera' => 'Lista de espera',
         'clientes' => 'Clientes',
-        'agenda_fixa' => 'Agenda Fixa',
+        'agenda_fixa' => 'Agenda Recorrente',
         'repescagem' => 'Repescagem',
         'profissionais' => 'Profissionais',
         'servicos' => 'Serviços',

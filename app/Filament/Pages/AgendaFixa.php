@@ -12,10 +12,13 @@ use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 
 /**
- * Agenda Fixa — monta o mês de um cliente escolhendo, em cada ocorrência de um
- * dia da semana, o serviço E o horário. O padrão montado vira um ciclo que pode
- * ser repetido por vários meses, mantendo a alternância contínua (ex: unha /
- * reparo quinzenal, com horário que desliza conforme a duração).
+ * Agenda Recorrente (nome exibido; classe/slug "AgendaFixa" ficam como estão
+ * internamente — renomear só o texto evita migrar features/permissões já
+ * salvas em produção) — monta o mês de um cliente escolhendo, em cada
+ * ocorrência de um dia da semana, o serviço E o horário. O padrão montado
+ * vira um ciclo que pode ser repetido por vários meses, mantendo a
+ * alternância contínua (ex: unha / reparo quinzenal, com horário que desliza
+ * conforme a duração).
  *
  * Gera agendamentos reais (o hook do model decide pendente/confirmado conforme
  * o módulo WhatsApp). Não duplica os que já existem.
@@ -29,7 +32,7 @@ class AgendaFixa extends Page
         return __('painel.nav.agenda_fixa');
     }
 
-    protected static ?string $title = 'Agenda Fixa';
+    protected static ?string $title = 'Agenda Recorrente';
 
     protected static \BackedEnum|string|null $navigationIcon = Heroicon::OutlinedCalendarDays;
 

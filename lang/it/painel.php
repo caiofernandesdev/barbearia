@@ -13,7 +13,7 @@ return [
     'nav' => [
         'meu_painel' => 'Il Mio Pannello',
         'agenda' => 'Agenda',
-        'agenda_fixa' => 'Agenda Fissa',
+        'agenda_fixa' => 'Agenda Ricorrente',
         'agendamentos' => 'Appuntamenti',
         'indisponibilidades' => 'Indisponibilità',
         'lista_espera' => "Lista d'Attesa",
@@ -325,7 +325,7 @@ return [
         'col_limite' => 'Limite/settimana',
         'col_horarios_fixos' => 'Orari fissi',
         'col_atualizado' => 'Aggiornato',
-        'act_agenda_fixa' => 'Agenda Fissa',
+        'act_agenda_fixa' => 'Agenda Ricorrente',
         'col_sem_telefone' => 'senza telefono',
         'grade_limite_prefix' => 'Limite: ',
         'grade_limite_suffix' => '/settimana',

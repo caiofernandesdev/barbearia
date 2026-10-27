@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\Mensalistas\Tables;
 
-use App\Filament\Pages\AgendaFixa;
-use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\Layout\Stack;
 use Filament\Tables\Columns\TextColumn;
@@ -27,13 +25,6 @@ class MensalistasTable
                     ]),
             ])
             ->actions([
-                Action::make('agenda_fixa')
-                    ->label(__('painel.cliente.act_agenda_fixa'))
-                    ->icon('heroicon-o-calendar-days')
-                    ->color('warning')
-                    ->visible(fn () => (app()->bound('current_tenant') ? app('current_tenant')?->hasFeature('agenda_fixa') : false) ?? false)
-                    ->url(fn ($record) => AgendaFixa::getUrl(['mensalista' => $record->id])),
-
                 EditAction::make(),
             ]);
 

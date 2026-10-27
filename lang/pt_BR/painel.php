@@ -15,7 +15,7 @@ return [
     'nav' => [
         'meu_painel' => 'Meu Painel',
         'agenda' => 'Agenda',
-        'agenda_fixa' => 'Agenda Fixa',
+        'agenda_fixa' => 'Agenda Recorrente',
         'agendamentos' => 'Agendamentos',
         'indisponibilidades' => 'Indisponibilidades',
         'lista_espera' => 'Lista de Espera',
@@ -334,7 +334,7 @@ return [
         'col_limite' => 'Limite/semana',
         'col_horarios_fixos' => 'Horários fixos',
         'col_atualizado' => 'Atualizado',
-        'act_agenda_fixa' => 'Agenda Fixa',
+        'act_agenda_fixa' => 'Agenda Recorrente',
         'col_sem_telefone' => 'sem telefone',
         'grade_limite_prefix' => 'Limite: ',
         'grade_limite_suffix' => '/semana',

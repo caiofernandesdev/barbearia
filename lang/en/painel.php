@@ -325,7 +325,7 @@ return [
         'col_limite' => 'Limit/week',
         'col_horarios_fixos' => 'Fixed times',
         'col_atualizado' => 'Updated',
-        'act_agenda_fixa' => 'Fixed Schedule',
+        'act_agenda_fixa' => 'Recurring Schedule',
         'col_sem_telefone' => 'no phone',
         'grade_limite_prefix' => 'Limit: ',
         'grade_limite_suffix' => '/week',
