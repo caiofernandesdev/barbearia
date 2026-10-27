@@ -266,14 +266,32 @@ class AgendaFixa extends Page
     }
 
     /**
-     * Repetição: o padrão montado (serviço+hora das semanas preenchidas) vira um
-     * ciclo aplicado continuamente a cada ocorrência do dia da semana na janela,
-     * ancorado no início do mês base — mantém a alternância na virada do mês.
+     * Repetição: o padrão do mês base — UMA posição por ocorrência do dia da
+     * semana, incluindo as deixadas em branco ("não vem" = null) — vira um
+     * ciclo que se repete nos meses seguintes NA MESMA POSIÇÃO. É assim que
+     * um padrão quinzenal (ex: unha na 2ª semana, reparo na 4ª, nada nas
+     * ímpares) continua quinzenal na virada do mês, em vez de virar semanal.
+     *
+     * Bug corrigido: antes, o ciclo descartava as posições em branco e
+     * aplicava só os itens preenchidos a TODAS as ocorrências da janela a
+     * partir do início do mês base — gerando agendamento nas semanas
+     * deixadas em branco de propósito (inclusive no próprio mês base).
      */
     private function planejarComCiclo(): array
     {
-        $ciclo = $this->planejarMesBase();
-        if ($ciclo === []) {
+        // Um item por ocorrência do mês base, na ordem (servico = null nas
+        // deixadas em branco).
+        $padrao = collect($this->ocorrencias)->map(function ($oc) {
+            $servicoId = $this->servicoPorData[$oc['data']] ?? null;
+
+            return [
+                'servico' => $servicoId ? (int) $servicoId : null,
+                'hora' => substr($this->horaPorData[$oc['data']] ?? $this->horaPadrao, 0, 5),
+            ];
+        })->values()->all();
+
+        $tamanho = count($padrao);
+        if ($tamanho === 0 || collect($padrao)->every(fn ($item) => $item['servico'] === null)) {
             return [];
         }
 
@@ -286,8 +304,13 @@ class AgendaFixa extends Page
             if ($d->dayOfWeek !== (int) $this->diaSemana) {
                 continue;
             }
-            $item = $ciclo[$i % count($ciclo)];
+            $item = $padrao[$i % $tamanho];
             $i++;
+
+            if ($item['servico'] === null) {
+                continue; // posição em branco no padrão — "não vem"
+            }
+
             $planejados[] = [
                 'data' => $d->format('Y-m-d'),
                 'servico' => $item['servico'],

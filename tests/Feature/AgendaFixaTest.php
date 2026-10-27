@@ -151,6 +151,46 @@ class AgendaFixaTest extends TestCase
         $this->assertSame($this->reparo->id, $porData['2026-08-11']->servico_id);
     }
 
+    /**
+     * Regressão: deixar a 1ª e a 3ª semana em branco (só preencher a 2ª e a
+     * 4ª, padrão quinzenal) e repetir por vários meses não pode gerar
+     * agendamento nas semanas em branco — nem no mês base, nem nos meses
+     * repetidos. Antes, o ciclo ignorava quais semanas ficaram em branco e
+     * preenchia TODAS as ocorrências da janela, inclusive essas.
+     */
+    public function test_repetir_por_meses_respeita_semanas_em_branco_no_padrao_quinzenal(): void
+    {
+        $p = $this->pagina();
+        $p->mes = '2026-07';
+        $p->diaSemana = 2; // terça
+        $p->repetirMeses = 2; // julho + agosto
+        $p->getOcorrenciasProperty();
+        // Só a 2ª (14/07) e a 4ª (28/07) preenchidas — 1ª e 3ª ficam em branco
+        $p->servicoPorData = [
+            '2026-07-14' => $this->unha->id,
+            '2026-07-28' => $this->reparo->id,
+        ];
+
+        $p->gerar();
+
+        $ags = Agendamento::withoutGlobalScopes()->orderBy('data_hora')->get();
+        $porData = $ags->keyBy(fn ($a) => $a->data_hora->format('Y-m-d'));
+
+        // Mês base: só as duas datas preenchidas geram agendamento.
+        $this->assertCount(4, $ags);
+        $this->assertArrayNotHasKey('2026-07-07', $porData->toArray());
+        $this->assertArrayNotHasKey('2026-07-21', $porData->toArray());
+        $this->assertSame($this->unha->id, $porData['2026-07-14']->servico_id);
+        $this->assertSame($this->reparo->id, $porData['2026-07-28']->servico_id);
+
+        // Agosto continua o MESMO padrão quinzenal (não vira semanal): a 1ª
+        // e a 3ª terça de agosto (04 e 18) continuam em branco.
+        $this->assertArrayNotHasKey('2026-08-04', $porData->toArray());
+        $this->assertArrayNotHasKey('2026-08-18', $porData->toArray());
+        $this->assertSame($this->unha->id, $porData['2026-08-11']->servico_id);
+        $this->assertSame($this->reparo->id, $porData['2026-08-25']->servico_id);
+    }
+
     public function test_datas_sem_servico_sao_ignoradas(): void
     {
         $p = $this->pagina();
