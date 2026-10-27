@@ -66,6 +66,39 @@ class Relatorios extends Page implements HasTable
         $this->dataFim = now()->endOfMonth()->format('Y-m-d');
     }
 
+    /**
+     * Força a tabela e os Stat cards a recalcular já com o valor novo do
+     * filtro. Sem isso, trocar o profissional funcionava mas trocar só a
+     * data deixava a tabela e os cards presos no valor anterior — o
+     * Filament não refaz $this->table/os Schemas sozinho em resposta a uma
+     * propriedade comum atualizar, é preciso pedir explicitamente.
+     */
+    public function updatedDataInicio(): void
+    {
+        $this->refrescarRelatorio();
+    }
+
+    public function updatedDataFim(): void
+    {
+        $this->refrescarRelatorio();
+    }
+
+    public function updatedFiltroProfissional(): void
+    {
+        $this->refrescarRelatorio();
+    }
+
+    public function updatedFiltroStatus(): void
+    {
+        $this->refrescarRelatorio();
+    }
+
+    private function refrescarRelatorio(): void
+    {
+        $this->resetTable();
+        $this->cacheSchema('statsSchema', $this->statsSchema($this->makeSchema()));
+    }
+
     /** O plano do tenant inclui este relatório? (usado também pelo blade da página) */
     public function temRelatorio(string $slug): bool
     {

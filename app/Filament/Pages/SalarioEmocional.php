@@ -40,7 +40,45 @@ class SalarioEmocional extends Page implements HasTable
         return __('painel.group.financeiro');
     }
 
-    public array $data = [];
+    // Propriedades Livewire individuais para reatividade confiável — NÃO usar
+    // statePath('data') com um array compartilhado aqui (ver CLAUDE.md):
+    // causava sincronização instável nos filtros — trocar o profissional
+    // disparava um re-render completo, mas as datas ficavam presas no valor
+    // anterior até outra interação "destravar" o Livewire. Mesmo padrão já
+    // usado em Relatorios.php.
+    public string $dataInicio = '';
+
+    public string $dataFim = '';
+
+    public ?string $filtroProfissional = null;
+
+    /**
+     * Força a tabela e os Stat cards do resumo a recalcular já com o valor
+     * novo do filtro. Sem isso, trocar o profissional funcionava mas trocar
+     * só a data deixava a tabela e os cards presos no valor anterior — o
+     * Filament não refaz $this->table/os Schemas sozinho em resposta a uma
+     * propriedade comum atualizar, é preciso pedir explicitamente.
+     */
+    public function updatedDataInicio(): void
+    {
+        $this->refrescarRelatorio();
+    }
+
+    public function updatedDataFim(): void
+    {
+        $this->refrescarRelatorio();
+    }
+
+    public function updatedFiltroProfissional(): void
+    {
+        $this->refrescarRelatorio();
+    }
+
+    private function refrescarRelatorio(): void
+    {
+        $this->resetTable();
+        $this->cacheSchema('resumoSchema', $this->resumoSchema($this->makeSchema()));
+    }
 
     public static function canAccess(): bool
     {
@@ -58,11 +96,9 @@ class SalarioEmocional extends Page implements HasTable
             ? auth()->user()->profissional_id
             : null;
 
-        $this->data = [
-            'data_inicio' => now()->startOfMonth()->format('Y-m-d'),
-            'data_fim' => now()->format('Y-m-d'),
-            'profissional_id' => $profId,
-        ];
+        $this->dataInicio = now()->startOfMonth()->format('Y-m-d');
+        $this->dataFim = now()->format('Y-m-d');
+        $this->filtroProfissional = $profId ? (string) $profId : null;
     }
 
     // ─── Filtros ──────────────────────────────────────────────────────────────
@@ -70,23 +106,23 @@ class SalarioEmocional extends Page implements HasTable
     public function filterForm(Schema $schema): Schema
     {
         return $schema->components([
-            DatePicker::make('data_inicio')
+            DatePicker::make('dataInicio')
                 ->label('Data inicial')
                 ->required()
                 ->live(),
 
-            DatePicker::make('data_fim')
+            DatePicker::make('dataFim')
                 ->label('Data final')
                 ->required()
                 ->live(),
 
-            Select::make('profissional_id')
+            Select::make('filtroProfissional')
                 ->label('Profissional')
                 ->options(Profissional::where('ativo', true)->pluck('nome', 'id'))
                 ->placeholder('Todos os profissionais')
                 ->live()
                 ->hidden(fn () => auth()->user()?->isBarbeiro()),
-        ])->columns(3)->statePath('data');
+        ])->columns(3);
     }
 
     // ─── Resumo (stat cards nativos) ─────────────────────────────────────────
@@ -127,7 +163,7 @@ class SalarioEmocional extends Page implements HasTable
     public function table(Table $table): Table
     {
         [$inicio, $fim] = $this->datas();
-        $profissionalId = $this->data['profissional_id'] ?? null;
+        $profissionalId = $this->filtroProfissional ? (int) $this->filtroProfissional : null;
         $resumo = $this->calcResumo();
         $statsMap = $this->buildStatsMap($resumo['totalAtendimentos'], $resumo['fundoSE'], $inicio, $fim);
 
@@ -200,8 +236,8 @@ class SalarioEmocional extends Page implements HasTable
 
     private function datas(): array
     {
-        $inicio = Carbon::parse($this->data['data_inicio'] ?? now()->startOfMonth())->startOfDay();
-        $fim = Carbon::parse($this->data['data_fim'] ?? now())->endOfDay();
+        $inicio = Carbon::parse($this->dataInicio ?: now()->startOfMonth()->format('Y-m-d'))->startOfDay();
+        $fim = Carbon::parse($this->dataFim ?: now()->format('Y-m-d'))->endOfDay();
 
         return [$inicio, $fim];
     }

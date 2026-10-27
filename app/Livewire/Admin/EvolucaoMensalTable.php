@@ -23,7 +23,8 @@ class EvolucaoMensalTable extends Component implements HasActions, HasSchemas, H
     use InteractsWithTable;
 
     public ?string $filtroProfissional = null;
-    public ?string $filtroStatus       = null;
+
+    public ?string $filtroStatus = null;
 
     public function table(Table $table): Table
     {
@@ -31,10 +32,10 @@ class EvolucaoMensalTable extends Component implements HasActions, HasSchemas, H
 
         $statuses = match ($this->filtroStatus) {
             'confirmado' => ['confirmado'],
-            'concluido'  => ['concluido'],
-            'pendente'   => ['pendente'],
-            'cancelado'  => ['cancelado'],
-            default      => ['confirmado', 'concluido'],
+            'concluido' => ['concluido'],
+            'pendente' => ['pendente'],
+            'cancelado' => ['cancelado'],
+            default => ['confirmado', 'concluido'],
         };
 
         return $table
@@ -44,7 +45,11 @@ class EvolucaoMensalTable extends Component implements HasActions, HasSchemas, H
                         DB::raw('MIN(agendamentos.id) as id'),
                         DB::raw('DATE_FORMAT(agendamentos.data_hora, "%Y-%m") as mes_ano'),
                         DB::raw('COUNT(agendamentos.id) as total_atendimentos'),
-                        DB::raw('COALESCE(SUM(servicos.preco), 0) as receita_total'),
+                        // valor_total é a fonte de verdade (cobre multi-serviço, preço por
+                        // dia e valor lançado manualmente); servicos.preco só cobre
+                        // registros antigos sem valor_total — mesma regra do
+                        // DashboardMesWidget e ReceitaSemanalChart.
+                        DB::raw('COALESCE(SUM(COALESCE(agendamentos.valor_total, servicos.preco)), 0) as receita_total'),
                     ])
                     ->leftJoin('servicos', 'servicos.id', '=', 'agendamentos.servico_id')
                     ->whereIn('agendamentos.status', $statuses)
@@ -68,14 +73,14 @@ class EvolucaoMensalTable extends Component implements HasActions, HasSchemas, H
 
                 TextColumn::make('receita_total')
                     ->label('Receita')
-                    ->formatStateUsing(fn ($state) => 'R$ ' . number_format((float) $state, 2, ',', '.'))
+                    ->formatStateUsing(fn ($state) => 'R$ '.number_format((float) $state, 2, ',', '.'))
                     ->color('success')
                     ->weight(FontWeight::SemiBold)
                     ->alignEnd(),
 
                 TextColumn::make('ticket_medio')
                     ->label('Ticket Médio')
-                    ->getStateUsing(fn ($record) => 'R$ ' . number_format(
+                    ->getStateUsing(fn ($record) => 'R$ '.number_format(
                         $record->total_atendimentos > 0
                             ? $record->receita_total / $record->total_atendimentos
                             : 0,
