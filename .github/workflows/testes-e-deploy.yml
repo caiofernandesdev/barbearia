@@ -1,0 +1,77 @@
+name: Testes e deploy
+
+# Testes em todo push (qualquer branch). Deploy só quando chega na main e os
+# testes passam. O deploy entra na VPS por SSH com uma chave restrita que só
+# consegue rodar scripts/deploy.sh (ver OPERACAO.md → Deploy automático).
+on:
+  push:
+  workflow_dispatch:
+
+jobs:
+  testes:
+    runs-on: ubuntu-latest
+    concurrency:
+      group: testes-${{ github.ref }}
+      cancel-in-progress: true
+
+    services:
+      mysql:
+        image: mysql:8.0
+        env:
+          MYSQL_ROOT_PASSWORD: '@soma+'
+          MYSQL_DATABASE: barbearia_test
+        ports:
+          - 3306:3306
+        options: >-
+          --health-cmd="mysqladmin ping -h 127.0.0.1 -p@soma+"
+          --health-interval=5s --health-timeout=5s --health-retries=20
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: shivammathur/setup-php@v2
+        with:
+          php-version: '8.3'
+          extensions: mbstring, intl, pdo_mysql, pdo_sqlite, gd, zip, bcmath, exif
+          coverage: none
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: npm
+
+      - name: .env de teste
+        run: cp .env.example .env
+
+      - name: Dependências PHP
+        run: composer install --no-interaction --prefer-dist --no-progress
+
+      - name: Chave da aplicação
+        run: php artisan key:generate
+
+      - name: Build do front (Vite)
+        run: npm ci && npm run build
+
+      - name: Testes
+        run: php artisan test
+
+  deploy:
+    needs: testes
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: deploy-producao
+      cancel-in-progress: false
+
+    steps:
+      - name: Deploy na VPS
+        env:
+          SSH_KEY: ${{ secrets.VPS_SSH_KEY }}
+          KNOWN_HOSTS: ${{ secrets.VPS_KNOWN_HOSTS }}
+          HOST: ${{ secrets.VPS_HOST }}
+        run: |
+          mkdir -p ~/.ssh
+          printf '%s\n' "$SSH_KEY" > ~/.ssh/deploy
+          chmod 600 ~/.ssh/deploy
+          printf '%s\n' "$KNOWN_HOSTS" > ~/.ssh/known_hosts
+          ssh -i ~/.ssh/deploy -o IdentitiesOnly=yes root@"$HOST" barbearia

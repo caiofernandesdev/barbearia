@@ -171,3 +171,28 @@ df -h / && free -h
 - ❌ `docker compose down -v` na Evolution (o `-v` apaga as sessões do WhatsApp —
   todos os clientes teriam que reescanear o QR)
 - ❌ Commitar o `.env` (o .gitignore protege, não force)
+
+---
+
+## Deploy automático (GitHub Actions)
+
+Todo push roda os testes no GitHub (aba **Actions**). Quando o push é na `main`
+e os testes passam, o GitHub entra na VPS por SSH e roda `scripts/deploy.sh`,
+que faz o roteiro de deploy sozinho (só roda composer/build/migrate se a
+mudança pedir). Teste falhou = não tem deploy.
+
+Fluxo de qualquer lugar (inclusive do celular, pelo Claude Code na nuvem):
+branch → push → testes verdes → merge na `main` → deploy automático.
+
+Deploy à mão, se precisar: `bash scripts/deploy.sh` na pasta do projeto no VPS.
+
+### Peças (configuradas uma vez)
+
+- **Secrets do repositório** (Settings → Secrets and variables → Actions):
+  `VPS_HOST`, `VPS_SSH_KEY`, `VPS_KNOWN_HOSTS`
+- **Chave `/root/.ssh/github_deploy`** na VPS, registrada no `authorized_keys`
+  com `restrict,command="/usr/local/bin/github-deploy"`: ela não abre terminal,
+  só consegue disparar o deploy do Atendix (`barbearia`) ou do Sobrou (`sobrou`).
+- **`/usr/local/bin/github-deploy`** na VPS: recebe `barbearia` ou `sobrou` e roda
+  o `scripts/deploy.sh` do projeto. Qualquer outro comando é recusado.
+- Se o deploy automático falhar, o log completo fica no GitHub → Actions → job `deploy`.

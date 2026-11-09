@@ -136,4 +136,49 @@ class AgendaIndispEDiasTest extends TestCase
         $fora = Carbon::today()->addDays(10)->format('Y-m-d');
         $this->getJson("{$base}&data={$fora}")->assertStatus(422);
     }
+
+    public function test_carrossel_do_painel_acompanha_os_dias_liberados_para_o_cliente(): void
+    {
+        // Liberou 60 dias para o cliente final: o painel também precisa mostrar até lá
+        ConfiguracaoBarbearia::getInstance()->update(['dias_antecedencia_agendamento' => 60]);
+
+        $comp = new AgendaDiaTable;
+        $comp->profissionalId = $this->prof->id;
+        $comp->dataSelecionada = '2026-08-18';
+
+        $datas = collect($comp->getDias())->pluck('data');
+        $this->assertSame('2026-10-17', $datas->last());   // hoje + 60
+        $this->assertTrue($datas->contains('2026-08-11')); // continua com os 7 dias anteriores
+    }
+
+    public function test_carrossel_do_painel_nunca_mostra_menos_de_21_dias(): void
+    {
+        ConfiguracaoBarbearia::getInstance()->update(['dias_antecedencia_agendamento' => 5]);
+
+        $comp = new AgendaDiaTable;
+        $comp->profissionalId = $this->prof->id;
+        $comp->dataSelecionada = '2026-08-18';
+
+        $this->assertSame('2026-09-08', collect($comp->getDias())->pluck('data')->last()); // hoje + 21
+    }
+
+    public function test_contagem_de_agendamentos_por_dia_no_carrossel(): void
+    {
+        $servico = Servico::withoutGlobalScopes()->where('tenant_id', $this->tenant->id)->first();
+        foreach (['2026-09-30 10:00', '2026-09-30 11:00'] as $dh) {
+            \App\Models\Agendamento::forceCreate([
+                'cliente_nome' => 'Cli', 'cliente_telefone' => '14999990000', 'data_hora' => $dh,
+                'status' => 'confirmado', 'profissional_id' => $this->prof->id,
+                'servico_id' => $servico->id, 'tenant_id' => $this->tenant->id,
+            ]);
+        }
+        ConfiguracaoBarbearia::getInstance()->update(['dias_antecedencia_agendamento' => 60]);
+
+        $comp = new AgendaDiaTable;
+        $comp->profissionalId = $this->prof->id;
+        $comp->dataSelecionada = '2026-08-18';
+
+        $dia = collect($comp->getDias())->firstWhere('data', '2026-09-30');
+        $this->assertSame(2, $dia['totalAgs']);
+    }
 }

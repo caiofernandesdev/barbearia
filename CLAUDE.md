@@ -81,3 +81,26 @@ Window: today → today+14 days. Buffer: 30 min for same-day slots.
 - Tailwind CSS 4 via CDN in public views (not compiled); compiled via Vite only for Filament
 - SQLite by default (`.env` `DB_CONNECTION=sqlite`)
 - No Livewire in the public booking flow — vanilla JS only
+
+## Infraestrutura real (conferida em 08/11/2026)
+
+O `DEPLOY.md`/`OPERACAO.md` descrevem a instalação original; o estado real é este:
+
+- VPS Hostinger `srv1814528` (`179.197.66.135`), **Ubuntu 24.04** (não 22.04),
+  7,8 GB RAM, 2 vCPU, 96 GB de disco (~7% usado), **sem swap**
+- PHP 8.3.32, MySQL 8.0.46, Nginx, Supervisor (`barbearia-worker` x2), Evolution API
+  em Docker (`/opt/evolution-api`, 3 containers)
+- Site `default` do Nginx ainda habilitado (inofensivo)
+- **Backup do banco não existia** apesar do `OPERACAO.md` dizer que sim. Configurado
+  em 08/11/2026: cron do root às 3h30 → `/var/backups/barbearia/`, guarda 14 dias.
+  Fotos (`storage/app/public`) não entram no backup.
+- Agendador (`schedule:run` no crontab do `www-data`) **não foi conferido** — checar
+  com `crontab -l -u www-data`; sem ele, lembretes de WhatsApp das 9h não saem.
+- Painéis Filament não têm "esqueci a senha"; o Atendix não depende de SMTP.
+
+### A VPS também hospeda o Sobrou (projeto pessoal do Gabriel)
+
+- `/var/www/sobrou`, banco `sobrou`, Nginx `sites-available/sobrou`, domínio `sobrou.cc`
+- **Não mexer** nesses itens ao trabalhar no Atendix
+- `systemctl reload php8.3-fpm` recarrega o PHP dos dois sistemas (não derruba nada)
+- `php artisan down/up` vale só para a pasta onde é rodado

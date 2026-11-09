@@ -436,18 +436,28 @@ class AgendaDiaTable extends Component implements HasActions, HasForms
         $diasTrabalho = $prof?->dias_trabalho ?? [1, 2, 3, 4, 5, 6];
 
         // Carrossel do painel: 7 dias anteriores (para rever/registrar atrasados)
-        // até 21 dias à frente. Começa no passado; o JS rola até o dia selecionado.
+        // até os "dias liberados para agendamento" da configuração — a mesma janela
+        // que o cliente final vê no agendamento público —, nunca menos que 21.
+        // Começa no passado; o JS rola até o dia selecionado.
         $hoje = now()->startOfDay();
-        for ($i = -7; $i <= 21; $i++) {
+        $diasLiberados = (int) (ConfiguracaoBarbearia::getInstance()->dias_antecedencia_agendamento ?? 14);
+        $ultimoDia = max(21, $diasLiberados);
+
+        // Uma consulta só para a contagem de todos os dias (a janela pode ter 60+ dias).
+        $totaisPorDia = Agendamento::query()
+            ->whereBetween('data_hora', [$hoje->copy()->subDays(7), $hoje->copy()->addDays($ultimoDia)->endOfDay()])
+            ->when($this->profissionalId, fn ($q) => $q->where('profissional_id', $this->profissionalId))
+            ->whereIn('status', ['pendente', 'confirmado'])
+            ->pluck('data_hora')
+            ->countBy(fn ($dataHora) => Carbon::parse($dataHora)->format('Y-m-d'));
+
+        for ($i = -7; $i <= $ultimoDia; $i++) {
             $dia = $hoje->copy()->addDays($i);
             if (! in_array($dia->dayOfWeek, $diasTrabalho)) {
                 continue;
             }
 
-            $totalAgs = Agendamento::whereDate('data_hora', $dia->format('Y-m-d'))
-                ->when($this->profissionalId, fn ($q) => $q->where('profissional_id', $this->profissionalId))
-                ->whereIn('status', ['pendente', 'confirmado'])
-                ->count();
+            $totalAgs = $totaisPorDia->get($dia->format('Y-m-d'), 0);
 
             $dias[] = [
                 'data' => $dia->format('Y-m-d'),

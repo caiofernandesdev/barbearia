@@ -9,6 +9,7 @@ use App\Models\Servico;
 use App\Models\Tenant;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Cookie;
 use Illuminate\Support\Facades\Hash;
 use Livewire\Livewire;
 use Tests\TestCase;
@@ -79,5 +80,39 @@ class LayoutListaGradeTest extends TestCase
             ->assertSee('Ana');
 
         $this->assertSame('grade', $comp->get('layoutView'));
+    }
+
+    public function test_lembra_o_layout_escolhido_ao_voltar_para_a_listagem(): void
+    {
+        Livewire::actingAs($this->admin, 'admin')
+            ->test(ListServicos::class)
+            ->callAction('toggleLayout');
+
+        // A escolha fica guardada num cookie da própria listagem
+        $this->assertSame('grade', Cookie::queued('layout_ListServicos')?->getValue());
+
+        // Voltando à página com o cookie, abre direto em grade
+        $comp = Livewire::withCookie('layout_ListServicos', 'grade')
+            ->actingAs($this->admin, 'admin')
+            ->test(ListServicos::class)
+            ->assertOk()
+            ->assertSee('Corte');
+        $this->assertSame('grade', $comp->get('layoutView'));
+
+        // Outras listagens não são afetadas
+        $outra = Livewire::withCookie('layout_ListServicos', 'grade')
+            ->actingAs($this->admin, 'admin')
+            ->test(ListProfissionais::class);
+        $this->assertSame('lista', $outra->get('layoutView'));
+    }
+
+    public function test_cookie_com_valor_invalido_e_ignorado(): void
+    {
+        $comp = Livewire::withCookie('layout_ListServicos', 'qualquer-coisa')
+            ->actingAs($this->admin, 'admin')
+            ->test(ListServicos::class)
+            ->assertOk();
+
+        $this->assertSame('lista', $comp->get('layoutView'));
     }
 }
