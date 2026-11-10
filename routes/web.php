@@ -32,15 +32,18 @@ Route::prefix('{tenant}')
 
         // Agendamento público
         Route::get('/', [AgendamentoController::class, 'index'])->name('agendamento.index');
-        Route::post('/agendar', [AgendamentoController::class, 'store'])->name('agendamento.store');
-        Route::get('/confirmado/{agendamentoId}', [AgendamentoController::class, 'confirmado'])->name('agendamento.confirmado');
+        Route::post('/agendar', [AgendamentoController::class, 'store'])->name('agendamento.store')
+            ->middleware('throttle:10,1');
+        // Só abre com o link assinado gerado ao agendar (ver AgendamentoController::store)
+        Route::get('/confirmado/{agendamentoId}', [AgendamentoController::class, 'confirmado'])->name('agendamento.confirmado')
+            ->middleware(['signed:relative', 'throttle:30,1']);
 
         Route::match(['get', 'post'], '/meus-agendamentos', [AgendamentoController::class, 'meusAgendamentos'])
             ->name('agendamento.meus-agendamentos')
             ->middleware('throttle:30,1');
 
         Route::post('/cancelar/{agendamentoId}', [AgendamentoController::class, 'cancelar'])
-            ->name('agendamento.cancelar');
+            ->name('agendamento.cancelar')->middleware('throttle:20,1');
 
         // Lista de espera — cliente entra quando o dia não tem horário
         Route::post('/lista-espera', [AgendamentoController::class, 'entrarListaEspera'])

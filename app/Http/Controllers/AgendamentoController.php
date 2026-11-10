@@ -13,6 +13,7 @@ use App\Services\DisponibilidadeService;
 use Carbon\Carbon;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\Str;
 
 class AgendamentoController extends Controller
@@ -371,7 +372,13 @@ class AgendamentoController extends Controller
         // Guarda o telefone na sessão para que "Meus Agendamentos" não precise expor o número na URL
         session(['agendamentos_telefone' => $telefone]);
 
-        return redirect()->route('agendamento.confirmado', ['tenant' => $request->route('tenant'), 'agendamentoId' => $agendamento->id]);
+        // Link ASSINADO: sem a assinatura, trocar o número na URL não abre o
+        // agendamento de outra pessoa (a página mostra nome e telefone e tem o
+        // botão de cancelar). Relativo, para não depender de http/https atrás do proxy.
+        return redirect(URL::signedRoute('agendamento.confirmado', [
+            'tenant' => $request->route('tenant'),
+            'agendamentoId' => $agendamento->id,
+        ], absolute: false));
     }
 
     /**
